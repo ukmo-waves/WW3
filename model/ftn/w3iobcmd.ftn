@@ -207,6 +207,9 @@
       USE W3SERVMD, ONLY: EXTCDE
 !/S      USE W3SERVMD, ONLY: STRACE
 !
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -240,8 +243,15 @@
       CHARACTER(LEN=10)       :: VERTST
       CHARACTER(LEN=32)       :: IDTST
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3IOBC'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3IOBC')
 !
       IOTST  = 0
@@ -624,6 +634,7 @@
       IF ( INXOUT .EQ. 'DUMP'  ) FILED  = .FALSE.
       IF ( INXOUT .EQ. 'READ'  ) FILER  = .FALSE.
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Escape locations IO errors
@@ -636,6 +647,7 @@
       IF ( IAPROC .EQ. NAPERR ) WRITE (NDSE,1001) IMOD
       IOTST  = 1
       FLBPI  = .FALSE.
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
   802 CONTINUE
@@ -663,6 +675,8 @@
 !
       IOTST  = -1
       FLBPI  = .FALSE.
+
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Formats

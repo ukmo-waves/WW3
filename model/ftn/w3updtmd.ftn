@@ -215,6 +215,9 @@
 !/TIDE      USE W3IDATMD, ONLY: FLCURTIDE, CXTIDE, CYTIDE, NTIDE
 !/TIDE      USE W3TIDEMD
 !
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -234,8 +237,15 @@
 !/TIDE      REAL(KIND=8)     :: d1,h,TIDE_HOUR,HH,pp,s,p,enp,dh,dpp,ds,dp,dnp,tau
 !/TIDE      REAL             :: FX(44),UX(44),VX(44)
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3UCUR'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3UCUR')
 !
 ! 1.  Prepare auxiliary arrays
@@ -488,6 +498,9 @@
                           UA0, UAI, UD0, UDI, AS0, ASI
       USE W3IDATMD, ONLY: TW0, WX0, WY0, DT0, TWN, WXN, WYN, DTN, FLCUR
 !/
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -506,8 +519,15 @@
 !/STAB2      REAL                    :: STAB0, STAB, THARG1, THARG2, COR1, COR2
       REAL                    :: UDARC
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3UWND'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3UWND')
 !
 ! 1.  Prepare auxiliary arrays
@@ -645,6 +665,7 @@
 !/STAB2        U10(ISEA) = U10(ISEA) / ASF(ISEA)
 !/STAB2        END DO
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Formats
@@ -1126,6 +1147,9 @@
       USE W3WDATMD, ONLY: TIME, TIC1, ICEH
       USE W3IDATMD, ONLY: TI1, ICEP1, FLIC1
 !/
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -1137,9 +1161,16 @@
 !/      
       INTEGER                 :: IX, IY, ISEA
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3IOPE'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
 !/
 ! 1.  Preparations --------------------------------------------------- *
 ! 1.a Update times
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !
 !/T      WRITE (NDST,9010) TIME, TIC1, TI1
       TIC1(1) = TI1(1)
@@ -1154,6 +1185,7 @@
         ICEH(ISEA) = MAX(IICEHMIN,IICEHFAC*ICEP1(IX,IY))
       END DO
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !/T 9010 FORMAT ( ' TEST W3UIC1 : TIME     :',I9.8,I7.6/              &
 !/T               '               OLD TICE :',I9.8,I7.6/              &
@@ -1360,6 +1392,9 @@
       USE W3IDATMD, ONLY: TIN, ICEI, BERGI
       USE W3PARALL, only : INIT_GET_JSEA_ISPROC, INIT_GET_ISEA
 !/
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -1374,8 +1409,15 @@
       INTEGER                 :: MAPICE(NY,NX), ISPROC
       LOGICAL                 :: LOCAL
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3UICE'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3UICE')
 !
       LOCAL   = IAPROC .LE. NAPROC
@@ -1465,6 +1507,7 @@
 !
 !/IC0      MAPST2 = MAPST2 + MAPICE
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Formats
@@ -1591,6 +1634,9 @@
 
 !/T3      USE W3ARRYMD, ONLY: PRT2DS
 !/
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -1619,6 +1665,15 @@
 !/TIDE      REAL             :: WLEVTIDE, TIDE_ARG, WLEVTIDE2(1)
 !/TIDE      REAL(KIND=8)     :: d1,h,TIDE_HOUR,HH,pp,s,p,enp,dh,dpp,ds,dp,dnp,tau
 !/TIDE      REAL             :: FX(44),UX(44),VX(44)
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3ULEV'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
+
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
+
 !/DEBUGW3ULEV           WRITE(740+IAPROC,*) 'Beginning of W3ULEV, step 1'
 !/DEBUGW3ULEV           FLUSH(740+IAPROC)
       
@@ -1945,6 +2000,7 @@
 !/DEBUGW3ULEV           WRITE(740+IAPROC,*) 'Beginning of W3ULEV, step 11'
 !/DEBUGW3ULEV           FLUSH(740+IAPROC)
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Formats
@@ -2042,6 +2098,9 @@
       USE W3WDATMD, ONLY: ICE, BERG
       USE W3ADATMD, ONLY: ATRNX, ATRNY
 !
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -2059,8 +2118,15 @@
                                  LICE0, LICEN
 !/T      REAL                    :: LEVS(0:10)
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3UTRN'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3UTRN')
 !/T      WRITE (NDST,9000) TRFLAG
 !
@@ -2074,6 +2140,7 @@
 ! 2.a TRFLAG = 0, no action needed
       IF ( TRFLAG .EQ. 0 ) THEN
 !/T          WRITE (NDST,9001) 'NO FURTHER ACTION REQUIRED'
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
           RETURN
 !
 ! 2.b TRFLAG = 1,3: TRNX/Y defined at boundaries
@@ -2187,6 +2254,7 @@
 !
       IF ( TRFLAG.LT.3 .OR. FICEN-FICE0.LT.1.E-6 ) THEN
 !/T          WRITE (NDST,9001) 'NO ICE ACTION REQUIRED'
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
           RETURN
 !
 ! 3.b TRFLAG = 3,4: Calculate ice transparencies
@@ -2300,6 +2368,7 @@
 !
         END IF
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Formats
@@ -2402,6 +2471,9 @@
       USE W3SERVMD, ONLY: EXTCDE
 !/T      USE W3ARRYMD, ONLY : PRTBLK
 !/
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -2422,8 +2494,15 @@
       INTEGER                 :: IXSTART,IXEND
 !/T      REAL                    :: XOUT(NX,NY)
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3DZXY'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3DZXY')
 !
 ! 1.  Preparations --------------------------------------------------- *
@@ -2607,6 +2686,7 @@
 !/T      CALL PRTBLK (NDST, NX, NY, NX, XOUT, MAPOUT, 0, 0.,          &
 !/T                      1, NX, ISX, 1, NY, ISY, 'DZZDY',TRIM(ZUNIT)//'/m')
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Formats

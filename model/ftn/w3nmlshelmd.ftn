@@ -234,6 +234,10 @@
 !/MPI      USE WMMDATMD, ONLY: MPI_COMM_MWAVE
 !/S      USE W3SERVMD, ONLY: STRACE
 
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
+
     IMPLICIT NONE
 
     INTEGER, INTENT(IN)                       :: MPI_COMM, NDSI
@@ -249,6 +253,15 @@
     ! locals
 !/MPI      INTEGER                                 :: IERR_MPI
 !/S      INTEGER, SAVE                           :: IENT = 0
+
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3NMLSHEL'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
+
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 
     IERR = 0
 !/S      CALL STRACE (IENT, 'W3NMLSHEL')
@@ -297,6 +310,8 @@
     ! close namelist files
     CLOSE (NDSI)
     IF ( NMPLOG .EQ. IMPROC ) CLOSE (NDSN)
+
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
 
   END SUBROUTINE W3NMLSHEL
 

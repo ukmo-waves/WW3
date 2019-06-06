@@ -241,6 +241,9 @@
 !/MEMCHECK   USE W3ADATMD, ONLY: MALLINFOS
 !/MEMCHECK      USE MallocInfo_m
 !
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !
 !/MPI      INCLUDE "mpif.h"
@@ -278,8 +281,17 @@
       CHARACTER(LEN=60)      :: MESSAGE(5)
       LOGICAL                 :: GLOBAL
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3IOGR'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
+!/HOKM REAL(KIND=jprb)          :: zhook_handle_rendezvous
+
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3IOGR')
 !
 !/DEBUGIOGR     WRITE(740+IAPROC,*) 'W3IOGR, step 1'
@@ -880,6 +892,7 @@
 
       IF ( INXOUT .EQ. 'GRID' ) THEN
           CLOSE (NDSM)
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
           RETURN
         END IF
 !/DEBUGIOGR     WRITE(740+IAPROC,*) 'W3IOGR, step 11'
@@ -1212,13 +1225,17 @@
 !/DEBUGIOGR     FLUSH(740+IAPROC)
 !/MPI      IF ( FLSNL2 .AND. .NOT.WRITE ) THEN
 !/MPI          DO IP=1, IAPROC-1
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_1",zhook_in,zhook_handle_rendezvous)
 !/MPI            CALL MPI_BARRIER (  MPI_COMM_WAVE, IERR_MPI )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_1",zhook_out,zhook_handle_rendezvous)
 !/MPI            END DO
 !/MPI        END IF
 !/NL2      IF ( .NOT. WRITE ) CALL INSNL2
 !/MPI      IF ( FLSNL2 .AND. .NOT.WRITE ) THEN
 !/MPI          DO IP=IAPROC, NAPROC-1
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_2",zhook_in,zhook_handle_rendezvous)
 !/MPI            CALL MPI_BARRIER (  MPI_COMM_WAVE, IERR_MPI )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_2",zhook_out,zhook_handle_rendezvous)
 !/MPI            END DO
 !/MPI        END IF
 !
@@ -1350,6 +1367,7 @@
 !/MEMCHECK       call getMallocInfo(mallinfos)
 !/MEMCHECK       call printMallInfo(IAPROC,mallInfos)
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Escape locations read errors --------------------------------------- *

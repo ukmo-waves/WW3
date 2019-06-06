@@ -630,6 +630,9 @@
 !/S      USE W3SERVMD, ONLY: STRACE
 !/T      USE W3ARRYMD, ONLY: PRT2DS
 !
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !
 !/MPI      INCLUDE "mpif.h"
@@ -655,8 +658,16 @@
 !/RTD      REAL :: Spectr(NSPEC), AnglDIS
 !/RTD      INTEGER :: IROT
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3IOPE'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
+!/HOKM REAL(KIND=jprb)          :: zhook_handle_rendezvous
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3IOPE')
 !
       CX(0)  = 0.
@@ -797,7 +808,9 @@
 !
 !/MPI        IOFF   = 1 + 4*(I-1)
 !/MPI        CALL MPI_STARTALL ( 4, IRQPO2(IOFF), IERR_MPI )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous",zhook_in,zhook_handle_rendezvous)
 !/MPI        CALL MPI_WAITALL  ( 4, IRQPO2(IOFF), STAT, IERR_MPI )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous",zhook_out,zhook_handle_rendezvous)
 !
 ! Interpolate spectrum
 !
@@ -842,6 +855,7 @@
 !
         END DO
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Formats
@@ -944,6 +958,9 @@
       USE W3SERVMD, ONLY: EXTCDE
 !/S      USE W3SERVMD, ONLY: STRACE
 !
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -963,8 +980,15 @@
       CHARACTER(LEN=31)       :: IDTST
       CHARACTER(LEN=10)       :: VERTST
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3IOPO'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3IOPO')
       IPASS  = IPASS + 1
       IOTST  = 0
@@ -1095,6 +1119,7 @@
 !
         END DO
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Escape locations read errors
@@ -1114,6 +1139,7 @@
   803 CONTINUE
       IOTST  = -1
 !/T      WRITE (NDST,9011)
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Formats

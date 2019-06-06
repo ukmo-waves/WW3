@@ -393,6 +393,9 @@
 !/MPI      USE W3ODATMD, ONLY: ICPRT, DTPRT, IT0PRT
 !/T      USE W3ODATMD, ONLY: NDST
 !
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !
 !/MPI      INCLUDE "mpif.h"
@@ -421,9 +424,17 @@
 !
       TYPE(PROCS), TARGET, ALLOCATABLE :: PROC(:)
 !
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3IOSF'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
+!/HOKM REAL(KIND=jprb)          :: zhook_handle_rendezvous
 ! -------------------------------------------------------------------- /
 ! 0.  Initializations
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3IOSF')
 !
       IPASS  = IPASS + 1
@@ -494,20 +505,27 @@
 !/T          WRITE (NDST,9020)  IAPROC, NAPPRT, NSEALM+1
 !
 !/MPI          IT     = IT0PRT + IAPROC - 1
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_1",zhook_in,zhook_handle_rendezvous)
 !/MPI          CALL MPI_SEND ( ICPRT, ICSIZ, MPI_REAL, NAPPRT-1, IT,  &
 !/MPI                          MPI_COMM_WAVE, IERR_MPI )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_1",zhook_out,zhook_handle_rendezvous)
 !/MPI          DTSIZ  = ICPRT(NSEAL+1,2) - 1
 !
 !/MPIT          WRITE (NDST,9021)  IAPROC, NAPPRT, DTSIZ
 !
 !/MPI          IT     = IT0PRT + NAPROC + IAPROC - 1
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_2",zhook_in,zhook_handle_rendezvous)
 !/MPI          IF ( DTSIZ .GT. 0 ) CALL MPI_SEND                      &
 !/MPI                        ( DTPRT, 6*DTSIZ, MPI_REAL, NAPPRT-1,    &
 !/MPI                          IT, MPI_COMM_WAVE, IERR_MPI )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_2",zhook_out,zhook_handle_rendezvous)
 !
         END IF
 !
-      IF ( IAPROC .NE. NAPPRT ) RETURN
+      IF ( IAPROC .NE. NAPPRT ) THEN
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
+        RETURN
+      END IF
 !
 ! -------------------------------------------------------------------- /
 ! 3.  Point to and/or gather data 
@@ -532,8 +550,10 @@
 !/MPI            ALLOCATE ( PROC(JAPROC)%ICPRT(NSEALM+1,2) )
 !/MPI            ICP   => PROC(JAPROC)%ICPRT
 !/MPI            IT     = IT0PRT + JAPROC - 1
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_3",zhook_in,zhook_handle_rendezvous)
 !/MPI            CALL MPI_RECV ( ICP, ICSIZ, MPI_REAL, JAPROC-1, IT,  &
 !/MPI                            MPI_COMM_WAVE, STATUS, IERR_MPI )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_3",zhook_out,zhook_handle_rendezvous)
 !/MPI            JSLM   = 1 + (NSEA-JAPROC)/NAPROC
 !/MPI            DTSIZ  = ICP(JSLM+1,2) - 1
 !
@@ -542,9 +562,13 @@
 !/MPI            ALLOCATE ( PROC(JAPROC)%DTPRT(DIMP,MAX(1,DTSIZ)) )
 !/MPI            DTP   => PROC(JAPROC)%DTPRT
 !/MPI            IT     = IT0PRT + NAPROC + JAPROC - 1
-!/MPI            IF ( DTSIZ .GT. 0 ) CALL MPI_RECV                    &
+!/MPI            IF ( DTSIZ .GT. 0 ) THEN
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_4",zhook_in,zhook_handle_rendezvous)
+!/MPI                   CALL MPI_RECV                    &
 !/MPI                          ( DTP, DIMP*DTSIZ, MPI_REAL, JAPROC-1, &
 !/MPI                            IT, MPI_COMM_WAVE, STATUS, IERR_MPI )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_4",zhook_out,zhook_handle_rendezvous)
+!/MPI                      END IF
 !
         END DO
 !
@@ -630,6 +654,7 @@
 !
       DEALLOCATE ( PROC )
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Escape locations read errors --------------------------------------- *

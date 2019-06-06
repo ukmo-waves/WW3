@@ -193,6 +193,10 @@
       USE W3WDATMD
       USE W3ODATMD, ONLY: NDSE, NDST, NDSO, NAPROC, IAPROC,           &
                           NAPOUT, NAPERR, FNMPRE
+!/HOOK ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
+
 !/
       IMPLICIT NONE
 !
@@ -220,7 +224,13 @@
       CHARACTER               :: COMSTR*1, INXOUT*4
 !/EXPORTWWM      INTEGER                 :: ISPEC
       LOGICAL                 :: FLONE,NOSIX
-!/
+!/HOOK CHARACTER(LEN=*), PARAMETER :: routinename = 'W3STRT'
+
+!/HOOK !DrHook Variables
+!/HOOK INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK REAL(KIND=jprb)               :: zhook_handle!/
+
 !/ ------------------------------------------------------------------- /
 !
 ! 1.a Initialize data structure
@@ -256,6 +266,8 @@
 !/MPI      CALL MPI_COMM_RANK ( MPI_COMM_WORLD, IAPROC, IERR_MPI )
 !/MPI      IAPROC = IAPROC + 1
 !
+!/HOOK    CALL dr_hook(RoutineName,zhook_in,zhook_handle)
+
       IF ( IAPROC .EQ. NAPERR ) THEN
           NDSEN  = NDSE
         ELSE
@@ -263,7 +275,9 @@
         END IF
 !
       IF ( IAPROC .EQ. NAPOUT ) WRITE (NDSO,900)
-!
+
+!/HOOK     IF ( IAPROC .EQ. NAPOUT ) WRITE (NDSO,'(A)') 'DrHook Enabled'
+
       J      = LEN_TRIM(FNMPRE)
       OPEN (NDSI,FILE=FNMPRE(:J)//'ww3_strt.inp',STATUS='OLD',        &
             ERR=800,IOSTAT=IERR)
@@ -801,6 +815,7 @@
 !
   888 CONTINUE
       IF ( IAPROC .EQ. NAPOUT ) WRITE (NDSO,999)
+!/HOOK    CALL dr_hook(RoutineName,zhook_out,zhook_handle)
 !/MPI      CALL MPI_FINALIZE  ( IERR_MPI )
 !
 ! Formats

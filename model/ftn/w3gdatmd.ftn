@@ -1863,6 +1863,9 @@
       USE W3SERVMD, ONLY: EXTCDE
 !/S      USE W3SERVMD, ONLY: STRACE
 !
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !
 !/
@@ -1876,6 +1879,14 @@
 !/
 !/S      INTEGER, SAVE           :: IENT = 0
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3SETG'
+!
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
+!
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3SETG')
 !
 ! -------------------------------------------------------------------- /
@@ -2382,6 +2393,8 @@
        B_JGS_NORM_THR => MPARS(IMOD)%SCHMS%B_JGS_NORM_THR
        B_JGS_NLEVEL => MPARS(IMOD)%SCHMS%B_JGS_NLEVEL
        B_JGS_SOURCE_NONLINEAR => MPARS(IMOD)%SCHMS%B_JGS_SOURCE_NONLINEAR
+
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Formats

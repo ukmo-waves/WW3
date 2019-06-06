@@ -205,7 +205,10 @@
       USE W3GDATMD, ONLY: NGRIDS
       USE W3SERVMD, ONLY: EXTCDE
 !/S      USE W3SERVMD, ONLY: STRACE
-!
+
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -219,6 +222,14 @@
       INTEGER                 :: I
 !/S      INTEGER, SAVE           :: IENT = 0
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3NDAT'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
+
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3NDAT')
 !
 ! -------------------------------------------------------------------- /
@@ -246,6 +257,7 @@
 !
 !/T      WRITE (NDST,9000) NGRIDS
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Formats
@@ -595,6 +607,9 @@
       USE W3SERVMD, ONLY: EXTCDE
 !/S      USE W3SERVMD, ONLY: STRACE
 !
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -607,6 +622,14 @@
 !/
 !/S      INTEGER, SAVE           :: IENT = 0
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3SETW'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
+!
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3SETW')
 !
 ! -------------------------------------------------------------------- /
@@ -669,6 +692,7 @@
           FPIS   => WDATAS(IMOD)%FPIS
         END IF
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Formats

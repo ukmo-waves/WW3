@@ -266,6 +266,11 @@
 !/TIDE      USE W3TIDEMD
 !
       USE W3NMLSHELMD
+
+!/HOOK ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
+
       IMPLICIT NONE
 !
 !/MPI      INCLUDE "mpif.h"
@@ -321,6 +326,7 @@
       CHARACTER(LEN=80)   :: LINE
       CHARACTER(LEN=256)  :: TMPLINE, TEST
       CHARACTER(LEN=1024) :: FLDIN
+!/HOOK CHARACTER(LEN=*), PARAMETER :: routinename = 'W3SHEL'
 !/COU      CHARACTER(LEN=30)       :: OFILE
 !
       LOGICAL             :: FLLSTL, FLLSTI, FLFLG, FLHOM, TFLAGI,     &
@@ -333,6 +339,11 @@
 !/NCC      LOGICAL             :: CFLAG(10) 
 !/OASIS      LOGICAL             :: L_MASTER    
 !
+!/HOOK !DrHook Variables
+!/HOOK INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK REAL(KIND=jprb)               :: zhook_handle
+!/HOKM REAL(KIND=jprb)          :: zhook_handle_rendezvous
 !/
 !/ ------------------------------------------------------------------- /
 !/
@@ -406,6 +417,9 @@
 !/DEBUGINIT      write(740+IAPROC,*) 'After MPI_COMM_SIZE, NAPROC=', NAPROC
 !/MPI      CALL MPI_COMM_RANK ( MPI_COMM, IAPROC, IERR_MPI )
 !/MPI      IAPROC = IAPROC + 1
+
+!/HOOK    CALL dr_hook(RoutineName,zhook_in,zhook_handle)
+
 !
 !/NCO/!     IF ( IAPROC .EQ. 1 ) CALL W3TAGB                         &
 !/NCO/!                         ('WAVEFCST',1998,0007,0050,'NP21   ')
@@ -477,6 +491,7 @@
 
       IF ( IAPROC .EQ. NAPOUT ) WRITE (NDSO,900)
 !
+!/HOOK      IF ( IAPROC .EQ. NAPOUT ) WRITE (NDSO,'(A)') 'DrHook Enabled'
       IF ( IAPROC .EQ. NAPERR ) THEN
         NDSEN  = NDSE
       ELSE
@@ -1209,7 +1224,9 @@
                        (NDSS,FILE=TRIM(FNMPRE)//'ww3_shel.scratch')
                 ELSE
                   NDSI2  = NDSS
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_1",zhook_in,zhook_handle_rendezvous)
 !/MPI                  CALL MPI_BARRIER (MPI_COMM,IERR_MPI)
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_1",zhook_out,zhook_handle_rendezvous)
                   OPEN (NDSS,FILE=TRIM(FNMPRE)//'ww3_shel.scratch')
                   REWIND (NDSS)
 !
@@ -1267,11 +1284,15 @@
               IF ( NPTS.EQ.0 .AND. IAPROC.EQ.NAPOUT )               &
                    WRITE (NDSO,2947)
               IF ( IAPROC .EQ. 1 ) THEN
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_2",zhook_in,zhook_handle_rendezvous)
 !/MPI                CALL MPI_BARRIER ( MPI_COMM, IERR_MPI )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_2",zhook_out,zhook_handle_rendezvous)
                 CLOSE (NDSS,STATUS='DELETE')
               ELSE
                 CLOSE (NDSS)
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_3",zhook_in,zhook_handle_rendezvous)
 !/MPI                CALL MPI_BARRIER ( MPI_COMM, IERR_MPI )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_3",zhook_out,zhook_handle_rendezvous)
               END IF
 !
 
@@ -1650,7 +1671,9 @@
 !
 
 !
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_4",zhook_in,zhook_handle_rendezvous)
 !/MPI      CALL MPI_BARRIER ( MPI_COMM, IERR_MPI )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_4",zhook_out,zhook_handle_rendezvous)
 !
       IF ( IAPROC .EQ. NAPOUT ) THEN
 !/F90        CALL DATE_AND_TIME ( VALUES=CLKDT2 )
@@ -2287,9 +2310,11 @@
       IF ( IAPROC .EQ. NAPERR ) WRITE (NDSE,1054)
       CALL EXTCDE ( 1054 )
  2222 CONTINUE
-!
+
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_5",zhook_in,zhook_handle_rendezvous)
 !/MPI      CALL MPI_BARRIER ( MPI_COMM, IERR_MPI )
-!
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_5",zhook_out,zhook_handle_rendezvous)
+
       IF ( IAPROC .EQ. NAPOUT ) THEN
 !/F90          CALL DATE_AND_TIME ( VALUES=CLKDT3 )
 !/F90          CLKFIN = MAX(TDIFF ( CLKDT1,CLKDT2 ), 0.)
@@ -2304,6 +2329,9 @@
       END IF
 !
 !/NCO/!     IF ( IAPROC .EQ. 1 ) CALL W3TAGE('WAVEFCST')
+
+!/HOOK    CALL dr_hook(RoutineName,zhook_out,zhook_handle)
+
 !/OASIS      IF (OASISED.EQ.1) THEN
 !/OASIS        CALL CPL_OASIS_FINALIZE
 !/OASIS      ELSE

@@ -1730,6 +1730,10 @@ END SUBROUTINE
 !/PDLIB     use yowNodepool,    only: PDLIB_IEN, PDLIB_TRIA, NPA
 !/PDLIB      USE yowExchangeModule, only : PDLIB_exchange1Dreal
 
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
+
       IMPLICIT NONE     
       
       
@@ -1746,6 +1750,15 @@ END SUBROUTINE
       REAL                 :: DEDX(3), DEDY(3)
       REAL                 :: DVDXIE, DVDYIE
       REAL                 :: WEI(NX), WEI_LOCAL(NSEAL)
+
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'UG_GRADIENTS'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
+
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
        
      DIFFX = 0.              
      DIFFY = 0. 
@@ -1809,7 +1822,8 @@ END SUBROUTINE
 !/PDLIB     ENDIF
 !/PDLIB  CALL PDLIB_exchange1Dreal(DIFFX(1,1:NPA))
 !/PDLIB  CALL PDLIB_exchange1Dreal(DIFFY(1,1:NPA))
-     
+
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)     
 !
     END SUBROUTINE UG_GRADIENTS
 !/ ------------------------------------------------------------------- /    

@@ -196,6 +196,9 @@
 !/S      USE W3SERVMD, ONLY: STRACE
 !
 !/DEBUGFLS      USE W3ODATMD, only : IAPROC
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -226,11 +229,18 @@
       LOGICAL                 :: FDHDR = .TRUE.
       INTEGER                 :: TIDEFLAG = 0
       LOGICAL                 ::  TIDEOK = .FALSE.
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3FLDO'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
 !
 ! 'FORM' is used for initial testing of new files only.
 !/
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3FLDO')
 !
 !/T      WRITE (NDST,9000) INXOUT, IDFLD, NDS, NDST, NDSE,            &
@@ -413,6 +423,7 @@
           TIDEFLAGIN = TIDEFLAG
         END IF
 
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Error escape locations
@@ -1025,6 +1036,10 @@
 !/OASOCM      USE W3OGCMMD, ONLY: RCV_FIELDS_FROM_OCEAN
 !/OASICM      USE W3IGCMMD, ONLY: RCV_FIELDS_FROM_ICE
 !/OASIS       USE W3ODATMD, ONLY: DTOUT 
+
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -1053,8 +1068,15 @@
                                  FLINTERP, FLCOUPL
       LOGICAL, PARAMETER      :: FLAGSC_DEFAULT = .FALSE.
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3FLDG'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3FLDG')
 !/
       IERR   = 0
@@ -1265,6 +1287,7 @@
 !
 ! Process fields, end ----------------------------------------------- *
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! EOF escape location (have read to end of file)
@@ -1291,36 +1314,43 @@
   801 CONTINUE
       IF ( NDSE .GE. 0 ) WRITE (NDSE,1001) INXOUT
       IERR   = 1
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
   802 CONTINUE
       IF ( NDSE .GE. 0 ) WRITE (NDSE,1002) IDFLD
       IERR   = 2
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
   803 CONTINUE
       IF ( NDSE .GE. 0 ) WRITE (NDSE,1003) ISTAT
       IERR   = 3
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
   804 CONTINUE
       IF ( NDSE .GE. 0 ) WRITE (NDSE,1004) J, ISTAT
       IERR   = 4
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
   805 CONTINUE
       IF ( NDSE .GE. 0 ) WRITE (NDSE,1005) ISTAT
       IERR   = 5
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
   806 CONTINUE
       IF ( NDSE .GE. 0 ) WRITE (NDSE,1006) J, ISTAT
       IERR   = 6
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
   807 CONTINUE
       IF ( NDSE .GE. 0 ) WRITE (NDSE,1007) J, ISTAT
       IERR   = 7
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Formats
@@ -1468,6 +1498,9 @@
 !/S      USE W3SERVMD, ONLY: STRACE
       USE W3TIMEMD
 !
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -1488,8 +1521,15 @@
       REAL                    :: DTTST
       LOGICAL                 :: WRITE, SIZE
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3FLDD'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3FLDD')
 !/
       IERR   = 0
@@ -1545,12 +1585,14 @@
 !
 ! Process fields, end ----------------------------------------------- *
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! EOF escape location
 !
   800 CONTINUE
       IERR   = -1
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Error escape locations
@@ -1558,36 +1600,43 @@
   801 CONTINUE
       IF ( NDSE .GE. 0 ) WRITE (NDSE,1001) INXOUT
       IERR   = 1
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
   802 CONTINUE
       IF ( NDSE .GE. 0 ) WRITE (NDSE,1002) IDFLD
       IERR   = 2
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
   803 CONTINUE
       IF ( NDSE .GE. 0 ) WRITE (NDSE,1003) ISTAT
       IERR   = 3
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
   804 CONTINUE
       IF ( NDSE .GE. 0 ) WRITE (NDSE,1004) ISTAT
       IERR   = 4
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
   805 CONTINUE
       IF ( NDSE .GE. 0 ) WRITE (NDSE,1005) ISTAT
       IERR   = 5
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
   806 CONTINUE
       IF ( NDSE .GE. 0 ) WRITE (NDSE,1006) ISTAT
       IERR   = 6
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
   807 CONTINUE
       IF ( NDSE .GE. 0 ) WRITE (NDSE,1007) ISTAT
       IERR   = 7
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Formats
@@ -2101,6 +2150,10 @@
 !/S      USE W3SERVMD, ONLY: STRACE
       USE W3TIMEMD
 !
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
+!
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -2121,9 +2174,15 @@
 !/S      INTEGER, SAVE           :: IENT = 0
       REAL                    :: X, Y, DIR, DTTST, DERA
       LOGICAL                 :: FLFRST
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3FLDH'
 !/
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3FLDH')
 !
       IERR   = 0
@@ -2273,6 +2332,7 @@
 !/T          WRITE (NDST,9062) TFN
 !/T        END IF
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Error escape locations
@@ -2280,6 +2340,7 @@
   801 CONTINUE
       IF ( NDSE .GE. 0 ) WRITE (NDSE,1001) J
       IERR   = 1
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Formats
@@ -2395,6 +2456,9 @@
 !/S      USE W3SERVMD, ONLY: STRACE
       USE W3TIMEMD
 !
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -2413,8 +2477,16 @@
       REAL                    :: DTTST, DERA
       LOGICAL                 :: FLFRST
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3FLDM'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
+
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3FLDM')
 !
       IERR   = 0
@@ -2492,6 +2564,7 @@
 !
 !/T      WRITE (NDST,9061) TF0, TFN
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Error escape locations
@@ -2499,6 +2572,7 @@
   801 CONTINUE
       IF ( NDSE .GE. 0 ) WRITE (NDSE,1001) J
       IERR   = 1
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Formats

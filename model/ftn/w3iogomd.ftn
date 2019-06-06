@@ -342,7 +342,10 @@
       USE W3ODATMD, ONLY: NOGRP, NGRPP, NOGE, IDOUT
       USE W3SERVMD, ONLY: NEXTLN, STRSPLIT, STR_TO_UPPER
 !/S      USE W3SERVMD, ONLY: STRACE
-!
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
+
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -362,8 +365,15 @@
       CHARACTER(LEN=1)    :: AFLG
       LOGICAL             :: FLT, NAMES
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3READFLGRD'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3READFLGRD')
 !
 !
@@ -680,24 +690,30 @@
         IF ( FLT ) WRITE (NDSO,1945) 'no fields defined'
       END IF
 !
-      RETURN
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
+      RETURN 
 !
  2001 CONTINUE
       IF ( IAPROC .EQ. NAPOUT ) WRITE (NDSEN,1001)
-      RETURN
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
+      RETURN 
  2002 CONTINUE
       IF ( IAPROC .EQ. NAPOUT ) WRITE (NDSEN, 1002) IFI, IERR
-      RETURN
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
+      RETURN 
  2003 CONTINUE
       IF ( IAPROC .EQ. NAPOUT ) WRITE (NDSEN, 1003) IERR
-      RETURN
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
+      RETURN 
 !2004 CONTINUE ! replaced by warning in code ....
  2005 CONTINUE
       IF ( IAPROC .EQ. NAPOUT ) WRITE (NDSEN, 1005) AFLG
-      RETURN
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
+      RETURN 
  2006 CONTINUE
       IF ( IAPROC .EQ. NAPOUT ) WRITE (NDSEN, 1006) IFI,IERR
-      RETURN
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
+      RETURN 
 !
  1945 FORMAT ( '            Fields   : ',A)
  1946 FORMAT ( '                       ',A)
@@ -1236,6 +1252,9 @@
 !/S      USE W3SERVMD, ONLY: STRACE
 !
       USE W3PARALL, ONLY : INIT_GET_ISEA
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -1288,8 +1307,15 @@
       REAL, SAVE              :: HSMIN = 0.01
       LOGICAL                 :: FLOLOC(NOGRP,NGRPP)
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3OUTG'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3OUTG')
 !
 !/DEBUGSTP    WRITE(740+IAPROC,*) 'NTH=', NTH
@@ -2322,6 +2348,8 @@
 !
       IF (FLOLOC(2, 17)) CALL CALC_WBT(A)
 !
+
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Formats

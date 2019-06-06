@@ -248,6 +248,9 @@
 !/PDLIB    USE PDLIB_FIELD_VEC
 !/S      USE W3SERVMD, ONLY: STRACE
 !
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !
 !/MPI      INCLUDE "mpif.h"
@@ -286,8 +289,16 @@
       CHARACTER(LEN=26)       :: IDTST
       CHARACTER(LEN=30)       :: TNAME
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3IORS'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
+!/HOKM REAL(KIND=jprb)          :: zhook_handle_rendezvous
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3IORS')
 !
 !
@@ -496,6 +507,7 @@
                 CLOSE ( NDSR )
               END IF
 !/T              WRITE (NDST,9005) TYPE
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
               RETURN
             ELSE IF ( IAPROC.LE.NAPROC .OR. IAPROC.EQ. NAPRST ) THEN
 !/DEBUGIO        WRITE(740+IAPROC,*)  'W3IORS, Need to match 1'
@@ -550,8 +562,10 @@
 !/MPI                    IF ( IAPROC .EQ. NAPRST ) THEN
 !
 !/MPI                        IH     = 1 + NRQ * (IB-1)
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_1",zhook_in,zhook_handle_rendezvous)
 !/MPI                        CALL MPI_WAITALL                         &
 !/MPI                           ( NRQ, IRQRSS(IH), STAT1, IERR_MPI )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_1",zhook_out,zhook_handle_rendezvous)
 !/MPI                        IF ( IB .LT. NBLKRS ) THEN
 !/MPI                            IH     = 1 + NRQ * IB
 !/MPI                            CALL MPI_STARTALL                    &
@@ -577,8 +591,10 @@
 !
 !/MPI                        CALL MPI_STARTALL                        &
 !/MPI                           ( 1, IRQRSS(IB), IERR_MPI )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_2",zhook_in,zhook_handle_rendezvous)
 !/MPI                        CALL MPI_WAITALL                         &
 !/MPI                           ( 1, IRQRSS(IB), STAT1, IERR_MPI )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_2",zhook_out,zhook_handle_rendezvous)
 !
 !/MPI                      END IF
 !/MPI                    END DO
@@ -634,9 +650,11 @@
 !/MPI                     VGBUFF(:) = 0.
 !/MPI                   END IF
 !/MPI!                Distribute one record to each rank.
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_3",zhook_in,zhook_handle_rendezvous)
 !/MPI                 CALL MPI_SCATTER(VGBUFF, NSIZE, MPI_REAL,             &
 !/MPI                                  VLBUFF, NSIZE, MPI_REAL,             &
 !/MPI                                  NAPROC-1, MPI_COMM_WCMP, IERR        )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_3",zhook_out,zhook_handle_rendezvous)
 !/MPI!                Transfer the spectral content of VLBUFF to VA. ------ *
 !/MPI                 VA(1:NSPEC,JSEA) = VLBUFF(1:NSPEC)
 !/MPI                 END DO
@@ -694,8 +712,10 @@
               IF ( IAPROC .EQ. NAPRST ) THEN
 !
 !/MPI                  ALLOCATE ( STAT2(MPI_STATUS_SIZE,NRQRS) )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_4",zhook_in,zhook_handle_rendezvous)
 !/MPI                  CALL MPI_WAITALL                               &
 !/MPI                     ( NRQRS, IRQRS , STAT2, IERR_MPI )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_4",zhook_out,zhook_handle_rendezvous)
 !/MPI                  DEALLOCATE ( STAT2 )
 !
                   RPOS  = 1_8 + LRECL*(NREC-1_8)
@@ -878,6 +898,7 @@
 !
       IF (ALLOCATED(WRITEBUFF)) DEALLOCATE(WRITEBUFF)
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Escape locations read errors :

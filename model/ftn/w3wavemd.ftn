@@ -403,6 +403,9 @@
 !/PDLIB      USE PDLIB_FIELD_VEC, only : DO_OUTPUT_EXCHANGES
 !/TIMINGS    USE W3PARALL, only : PRINT_MY_TIME
 !
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !
 !/MPI      INCLUDE "mpif.h"
@@ -484,8 +487,18 @@
 !/ARC      REAL                    :: BACANGL
 !/ARC
 
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3WAVE'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
+!/HOKM REAL(KIND=jprb)          :: zhook_handle_rendezvous
+
 !/ ------------------------------------------------------------------- /
 ! 0.  Initializations
+
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 
 !/SMC !!Li  Switch off lat-lon grid lines in conflict with SMC option.
 !/SMC        RGLGRD = .FALSE.
@@ -1767,10 +1780,14 @@
 !
 !/MPI       IF ( NRQSG1 .GT. 0 ) THEN
 !/MPI         ALLOCATE ( STATCO(MPI_STATUS_SIZE,NRQSG1) )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_1",zhook_in,zhook_handle_rendezvous)
 !/MPI         CALL MPI_WAITALL (NRQSG1, IRQSG1(1,1), STATCO, &
 !/MPI                           IERR_MPI)
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_1",zhook_out,zhook_handle_rendezvous)
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_2",zhook_in,zhook_handle_rendezvous)
 !/MPI         CALL MPI_WAITALL (NRQSG1, IRQSG1(1,2), STATCO, &
 !/MPI                           IERR_MPI)
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_2",zhook_out,zhook_handle_rendezvous)
 !/MPI         DEALLOCATE ( STATCO )
 !/MPI         END IF
 
@@ -1814,8 +1831,10 @@
 !
 !/MPI  !!Li   Broadcast local SPCBAC(:,IK) to all other PEs.
 !/MPI         IF( ARCTIC ) THEN
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_3",zhook_in,zhook_handle_rendezvous)
 !/MPI         CALL MPI_BCAST(SPCBAC(1,IK),NSPEC,MPI_REAL,ISPEC,MPI_COMM_WAVE,IERR_MPI)
 !/MPI         CALL MPI_BARRIER (MPI_COMM_WAVE,IERR_MPI)
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_3",zhook_out,zhook_handle_rendezvous)
 !/MPI         ENDIF
 !
 !/ARC  !!Li   Boundary cell loop IK ends.
@@ -2351,8 +2370,12 @@
                   IF ( DTTST .EQ. 0. ) THEN
                       IF ( ( J .EQ. 1 ) .OR. ( J .EQ. 7 ) ) THEN
                           IF ( IAPROC .EQ. NAPFLD ) THEN
-!/MPI                              IF ( FLGMPI(1) ) CALL MPI_WAITALL  &
+!/MPI                              IF ( FLGMPI(1) ) THEN
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_4",zhook_in,zhook_handle_rendezvous)
+!/MPI                                  CALL MPI_WAITALL  &
 !/MPI                                 ( NRQGO2, IRQGO2, STATIO, IERR_MPI )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_4",zhook_out,zhook_handle_rendezvous)
+!/MPI                                  END IF
 !/MPI                              FLGMPI(1) = .FALSE.
                               IF ( J .EQ. 1 ) CALL W3IOGO             &
                                  ( 'WRITE', NDS(7), ITEST, IMOD )
@@ -2405,8 +2428,12 @@
                           CALL W3IORS ('HOT', NDS(6), XXX, ITEST, IMOD )
                         ELSE IF ( J .EQ. 5 ) THEN
                           IF ( IAPROC .EQ. NAPBPT ) THEN
-!/MPI                              IF (NRQBP2.NE.0) CALL MPI_WAITALL  &
+!/MPI                              IF (NRQBP2.NE.0) THEN
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_5",zhook_in,zhook_handle_rendezvous)
+!/MPI                                CALL MPI_WAITALL  &
 !/MPI                                ( NRQBP2, IRQBP2,STATIO, IERR_MPI )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_5",zhook_out,zhook_handle_rendezvous)
+!/MPI                              END IF
                               CALL W3IOBC ( 'WRITE', NDS(10),         &
                                             TIME, TIME, ITEST, IMOD )
                             END IF
@@ -2450,14 +2477,30 @@
 !/MEMCHECK       call printMallInfo(IAPROC,mallInfos)
 
 !
-!/MPI            IF ( FLGMPI(0) ) CALL MPI_WAITALL                    &
+!/MPI            IF ( FLGMPI(0) ) THEN
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_6",zhook_in,zhook_handle_rendezvous)
+!/MPI                             CALL MPI_WAITALL                    &
 !/MPI                             ( NRQGO, IRQGO , STATIO, IERR_MPI )
-!/MPI            IF ( FLGMPI(2) ) CALL MPI_WAITALL                    &
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_6",zhook_out,zhook_handle_rendezvous)
+!/MPI                             END IF
+!/MPI            IF ( FLGMPI(2) ) THEN
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_7",zhook_in,zhook_handle_rendezvous)
+!/MPI                              CALL MPI_WAITALL                    &
 !/MPI                             ( NRQPO, IRQPO1, STATIO, IERR_MPI )
-!/MPI            IF ( FLGMPI(4) ) CALL MPI_WAITALL                    &
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_7",zhook_out,zhook_handle_rendezvous)
+!/MPI                             END IF
+!/MPI            IF ( FLGMPI(4) ) THEN 
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_8",zhook_in,zhook_handle_rendezvous)
+!/MPI                              CALL MPI_WAITALL                    &
 !/MPI                             ( NRQRS, IRQRS , STATIO, IERR_MPI )
-!/MPI            IF ( FLGMPI(5) ) CALL MPI_WAITALL                    &
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_8",zhook_out,zhook_handle_rendezvous)
+!/MPI                             END IF
+!/MPI            IF ( FLGMPI(5) ) THEN 
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_9",zhook_in,zhook_handle_rendezvous)
+!/MPI                             CALL MPI_WAITALL                    &
 !/MPI                             ( NRQBP, IRQBP1, STATIO, IERR_MPI )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_9",zhook_out,zhook_handle_rendezvous)
+!/MPI                             END IF
 !/MPI            IF ( NRQMAX .NE. 0 ) DEALLOCATE ( STATIO )
 !
 !/T          WRITE (NDST,9044)
@@ -2540,7 +2583,7 @@
 !/MEMCHECK       write(740+IAPROC,*) 'memcheck_____:', 'WW3_WAVE END W3WAVE'
 !/MEMCHECK       call getMallocInfo(mallinfos)
 !/MEMCHECK       call printMallInfo(IAPROC,mallInfos)
-!
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Formats
@@ -3172,6 +3215,9 @@
       USE W3ODATMD, ONLY: NDST, NAPROC
       USE W3PARALL, ONLY: INIT_GET_JSEA_ISPROC
 !/
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -3187,8 +3233,15 @@
       INTEGER                 :: JSEA, ISPROC
 !/S      INTEGER, SAVE           :: IENT
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3NMIN'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3NMIN')
 !
       NMIN   = NSEA
@@ -3213,6 +3266,7 @@
       FLAG0  = NMIN .EQ. 0
 !/T      WRITE (NDST,9001) NMIN, FLAG0
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Formats

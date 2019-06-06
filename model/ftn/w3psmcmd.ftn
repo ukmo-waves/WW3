@@ -233,6 +233,9 @@
 !
 !/S      USE W3SERVMD, ONLY: STRACE
 !/
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -267,8 +270,15 @@
       REAL, Dimension(   NUFc) ::  FUMD, FUDIFX, ULCFLX
       REAL, Dimension(   NVFc) ::  FVMD, FVDIFY, VLCFLY
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3IOPE'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3PSMC')
 !
 ! 1.  Preparations --------------------------------------------------- *
@@ -679,6 +689,7 @@
         END DO
 !$OMP END Parallel DO
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Formats
@@ -819,6 +830,9 @@
       USE W3ODATMD, ONLY: NDSE, NDST
 !/S      USE W3SERVMD, ONLY: STRACE
 !/
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -844,8 +858,15 @@
 !Li   For old refraction scheme using phase speed.  JGLi26Jul2011
                     SIGSNH(0:NK+1)
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3KRTN'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3KRTN')
 !
 ! 1.  Preparation for point ------------------------------------------ *
@@ -997,6 +1018,7 @@
 !
         VA = VQ 
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 !/ End of W3KRTN ----------------------------------------------------- /
@@ -2378,12 +2400,25 @@
          USE W3ADATMD, ONLY: DW, DDDX, DDDY, DHDX, DHDY, DHLMT
          USE W3ODATMD, ONLY: NDSE, NDST
 
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
+
          IMPLICIT NONE
 
          INTEGER :: I, J, K, L, M, N 
          REAL :: CNST, CNST0, CNST1, CNST2, CNST3, CNST4, CNST5, CNST6
          REAL, Dimension(NSEA) :: HCel, GrHx, GrHy
 !        REAL, Dimension(-9:NSEA) :: HCel
+
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'SMCDHXY'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
+
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 
 !!   Assign water depth to HCel from DW integer values.
 !!   set half the minimum depth DMIN for negative cells.
@@ -2478,6 +2513,7 @@
 
 !/T 999  PRINT*, ' Sub SMCDHXY ended.'
 
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
        RETURN
        END SUBROUTINE SMCDHXY 
 
@@ -2493,6 +2529,9 @@
 !/ARC         USE W3GDATMD, ONLY: NGLO, ANGARC
          USE W3ADATMD, ONLY: CX, CY, DCXDX, DCXDY, DCYDX, DCYDY 
          USE W3ODATMD, ONLY: NDSE, NDST
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
 
          IMPLICIT NONE
 
@@ -2500,7 +2539,14 @@
          REAL :: CNST, CNST0, CNST1, CNST2, CNST3, CNST4, CNST5, CNST6
          REAL, Dimension(NSEA) :: CXCY, GrHx, GrHy
 !        REAL, Dimension(-9:NSEA) :: CXCY
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'SMCDCXY'
 
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
+
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !!   Assign current CX speed to CXCY and set negative cells.
 !      CXCY(-9:0) = 0.0
 !!   Use zero-gradient boundary condition or L0r1 > 0
@@ -2590,6 +2636,7 @@
 
 !/T 999  PRINT*, ' Sub SMCDCXY ended.'
 
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
        RETURN
        END SUBROUTINE SMCDCXY 
 
@@ -2685,6 +2732,9 @@
 !/ ------------------------------------------------------------------- /
 !/S      USE W3SERVMD, ONLY: STRACE
 !/
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       USE W3GDATMD, ONLY: NSPEC, NX, NY, NSEA, NSEAL, NCel, MAPSF
       USE W3WDATMD, ONLY: A => VA
 !/MPI      USE W3ADATMD, ONLY: MPIBUF, BSTAT, IBFLOC, ISPLOC, BISPL, &
@@ -2709,9 +2759,17 @@
 !/MPI                                 IOFF, IERR_MPI, JSEA, ISEA,     &
 !/MPI                                 IXY, IS0, IB0, NPST, J
 !/S      INTEGER, SAVE           :: IENT
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3GATHSMC'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
+!/HOKM REAL(KIND=jprb)          :: zhook_handle_rendezvous
 !/
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3GATH')
 !
 !      FIELD  = 0.
@@ -2736,9 +2794,12 @@
 !
 !/MPI      IF ( BSTAT(IBFLOC) .EQ. 2 ) THEN
 !/MPI          IOFF =  1 + (BISPL(IBFLOC)-1)*NRQSG2
-!/MPI          IF ( NRQSG2 .GT. 0 ) CALL                              &
-!/MPI               MPI_WAITALL ( NRQSG2, IRQSG2(IOFF,2),             &
+!/MPI          IF ( NRQSG2 .GT. 0 ) THEN 
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_1",zhook_in,zhook_handle_rendezvous)
+!/MPI            CALL MPI_WAITALL ( NRQSG2, IRQSG2(IOFF,2),             &
 !/MPI                             STATUS, IERR_MPI )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_1",zhook_out,zhook_handle_rendezvous)
+!/MPI          END IF
 !/MPI          BSTAT(IBFLOC) = 0
 !/MPI        END IF
 !
@@ -2761,8 +2822,11 @@
 ! 2.d Wait for remote spectral densities
 !
 !/MPI      IOFF =  1 + (BISPL(IBFLOC)-1)*NRQSG2
-!/MPI      IF ( NRQSG2 .GT. 0 ) CALL                                  &
-!/MPI           MPI_WAITALL ( NRQSG2, IRQSG2(IOFF,1), STATUS, IERR_MPI )
+!/MPI      IF ( NRQSG2 .GT. 0 ) THEN
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_2",zhook_in,zhook_handle_rendezvous)
+!/MPI  CALL MPI_WAITALL ( NRQSG2, IRQSG2(IOFF,1), STATUS, IERR_MPI )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_2",zhook_out,zhook_handle_rendezvous)
+!/MPI  END IF
 !
 ! 2.e Convert storage array to field.
 !
@@ -2790,7 +2854,8 @@
 !/MPI          END IF
 !/MPI        IF ( NPST .GE. 2 ) EXIT
 !/MPI        END DO
-! 
+!
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle) 
 !/MPI      RETURN
 ! 
 !/ End of W3GATHSMC ----------------------------------------------------- /
@@ -2886,6 +2951,9 @@
       USE W3ODATMD, ONLY: NDST
 !/MPI      USE W3ODATMD, ONLY: IAPROC, NAPROC
 !/
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !
 !/MPI      INCLUDE "mpif.h"
@@ -2906,8 +2974,16 @@
 !/S      INTEGER, SAVE           :: IENT
 !/MPI      LOGICAL                 :: DONE
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3SCATSMC'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
+!/HOKM REAL(KIND=jprb)          :: zhook_handle_rendezvous
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3SCAT')
 !
 ! 1.  Shared memory version ------------------------------------------ *
@@ -2958,9 +3034,12 @@
 !/MPI              ELSE
 !/MPI                DONE   = .TRUE.
 !/MPI              END IF
-!/MPI            IF ( DONE .AND. NRQSG2.GT.0 ) CALL                   &
-!/MPI                     MPI_WAITALL ( NRQSG2, IRQSG2(IOFF,2),       &
+!/MPI            IF ( DONE .AND. NRQSG2.GT.0 ) THEN
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_1",zhook_in,zhook_handle_rendezvous)
+!/MPI        CALL  MPI_WAITALL ( NRQSG2, IRQSG2(IOFF,2),       &
 !/MPI                                   STATUS, IERR_MPI )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_1",zhook_out,zhook_handle_rendezvous)
+!/MPI      END IF
 !/MPI            IF ( DONE ) THEN
 !/MPI                BSTAT(IB0) = 0
 !/MPI              END IF
@@ -2974,9 +3053,12 @@
 !/MPI          DO IB0=1, MPIBUF
 !/MPI            IF ( BSTAT(IB0) .EQ. 2 ) THEN
 !/MPI                IOFF   = 1 + (BISPL(IB0)-1)*NRQSG2
-!/MPI                IF ( NRQSG2 .GT. 0 ) CALL                        &
-!/MPI                     MPI_WAITALL ( NRQSG2, IRQSG2(IOFF,2),       &
+!/MPI                IF ( NRQSG2 .GT. 0 ) THEN
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_2",zhook_in,zhook_handle_rendezvous)
+!/MPI      CALL MPI_WAITALL ( NRQSG2, IRQSG2(IOFF,2),       &
 !/MPI                                   STATUS, IERR_MPI )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_2",zhook_out,zhook_handle_rendezvous)
+!/MPI     END IF
 !/MPI                BSTAT(IB0) = 0
 !/MPI              END IF
 !/MPI            END DO
@@ -2986,6 +3068,7 @@
 !
 !/MPI        END IF
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
 !/MPI      RETURN
 !
 ! Formats

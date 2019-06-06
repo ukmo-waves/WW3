@@ -206,6 +206,10 @@
       USE w3SERVMD, ONLY : STRSPLIT
 !/S      USE W3SERVMD, ONLY: STRACE
 !
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
+
       IMPLICIT NONE
 !
 !/MPI      INCLUDE "mpif.h"
@@ -243,8 +247,17 @@
       EQUIVALENCE                (IXX(1),IX1) , (IXX(2),IX2) ,        &
                                  (IYY(1),IY1) , (IYY(3),IY2)
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3IOTR'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
+!/HOKM REAL(KIND=jprb)          :: zhook_handle_rendezvous
+!/
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'W3IOTR')
 !
       CALL W3SETO ( IMOD, NDSE, NDST )
@@ -282,7 +295,9 @@
 !/MPI      IF ( NRQTR .NE. 0 ) THEN
 !/MPI          CALL MPI_STARTALL ( NRQTR, IRQTR, IERR_MPI )
 !/MPI          ALLOCATE ( STATUS(MPI_STATUS_SIZE,NRQTR) )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous",zhook_in,zhook_handle_rendezvous)
 !/MPI          CALL MPI_WAITALL ( NRQTR, IRQTR , STATUS, IERR_MPI )
+!/HOKM    CALL dr_hook(RoutineName//"_rendezvous",zhook_out,zhook_handle_rendezvous)
 !/MPI          DEALLOCATE ( STATUS )
 !/MPI        END IF
 !
@@ -705,6 +720,7 @@
 !
   888 CONTINUE
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Formats

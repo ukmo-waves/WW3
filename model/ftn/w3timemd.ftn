@@ -127,6 +127,10 @@
 !
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
+
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -141,8 +145,16 @@
       INTEGER                 :: NYMD, NHMS, NSEC
 !/S      INTEGER, SAVE           :: IENT = 0
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'TICK21'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
+
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'TICK21')
 !
 ! Zero increment: get "legal" date
@@ -180,6 +192,7 @@
       TIME(1) = NYMD
       TIME(2) = NHMS
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !/
 !/ Internal function IYMD21 ------------------------------------------ /
@@ -663,6 +676,10 @@
 !
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
+
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -675,9 +692,16 @@
 !/ Local parameters
 !/
       INTEGER                 :: IY, IMO, ID, IH, IMI, IS
-!/
+
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'STME21'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
       IF ( TIME(1) .LT. 0 ) THEN
           DTME21 = ' date and time not set.'
         ELSE
@@ -690,6 +714,7 @@
           WRITE (DTME21,900) IY, IMO, ID, IH, IMI, IS
         ENDIF
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Formats
@@ -1056,6 +1081,10 @@
 !
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
+
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -1071,8 +1100,15 @@
 !/
 !/S      INTEGER, SAVE           :: IENT = 0
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'T2D'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'T2D')
 !
         DAT(1)=TIME(1)/10000
@@ -1085,6 +1121,7 @@
         DAT(8)=0
         IERR=0
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !/
 !/ End of T2D ----------------------------------------------------- /
@@ -1217,6 +1254,9 @@
 !
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -1234,10 +1274,17 @@
    INTEGER                 :: YEAR, MONTH, DAY, UTC, HOUR, MINUTE
    REAL                    :: SECOND
    INTEGER                 :: A, Y, M, JDN
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'D2J'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
 !/S      INTEGER, SAVE           :: IENT = 0
 !/
 !/ ------------------------------------------------------------------- /
 !/
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'D2J')
 !
    YEAR   = DAT(1)                        ! Year
@@ -1275,6 +1322,7 @@
      IERR=0
    END IF
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !/
 !/ End of D2J ----------------------------------------------------- /

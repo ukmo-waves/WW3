@@ -380,6 +380,9 @@
 !/PDLIB!/DEBUGINIT    USE PDLIB_W3PROFSMD, ONLY: PRINT_WN_STATISTIC
 !/UOST     USE W3UOSTMD, ONLY: UOST_SETGRID
 !/
+!/HOOK  ! DrHook Modules
+!/HOOK USE parkind1, ONLY: jprb, jpim
+!/HOOK USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !
 !/MPI      INCLUDE "mpif.h"
@@ -428,11 +431,18 @@
       CHARACTER(LEN=30)       :: LFILE, TFILE
 !/PDLIB      INTEGER                 :: IScal(1), IPROC
 !/
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3INIT'
+
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
 !/ ------------------------------------------------------------------- /
 !
 ! 1.  Set-up of data structures and I/O  ----------------------------- /
 ! 1.a Point to proper data structures.
 !
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !!/DEBUGMPI     CALL TEST_MPI_STATUS("Case 1")
 
       CALL W3SETO ( IMOD, MDS(2), MDS(3) )
@@ -1349,6 +1359,7 @@
 !
 !/PDLIB!/DEBUGINIT         CALL PRINT_WN_STATISTIC("W3INIT leaving")
 !/TIMINGS       CALL PRINT_MY_TIME("Leaving W3INIT")
+!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
 ! Escape locations read errors :
