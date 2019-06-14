@@ -99,7 +99,7 @@
               dstress s_ice s_is reflection s_xx \
               wind windx rwind curr currx mgwind mgprop mggse \
               subsec tdyn dss0 pdif tide refrx ig rotag arctic nnt mprf \
-              cou oasis agcm ogcm igcm trknc setup pdlib memck uost
+              cou oasis agcm ogcm igcm trknc setup pdlib memck uost drhook
   do
     case $type in
 #sort:mach:
@@ -380,6 +380,10 @@
                ID='unresolved obstacles source term'
                TS='UOST'
                OK='UOST' ;;
+#sort:drhook:
+      drhook ) TY='upto2'
+               ID='dr.Hook profiling'
+               OK='HOOK HOKM' ;;
    esac
 
     n_found='0'
@@ -454,6 +458,11 @@
       sw2="`echo $s_found | awk '{ print $2 }'`"
     fi
 
+    if [ "$type" = 'hook' ]
+    then
+      sw1="`echo $s_found | awk '{ print $1 }'`"
+      sw2="`echo $s_found | awk '{ print $2 }'`"
+    fi
 
     case $type in
       shared ) shared=$sw ;;
@@ -496,6 +505,7 @@
       memck  ) memck=$sw ;;
       setup  ) setup=$sw ;;
       uost   ) uost=$sw ;;
+      drhook ) hook1=$sw1 ; hook2=$sw2 ;;
               *    ) ;;
     esac
   done
@@ -533,6 +543,20 @@
       echo ' '
       echo "   *** !/ARC has to be used in combination with !/SMC"
       echo ' ' ; exit 9
+  fi
+
+  if [ "$hook1" = 'HOKM' ]
+  then
+      echo ' '
+      echo "   *** !/HOKM has to be used in combination with !/HOOK"
+      echo ' ' ; exit 6
+  fi
+
+  if [ "$hook2" = 'HOKM' ] && [ "$mpp" != 'MPI' ]
+  then
+      echo ' '
+      echo "   *** !/HOKM has to be used in combination with !/MPI"
+      echo ' ' ; exit 8
   fi
 
   smco=$NULL

@@ -1,0 +1,210 @@
+#!/bin/sh
+# --------------------------------------------------------------------------- #
+# comp  : Link script for use in ad3 - Customised for compilation on the      #
+#         IBM Power6 supercomputer using the xlf90_r compiler                 #
+#                                                                             #
+# use   : link name [name ... ]                                               #
+#           name: name of source code file without the extension.             #
+#                 the first name will become the program name.                #
+#                                                                             #
+# error codes :  all error output directly to screen.                         #
+#                                                                             #
+#                                                      Hendrik L. Tolman      #
+#                                                      February 2005          #
+#                                                                             #
+# Modification history:                                                       #
+#                                                                             #
+#   26-Jan-2015  Modified original compile script for use on Cray XC          #
+#                                              (Chris Bunney, UK Met Office)  #
+#                                                                             #
+# --------------------------------------------------------------------------- #
+# 1. Preparations                                                             #
+# --------------------------------------------------------------------------- #
+# 1.a Check and process input
+
+  if [ "$#" -lt '1' ]
+  then
+    echo "usage: link name [name]" ; exit 1
+  fi
+
+  prog=$1
+  echo "      Linking $prog"
+  input="$*"
+
+# 1.b Internal variables - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+  ww3_env="$HOME/.wwatch3.env"   # setup file
+
+# 1.c Read data from the environment file  - - - - - - - - - - - - - - - - - -
+
+  cd
+  if [ -f $ww3_env ]
+  then
+    set `grep WWATCH3_DIR $ww3_env` ; shift
+    main_dir="$*"
+    echo "*** Set main_dir as $main_dir ***"
+  else
+    echo "*** Set-up file $ww3_env not found ***"
+    exit 2
+  fi
+
+  if [ -n "`grep MPI $main_dir/bin/switch`" ]
+  then
+    export mpi_mod='yes'
+  else
+    export mpi_mod='no'
+  fi
+
+  if [ -n "`grep OMP $main_dir/bin/switch`" ]
+  then
+    export omp_mod='yes'
+  else
+    export omp_mod='no'
+  fi
+
+  if [ -n "`grep HOOK $main_dir/bin/switch`" ]
+  then
+    export hook_mod='yes'
+  else
+    export hook_mod='no'
+  fi
+
+# 1.d Initial clean-up - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+  rm -f $main_dir/exe/$prog
+
+# --------------------------------------------------------------------------- #
+# 2. Check objects                                                            #
+# --------------------------------------------------------------------------- #
+
+  cd $main_dir/obj
+  objects=$NULL
+  error='n'
+  set $input
+
+  # For limking with UKMO C I/O and COEX compression libraries (C Bunney) 
+  LINK_UKMO_LIBS="no"
+
+  while [ "$#" -gt '0' ]
+  do
+    file=$1.o
+    if [ -f "$file" ]
+    then
+      objects="$objects $file"
+
+      # ChrisB: if we are linking with w3iogoffmd, then set a flag
+      #         to link the portable C I/O and COEX compression libraries.
+      if [[ "$file" = "w3iogoffmd.o" || "$file" == "ww3_mgpp.o" || \
+            "$file" == "ww3_mopp.o" || "$file" == "ww3_moff.o" ]]; then
+         LINK_UKMO_LIBS="yes"
+      fi
+    else
+      echo "      *** file $file not found ***"
+      error='y'
+    fi
+    shift
+  done
+
+# --------------------------------------------------------------------------- #
+# 3. Link all things                                                          #
+# --------------------------------------------------------------------------- #
+# Add here the correct linker call including switches
+
+# Intel compiler ------------------------------------------------------------
+# 3.a Build options and determine compiler name
+#     No GRIB libraries for this one
+
+  # Chris B: Linker flags:
+  #
+  opt="-o $prog"
+ 
+  if [ "$mpi_mod" = 'yes' ]
+  then
+    comp=ftn		# TODO: Same exec?
+  else
+    comp=ftn
+  fi
+
+  # NETCDF :
+  # NOTE: Explicit setting of NetCDF paths on Cray is not required as this
+  # is handled by loading the cray-netcdf module
+  if [[ $prog = "ww3_ncop" || $prog = "ww3_ounf" || $prog = "ww3_ounp" || $prog = "ww3_smcnf" ]]; then
+      module load cray-netcdf
+      #NCLIB="${NCLIB} -L/critical/opt/hdf5/1.8.12_serial_xlf13/lib -lhdf5_hl -lhdf5 -lz"
+  else
+      module unload cray-netcdf
+  fi
+
+ # Chris B (UKMO) Link in the Met Office portable C I/O library
+ # and data compression library:
+ UKMO_LIBS="/home/nwp/ofrd/frey/FCM/wavelib"
+ libs=""
+ if [[ "$LINK_UKMO_LIBS" = "yes" ]]; then
+    libs="-L${UKMO_LIBS} -lcoex"
+ fi
+
+# if [ "$omp_mod" = 'yes' ]
+# then
+#   opt="$opt -mp"
+# fi
+
+if [ "$hook_mod" = 'yes' ]
+then
+  if [ -z "$HOOK_LIBDIR" ]
+  then
+    echo "ERROR: \$HOOK_LIBDIR not defined"; echo ' '
+    exit 1
+  fi
+  libs="$libs -L$HOOK_LIBDIR -ldrhook"
+fi
+
+  case $prog in
+    'ww3_grib'  ) libs="$libs -L /nwprod/lib -l w3_4 -l bacio_4" ;;
+       *        ) libs="$libs" ;;
+  esac
+
+  if [ "$netcdf_compile" = 'yes' ]
+  then
+    case $WWATCH3_NETCDF in
+      NC3) libs="$libs -L$NETCDF_LIBDIR -lnetcdf" ;;
+      NC4) if [ "$mpi_mod" = 'no' ]; then comp="`$NETCDF_CONFIG --fc`"; fi
+           libs="$libs `$NETCDF_CONFIG --flibs`" ;;
+    esac
+  fi
+
+# 3.b Link
+
+  eval $comp $opt $objects $libs                         > link.out 2> link.err
+  OK="$?"
+
+# --------------------------------------------------------------------------- #
+# 4. Postprocessing                                                           #
+# --------------------------------------------------------------------------- #
+
+  if [ "$OK" != '0' ]
+  then
+    echo "      *** error in linking ***"
+    echo ' '
+    cat link.out
+    echo ' '
+    cat link.err
+    echo ' '
+    rm -f link.???
+    rm -f $prog
+  else
+    if [ ! -f $prog ]
+    then
+      echo "      *** program $prog not found ***"
+      echo ' '
+      cat link.out
+      echo ' '
+      cat link.err
+      echo ' '
+      rm -f link.???
+    else
+      mv $prog $main_dir/exe/.
+      rm -f link.???
+    fi
+  fi
+
+# end of link --------------------------------------------------------------- #

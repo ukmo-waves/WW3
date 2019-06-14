@@ -622,6 +622,12 @@ EOF
       fi
       export pdlib_mod
 
+      hook_mod=no
+      if [ -n "`grep HOOK $switch_file`" ]
+      then
+        export hook_mod='yes'
+      fi
+      export hook_mod
 
 
       # if esmf is included in program name, then the compile
