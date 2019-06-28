@@ -104,6 +104,11 @@
 !/    01-Mar-2018 : Rotate boundary points and directions 
 !/                  of input spectra for rotated grids  ( version 6.02 )
 !/
+!/    13-Jun-2019 : Under switch /RTD the grid may be either rotated or 
+!/                  standard lat-lon with output boundary conditions to
+!/                  either rotated or standard lat-lon.
+!/                  (C. Hansen, FCOO)                   ( version 6.?? )
+!/
 !  1. Purpose :
 !
 !     Write/read boundary conditions file(s).
@@ -230,8 +235,6 @@
 !/RTD  !!    Declare rotation angle and rotated lat/lon variables for
 !/RTD  !!    boundary points.   JGLi12Jun2012
 !/RTD      REAL, ALLOCATABLE      :: Anglbdy(:), ELatbdy(:), ELonbdy(:) 
-      REAL, ALLOCATABLE      :: XBPO2(:), YBPO2(:)
-!/RTD      REAL, ALLOCATABLE      :: ANG(:)
 !/RTD      REAL                   :: Spectr(NK*NTH)
 !/RTD      REAL                   :: XRLIM, YRLIM
       REAL, ALLOCATABLE       :: TMPSPC(:,:)
@@ -312,25 +315,13 @@
 !/T                       VERBPTBC, NBO(IFILE)-NBO(IFILE-1)
 !
 !
-                 ! Temporary storage for boundary points:
-                 ! The arrays are required to allow rotation of
-                 ! x,y coordinate data under the /RTD option
-                 ALLOCATE( XBPO2(NBO(IFILE)-NBO(IFILE-1)) )
-                 ALLOCATE( YBPO2(NBO(IFILE)-NBO(IFILE-1)) )
-!/RTD                 ALLOCATE( ANG(NBO(IFILE)-NBO(IFILE-1)) )
-                 XBPO2=XBPO(NBO(IFILE-1)+1:NBO(IFILE))
-                 YBPO2=YBPO(NBO(IFILE-1)+1:NBO(IFILE))
-!
-!/RTD                 ! Convert rotated lat/lon back to standard pole grid.
-!/RTD                 CALL W3EQTOLL ( YBPO(NBO(IFILE-1)+1:NBO(IFILE)),   &
-!/RTD                                 XBPO(NBO(IFILE-1)+1:NBO(IFILE)),   &
-!/RTD                                 YBPO2,XBPO2,ANG,POLAT,POLON,       &
-!/RTD                                 NBO(IFILE)-NBO(IFILE-1) )
-!/RTD
-                ! Modified write below to write out XBPO2 and YBPO2,
-                ! instead of XBPO/YBPO
+!/RTD ! By running the ww3_grid program with switch '/RTD', the arrays
+!/RTD ! XBPO, YBPO was remapped to standard lat/lon and then stored
+!/RTD ! in the grid definition file mod_def.* (CHA 20190613) 
+!/RTD !
                 WRITE (NDSL(IFILE))                                   &
-                       XBPO2, YBPO2,                                  &
+                       (XBPO(I),I=NBO(IFILE-1)+1,NBO(IFILE)),         &
+                       (YBPO(I),I=NBO(IFILE-1)+1,NBO(IFILE)),         &
                      ((IPBPO(I,J),I=NBO(IFILE-1)+1,NBO(IFILE)),J=1,4),&
                      ((RDBPO(I,J),I=NBO(IFILE-1)+1,NBO(IFILE)),J=1,4)
 !
@@ -340,10 +331,6 @@
 !/T0                         YBPO(I), (IPBPO(I,J),J=1,4),             &
 !/T0                         (RDBPO(I,J),J=1,4)
 !/T0                  END DO
-!
-                ! Deallocate temporary storage for boundary points
-                DEALLOCATE( XBPO2, YBPO2 )
-!/RTD                DEALLOCATE( ANG )
 !
                 END DO
             END IF
@@ -404,6 +391,10 @@
               ((IPBPI(I,J),I=1,NBI),J=1,4),                           &
               ((RDBPI(I,J),I=1,NBI),J=1,4)
 !
+!/RTD ! All boundary conditions position arrays XBPI, YBPI are defined
+!/RTD ! in standard lat/lon coordinates. If Polat = 90. (and Polon = -180.),
+!/RTD ! the b.c. positions don't need to be remapped (CHA  20190613)
+!/RTD        IF ( Polat < 90. ) THEN
 !/RTD !!   Convert standard into rotated lat/lon. JGLi12Jun2012
 !/RTD          ALLOCATE ( Anglbdy(NBI),  ELatbdy(NBI), ELonbdy(NBI) )
 !/RTD
@@ -433,6 +424,8 @@
 !/RTD          ENDDO
 !/RTD
 !/RTD          DEALLOCATE ( Anglbdy,  ELatbdy, ELonbdy )
+!/RTD
+!/RTD        END IF ! ( Polat < 90. )
 !/RTD
           FLOK   = .TRUE.
           IF (GTYPE .EQ. UNGTYPE) THEN
@@ -541,11 +534,15 @@
 !/DIST                                    CG(1+(IS-1)/NTH,ISEA)
 !/DIST                END DO
 !
-!/RTD              ! Added spectral turning for rotated grid
-!/RTD              ! (rotate back to standard pole)
-!/RTD              Spectr = ABPOS(:,ISOUT)
-!/RTD              CALL W3ACTURN( NTH, NK, -AnglD(ISEA), Spectr )
-!/RTD              ABPOS(:,ISOUT) = Spectr
+!/RTD ! Under switch RTD, Polat = 90. means the grid is standard lat-lon and
+!/RTD ! the spectra need not be rotated back (CHA 20190613) 
+!/RTD              IF ( Polat < 90. ) THEN
+!/RTD                ! Added spectral turning for rotated grid
+!/RTD                ! (rotate back to standard pole)
+!/RTD                Spectr = ABPOS(:,ISOUT)
+!/RTD                CALL W3ACTURN( NTH, NK, -AnglD(ISEA), Spectr )
+!/RTD                ABPOS(:,ISOUT) = Spectr
+!/RTD                END IF
 !
               WRITE (NDSL(IFILE)) (ABPOS(IS,ISOUT),IS=1,NSPEC)
 !

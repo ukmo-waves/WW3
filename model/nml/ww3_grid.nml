@@ -140,7 +140,7 @@
 ! -------------------------------------------------------------------- !
 &GRID_NML
   GRID%NAME              =  'GULF OF NOWHERE'
-  GRID%NML               =  'namelists.nml'
+  GRID%NML               =  'namelists_GULF.nml'
   GRID%TYPE              =  'RECT'
   GRID%COORD             =  'SPHE'
   GRID%CLOS              =  'SMPL'

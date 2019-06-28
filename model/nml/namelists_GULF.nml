@@ -1,0 +1,52 @@
+$
+$ This is a parameter namelist file for an individual grid. This file is to be
+$ used with ww3_grid.nml where its name is the value of GRID%NML
+$
+$ See also ww3_grid.inp under the section:
+$
+$ Start of namelist input section ------------------------------------ $
+$
+$ [ ... ]
+$
+$ In the 'Out of the box' test setup we run with sub-grid obstacles
+$ and with continuous ice treatment.
+$
+&MISC CICE0 = 0.25, CICEN = 0.75, FLAGTR = 4 /
+&FLX3 CDMAX = 3.5E-3 , CTYPE = 0 /
+$
+$ Rotated pole ------------------------------------------------------ $
+$ - only for Spherical RECT grids. Programs compiled with switch /RTD -
+$
+$   Pole  parameters    : Namelist ROTD
+$                           PLAT  : Rotated pole latitude
+$                           PLON  : Rotated pole longitude
+$                           UNROT : Logical, un-rotate directions to true north
+$
+$    These will be used to derive rotation angle corrections in the
+$    model. The corrections are used for rotation of boundary spectra 
+$    and for restoring conventional lat/lon orientation of the
+$    output spectra, mean direction or any related variables.
+$    The PLAT/LON example below is a standard setting for Met
+$    Office UK regional models.
+$
+$ &ROTD PLAT = 37.5, PLON = 177.5, UNROT = .TRUE. /
+$
+$   &ROTD has default values that represent a non-rotated lat/lon grid:
+$
+$ &ROTD PLAT = 90.0, PLON = -180.0, UNROT = .FALSE. /
+$
+$ Output boundary conditions to rotated pole grids ------------------ $
+$ - only for Spherical RECT grids. Programs compiled with switch /RTD -
+$
+$   Pole parameters     : Namelist ROTB
+$                           BPLAT(1:9)  : Dest. grid rotated pole latitude
+$                           BPLON(1:9)  : Rotated pole longitude
+$
+$   In ww3_grid.nml the boundary points must be specified under the namelist
+$   &OUTBND_LINE_NML as straight lines, OUTBND_LINE(1:OUTBND_COUNT%N_LINE), in
+$   the reference system of each destination grid. The default of each
+$   destination grid is a non-rotated lat/lon grid:
+$
+$ &ROTB BPLAT(1)= 90.0, BPLON(1)= -180.0,  / ! (etc.)
+$
+END OF NAMELISTS
