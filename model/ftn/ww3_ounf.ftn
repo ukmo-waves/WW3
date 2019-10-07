@@ -7,7 +7,7 @@
 !/                  |           F. Ardhuin              |
 !/                  |           M. Accensi              |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         28-Mar-2019 |
+!/                  | Last update :         07-Oct-2019 |
 !/                  +-----------------------------------+
 !/
 !/    17-Mar-2010 : Creation                            ( version 3.14_SHOM )
@@ -116,9 +116,6 @@
 !/DEBUG      USE W3ODATMD, only : IAPROC
 !/
       USE W3GDATMD
-      ! From W3GDATMD, these names are used in the main program: (CHA 20190621)
-      ! USE W3GDATMD, ONLY: W3NMOD, W3SETG
-      ! USE W3GDATMD, ONLY: GNAME, NX, NY, NSEA, E3DF, P2MSF, US3DF, USSPF
       USE W3WDATMD, ONLY: TIME, WLV, ICE, ICEH, ICEF, BERG, UST, USTDIR
 !/SETUP     USE W3WDATMD, ONLY: ZETA_SETUP
       USE W3ADATMD, ONLY: DW, UA, UD, AS, CX, CY, HS, WLM, T0M1, THM,  &
@@ -748,10 +745,9 @@
 !/RTD      USE W3SERVMD, ONLY : W3THRTN, W3XYRTN, W3EQTOLL
       USE W3ARRYMD, ONLY : OUTA2I, PRTBLK
       USE W3GDATMD, ONLY : SIG, GTYPE, FLAGLL, MAPSTA, MAPST2
-      ! From W3GDATMD, these names are also used: (CHA 20190621)
       USE W3GDATMD, ONLY : NK, UNGTYPE, MAPSF, NTRI, CLGTYPE, RLGTYPE, &
                            XGRD, YGRD, SX, SY, X0, Y0, XYB, TRIGP, USSP_WN
-!/RTD ! Rotated pole data from the mod_def file (CHA 20190613) 
+!/RTD ! Rotated pole data from the mod_def file
 !/RTD      USE W3GDATMD, ONLY : POLAT, POLON, FLAGUNR, AnglD
 !/T      USE W3ODATMD, ONLY : NDST
       USE NETCDF
@@ -1057,7 +1053,6 @@
 !/RTD              IF ( FLAGUNR ) THEN
 !/RTD                VARND(1) = 'True North'
 !/RTD                VARND(2) = 'True North'
-!/RTD ! Former condition ( .NOT. FLAGUNR ), now ( RTDL ) (CHA 20190613):
 !/RTD              ELSE IF ( RTDL ) THEN
 !/RTD                VARND(1) = 'Rotated Pole Grid North'
 !/RTD                VARND(2) = 'Rotated Pole Grid North'
@@ -4751,9 +4746,8 @@
       SUBROUTINE W3CRNC (NCFILE, NCID, DIMID, DIMLN, VARID,  &
                          EXTRADIM, NCTYPE, MAPSTAOUT )
 !
-      ! From W3GDATMD, these names are used: (CHA 20190621)
       USE W3GDATMD, ONLY : GTYPE, FLAGLL, UNGTYPE, CLGTYPE, RLGTYPE
-!/RTD ! Rotated pole parameters from the mod_def file (CHA 20190613) 
+!/RTD ! Rotated pole parameters from the mod_def file 
 !/RTD      USE W3GDATMD, ONLY : POLAT, POLON
       USE NETCDF
       USE W3TIMEMD
