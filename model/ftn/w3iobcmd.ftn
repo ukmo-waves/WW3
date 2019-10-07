@@ -103,11 +103,8 @@
 !/                  (T.J. Campbell, NRL)                ( version 6.02 )
 !/    01-Mar-2018 : Rotate boundary points and directions 
 !/                  of input spectra for rotated grids  ( version 6.02 )
-!/
-!/    13-Jun-2019 : Under switch /RTD the grid may be either rotated or 
-!/                  standard lat-lon with output boundary conditions to
-!/                  either rotated or standard lat-lon.
-!/                  (C. Hansen, FCOO)                   ( version 6.?? )
+!/    07-Oct-2019 : RTD option with standard lat-lon
+!/                  grid when nesting to rotated grid   ( version ?.?? )
 !/
 !  1. Purpose :
 !
@@ -314,10 +311,8 @@
 !/T                WRITE (NDST,9002) IFILE, NDSL(IFILE), IDSTRBC,       &
 !/T                       VERBPTBC, NBO(IFILE)-NBO(IFILE-1)
 !
-!
-!/RTD ! By running the ww3_grid program with switch '/RTD', the arrays
-!/RTD ! XBPO, YBPO was remapped to standard lat/lon and then stored
-!/RTD ! in the grid definition file mod_def.* (CHA 20190613) 
+!/RTD ! By running the ww3_grid program the arrays XBPO, YBPO have been
+!/RTD ! remapped to standard lat-lon and stored in mod_def.*
 !/RTD !
                 WRITE (NDSL(IFILE))                                   &
                        (XBPO(I),I=NBO(IFILE-1)+1,NBO(IFILE)),         &
@@ -393,7 +388,7 @@
 !
 !/RTD ! All boundary conditions position arrays XBPI, YBPI are defined
 !/RTD ! in standard lat/lon coordinates. If Polat = 90. (and Polon = -180.),
-!/RTD ! the b.c. positions don't need to be remapped (CHA  20190613)
+!/RTD ! the b.c. positions don't need to be remapped 
 !/RTD        IF ( Polat < 90. ) THEN
 !/RTD !!   Convert standard into rotated lat/lon. JGLi12Jun2012
 !/RTD          ALLOCATE ( Anglbdy(NBI),  ELatbdy(NBI), ELonbdy(NBI) )
@@ -534,8 +529,8 @@
 !/DIST                                    CG(1+(IS-1)/NTH,ISEA)
 !/DIST                END DO
 !
-!/RTD ! Under switch RTD, Polat = 90. means the grid is standard lat-lon and
-!/RTD ! the spectra need not be rotated back (CHA 20190613) 
+!/RTD ! Polat == 90. means the grid is standard lat-lon, and the spectra
+!/RTD ! need not be rotated back 
 !/RTD              IF ( Polat < 90. ) THEN
 !/RTD                ! Added spectral turning for rotated grid
 !/RTD                ! (rotate back to standard pole)

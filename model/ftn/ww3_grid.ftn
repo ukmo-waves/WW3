@@ -630,7 +630,7 @@
 !/ARC      REAL,    ALLOCATABLE    :: XLONAC(:),YLATAC(:),ELONAC(:),ELATAC(:) 
 !
 !/RTD      REAL, ALLOCATABLE       :: AnglDin(:,:),StdLon(:,:),StdLat(:,:)
-!/RTD ! 1-dim boundary sectors (CHA 20181212)
+!/RTD ! 1-dim boundary sectors
 !/RTD      REAL, ALLOCATABLE       :: BDYLON(:), BDYLAT(:),                &
 !/RTD                                 ELatbdy(:), ELonbdy(:), Anglbdy(:)
 !/RTD ! If the destination grid for an output b.c. is rotated, its pole is:
@@ -810,7 +810,7 @@
 
 !/RTD      REAL                    :: PLAT, PLON
 !/RTD      LOGICAL                 :: UNROT
-!/RTD ! Poles of the output nested grids. Some may be rotated (CHA 20190613)
+!/RTD ! Poles of the output nested grids. May be a mix of rotated and standard
 !/RTD      REAL, DIMENSION(9)      :: BPLAT, BPLON
 !
 !/FLD1      NAMELIST /FLD1/ TAILTYPE, TAILLEV, TAILT1, TAILT2
@@ -924,7 +924,7 @@
 !/REF1                          REFFREQPOW, REFUNSTSOURCE
 !/
 !/RTD      NAMELIST /ROTD/ PLAT, PLON, UNROT
-!/RTD! Poles of destination grids for boundary conditions output (CHA 20190613) 
+!/RTD! Poles of destination grids for boundary conditions output 
 !/RTD      NAMELIST /ROTB/ BPLAT, BPLON
 !/
 !/ ------------------------------------------------------------------- /
@@ -2194,7 +2194,7 @@
 !
 !/RTD ! Set/ read in rotation values - these will be written out
 !/RTD ! later with the rest of the grid info
-!/RTD ! Default is a non-rotated grid (CHA 20190613)
+!/RTD ! Default is a non-rotated lat-lon grid
 !/RTD      PLAT = 90.
 !/RTD      PLON = -180.
 !/RTD      UNROT = .FALSE.
@@ -3501,16 +3501,10 @@
 !/RTD       PoLon = PLON
 !/RTD       PoLat = PLAT
 !/RTD       FLAGUNR = UNROT
-! !/RTD ! Default parameters PLON=-180, PLAT=90, UNROT=.FALSE. (CHA 20190613)
-! !/RTD !     Check that pole lat/lon values have been read in
-! !/RTD !     and exit the program if they have not
-! !/RTD !       IF( PoLon .EQ. -999.9 .OR. PoLat .EQ. -999.9 ) THEN
-! !/RTD !         WRITE( NDSE, 1050 )
-! !/RTD !         CALL EXTCDE ( 63 )
-! !/RTD !       ENDIF
+!/RTD ! Default values PLON=-180, PLAT=90, UNROT=.FALSE. for standard lat-lon
 !/RTD
 !/RTD       ALLOCATE( AnglDin(NX,NY) )
-!/RTD ! For standard lat-lon the rotation angles are zero (CHA 20190613)
+!/RTD ! For standard lat-lon the rotation angles are zero 
 !/RTD       IF ( PoLat == 90. ) THEN
 !/RTD         AnglDin = 0.
 !/RTD       ELSE
@@ -5017,7 +5011,7 @@
               FIRST  = .FALSE.
 !
 !/RTD              IF ( NPO.NE.0 ) THEN
-!/RTD ! Destination pole lat, lon from namelist (CHA 20190613)
+!/RTD ! Destination pole lat, lon from namelist
 !/RTD                  bPolat = BPLAT(NFBPO+1)
 !/RTD                  bPolon = BPLON(NFBPO+1)
 !/RTD                END IF
@@ -5026,7 +5020,6 @@
                   WRITE (NDSO,991)  NFBPO, NBO(NFBPO) - NBO(NFBPO-1), &
                                           NBO2(NFBPO) - NBO2(NFBPO-1)
 !/RTD ! Print dest. Pole lat/lon if either the dest or present grid is rotated 
-!/RTD ! (CHA 20190626) 
 !/RTD                 IF ( BPLAT(NFBPO) < 90. .OR. Polat < 90. )      &
 !/RTD                     WRITE (NDSO,1991) BPLAT(NFBPO), BPLON(NFBPO)
 !/RTD !
@@ -5092,7 +5085,7 @@
 !
 ! ... Loop over line segment - - - - - - - - - - - - - - - - - - - - -
 !
-!/RTD ! If either base or destination grid is rotated lat-lon (CHA 20190613)
+!/RTD ! If either base or destination grid is rotated lat-lon
 !/RTD          IF ( allocated(BDYLON) .eqv. .TRUE. ) THEN
 !/RTD            deallocate( BDYLON, BDYLAT )
 !/RTD            IF ( bPolat < 90. .OR. Polat < 90. ) &
@@ -5191,9 +5184,8 @@
                 NBOTOT = NBOTOT + 1
                 IF ( ILOOP .EQ. 1 ) CYCLE
 !
-!/RTD ! BDYLAT, BDYLON contain Y0, X0 mapped to standard lat/lon. I choose
-!/RTD ! to store the BDYLAT, BDYLON in the mod_def file. Then we can avoid 
-!/RTD ! remapping in model runtime when controlling the nest data (CHA 20190613)
+!/RTD ! BDYLAT, BDYLON contain Y0, X0, which are remapped to standard lat/lon.
+!/RTD ! BDYLAT, BDYLON are stored in the mod_def file.
 !/RTD                IF ( Polat < 90. ) THEN
 !/RTD                  XO = BDYLON(IP)
 !/RTD                  YO = BDYLAT(IP)

@@ -32,8 +32,8 @@
 !/    12-Sep-2018 : Added extra partitioned fields      ( version 6.06 )
 !/    25-Sep-2018 : Add WBT parameter                   ( version 6.06 )
 !/    28-Mar-2019 : Bugfix to NBIPART check.            ( version 6.07 )
-!/    13-Jun-2019 : Avoid lat2D, lon2D arrays when RTD option is applied to a
-!/                  standard grid (C. Hansen, FCOO)     ( version ?.?? )
+!/    07-Oct-2019 : RTD option with standard lat-lon
+!/                  grid when nesting to rotated grid   ( version ?.?? )
 !/
 !/    Copyright 2009-2013 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -822,7 +822,7 @@
       LOGICAL                 :: CUSTOMFRQ=.FALSE.
 !/T      LOGICAL                 :: LTEMP(NGRPP)
 !/RTD ! RTDL == False for a standard lat-lon grid. Will be set to True if the
-!/RTD ! grid is a regridded SMC dataset or the grid is rotated (CHA 20190613)
+!/RTD ! grid is rotated
 !/RTD      LOGICAL                 :: RTDL = .FALSE.
 !/
 !/ ------------------------------------------------------------------- /
@@ -830,8 +830,8 @@
 !
 !/S      CALL STRACE (IENT, 'W3EXNC')
 !
-!/RTD ! Is the grid really rotated or a regridded SMC dataset (CHA 20190613)
-!/RTD      IF ( Polat < 90. .OR. SMCGRD ) RTDL = .True.
+!/RTD ! Is the grid really rotated
+!/RTD      IF ( Polat < 90. ) RTDL = .True.
 !/RTD !
 !/T      DO IFI=1, NOGRP 
 !/T        LTEMP  = FLG2D(IFI,:)
@@ -4781,11 +4781,11 @@
       CHARACTER                         :: ATTNAME*120,ATTVAL*120
 
 !/RTD ! RTDL == False for a standard lat-lon grid. Will be set to True if the
-!/RTD ! grid is an SMC grid or the grid is rotated (CHA 20181212)
+!/RTD ! grid is rotated
 !/RTD      LOGICAL                           :: RTDL = .FALSE.
 
-!/RTD ! Is the grid really rotated or a regridded SMC dataset (CHA 20190613)
-!/RTD        IF ( Polat < 90. .OR. SMCGRD ) RTDL = .True.
+!/RTD ! Is the grid really rotated
+!/RTD        IF ( Polat < 90. ) RTDL = .True.
 !      
 ! Creation in netCDF3 or netCDF4
 !
@@ -4895,7 +4895,7 @@
           IRET = NF90_DEF_VAR(NCID, 'latitude', NF90_FLOAT, DIMID(2), VARID(2))
           END IF
         IRET=NF90_PUT_ATT(NCID,VARID(1),'units','degree_east')
-!/RTD ! Is the grid really rotated or a regridded SMC dataset (CHA 20190613)
+!/RTD ! Is the grid really rotated
 !/RTD        IF ( .NOT. RTDL ) THEN        
         IRET=NF90_PUT_ATT(NCID,VARID(1),'long_name','longitude')
         IRET=NF90_PUT_ATT(NCID,VARID(1),'standard_name','longitude')
