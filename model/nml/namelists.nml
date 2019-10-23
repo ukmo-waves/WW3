@@ -1,0 +1,24 @@
+$ -------------------------------------------------------------------- $
+$ WAVEWATCH III -  model parameters namelist
+$ -------------------------------------------------------------------- $
+$ This file is to be used with ww3_grid.nml where its name is the value
+$ of GRID%NML
+$
+$ The contents is equal to the namelist input of ww3_grid.inp
+$ (traditional form) ending with a mandatory string 'END OF NAMELISTS'
+$
+$ Start of namelist input section ------------------------------------ $
+$
+$ [ ... ]
+$
+$ In the 'Out of the box' test setup we run with sub-grid obstacles
+$ and with continuous ice treatment.
+$
+&MISC CICE0 = 0.25, CICEN = 0.75, FLAGTR = 4 /
+&FLX3 CDMAX = 3.5E-3 , CTYPE = 0 /
+$
+END OF NAMELISTS
+$
+$ -------------------------------------------------------------------- $
+$ End of model parameters namelist file
+$ -------------------------------------------------------------------- $
