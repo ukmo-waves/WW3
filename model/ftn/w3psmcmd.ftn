@@ -7,7 +7,7 @@
 !/                  | Adv, GCT, Rfr, Dif subroutines.    |
 !/                  |           Jian-Guo Li              |
 !/                  | First created:     8 Nov 2010      |
-!/                  | Last modified:    18 Apr 2018      |
+!/                  | Last modified:    19 Feb 2020      |
 !/                  +------------------------------------+
 !/
 !/    08-Nov-2010 : Coding started by adapting w3pro2md.ftn.
@@ -33,6 +33,7 @@
 !/    14-Sep-2015 : Modify DHDX/Y for Arctic part refraction term.  
 !/     8-Aug-2017 : Update SMCGradn for 0 or 1 boundary conditions. 
 !/     9-Jan-2018 : Parallelization by adding OpenMP directives. 
+!/    19-Feb-2020 : Additions for OMP bit-reproducability (C.Bunney)
 !/
 !  1. Purpose :
 !
@@ -2082,6 +2083,7 @@
 !    Side gradients over 2 cell lengths for central cell.
 !    Face size factor is also included for average.
            CNST5=CNST1*(CVF(M)-CVF(L))/(CNST2+CNST3)
+!/B4B!/OMPG           CNST5=INT(CNST5 * 1.0e6)   ! CB: B4B
 
 !! Replace CRITICAL with ATOMIC.  JGLi15Jan2019
 !! !$OMP CRITICAL
@@ -2101,6 +2103,10 @@
         END DO
 
 !/OMPG/!$OMP END DO
+
+!/B4B!/OMPG/!$OMP SINGLE 
+!/B4B!/OMPG        AUN = AUN / 1.0e6  ! CB B4B
+!/B4B!/OMPG/!$OMP END SINGLE 
 
 !  Assign averaged side-gradient to GrdX, plus latitude factor
 !  Note averaging over 2 times of cell y-width factor but AUN
@@ -2140,6 +2146,7 @@
 !    Side gradients over 2 cell lengths for central cell.
 !    Face size factor is also included for average.
            CNST6=CNST1*(CVF(M)-CVF(L))/(CNST2+CNST3)
+!/B4B!/OMPG           CNST6 = int(CNST6 * 1.0e6) ! CB B4B
 
 !! Replace CRITICAL with ATOMIC.  JGLi15Jan2019
 !! !$OMP CRITICAL 
@@ -2159,6 +2166,10 @@
         END DO
 
 !/OMPG/!$OMP END DO
+
+!/B4B!/OMPG/!$OMP SINGLE 
+!/B4B!/OMPG        AVN = AVN / 1.0e6  !CB B4B
+!/B4B!/OMPG/!$OMP END SINGLE 
 
 !/OMPG/!$OMP DO
 
@@ -2228,6 +2239,7 @@
 
 !    Multi-resolution SMC grid requires flux multiplied by face factor.
            CNST5=Real( IJKUFc(3,i) )*(CVF(M)+CVF(L))
+!/B4B/!OMPG           CNST5=int(CNST5 * 1.0e6)
 
 !! Replace CRITICAL with ATOMIC.  JGLi15Jan2019
 !! !$OMP CRITICAL 
@@ -2247,6 +2259,10 @@
 
 !/OMPG/!$OMP END DO
 
+!/B4B!/OMPG/!$OMP SINGLE 
+!/B4B!/OMPG        AUN = AUN / 1.0e6  !CB B4B
+!/B4B!/OMPG/!$OMP END SINGLE 
+
 !/OMPG/!$OMP DO
 
 !!   Calculate y-gradient by averaging V-face gradients. 
@@ -2258,6 +2274,7 @@
 
 !    Face size is required for multi-resolution grid.
            CNST6=Real( IJKVfc(3,j) )*(CVF(M)+CVF(L))
+!/B4B!/OMPG           CNST6=INT(CNST6 * 1e6)
 
 !! Replace CRITICAL with ATOMIC.  JGLi15Jan2019
 !! !$OMP CRITICAL 
@@ -2276,6 +2293,10 @@
        END DO
 
 !/OMPG/!$OMP END DO
+
+!/B4B!/OMPG/!$OMP SINGLE 
+!/B4B!/OMPG        AVN = AVN / 1.0e6  !CB B4B
+!/B4B!/OMPG/!$OMP END SINGLE 
 
 !/OMPG/!$OMP DO
 
@@ -2550,7 +2571,7 @@
 !/OMPG/!$OMP END Parallel DO
 
 !! Calculate the depth gradient limiter for refraction.  
-       L = 0
+!/T       L = 0 !CB - added T switch
 
 !/OMPG/!$OMP Parallel DO Private(i, n, CNST4, CNST6)
        DO n=1,NSEA
@@ -2561,9 +2582,9 @@
 !Li   Directional depedent depth gradient limiter.  JGLi16Jun2011
           IF ( CNST4 .GT. 1.0E-5 ) THEN
 
-!/OMPG/!$OMP ATOMIC Update
-             L = L + 1
-!/OMPG/!$OMP END ATOMIC
+!/T!/OMPG/!$OMP ATOMIC Update   !CB - added T switch
+!/T             L = L + 1       !CB - added T switch
+!/T!/OMPG/!$OMP END ATOMIC      !CB - added T switch
 
              DO i=1, NTH
 !Li   Refraction is done only when depth gradient is non-zero.
