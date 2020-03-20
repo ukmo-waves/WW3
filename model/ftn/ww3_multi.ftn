@@ -92,7 +92,7 @@
       INTEGER, ALLOCATABLE :: TEND(:,:)
       LOGICAL              :: FLGNML
 !/MPI      INTEGER              :: IERR_MPI
-!/MPI      LOGICAL              :: FLHybr = .FALSE.
+!/MPI      LOGICAL              :: FLHYBR = .FALSE.
 !/OMPH      INTEGER              :: THRLEV
 !/
 !/ ------------------------------------------------------------------- /
@@ -101,9 +101,9 @@
 !
 ! 0.b MPI environment: Here, we use MPI_COMM_WORLD
 !
-!/OMPH      FLHybr = .TRUE.
+!/OMPH      FLHYBR = .TRUE.
 !/OMPH      ! For hybrid MPI-OpenMP specify required thread level:
-!/OMPH      IF( FLHybr ) THEN
+!/OMPH      IF( FLHYBR ) THEN
 !/OMPH         CALL MPI_INIT_THREAD(MPI_THREAD_FUNNELED, THRLEV, IERR_MPI)
 !/OMPH      ELSE
 !/MPI      CALL MPI_INIT      ( IERR_MPI )
