@@ -7,7 +7,7 @@
 !/                  | Adv, GCT, Rfr, Dif subroutines.    |
 !/                  |           Jian-Guo Li              |
 !/                  | First created:     8 Nov 2010      |
-!/                  | Last modified:    19 Feb 2020      |
+!/                  | Last modified:    23 Mar 2020      |
 !/                  +------------------------------------+
 !/
 !/    08-Nov-2010 : Coding started by adapting w3pro2md.ftn.
@@ -34,6 +34,7 @@
 !/     8-Aug-2017 : Update SMCGradn for 0 or 1 boundary conditions. 
 !/     9-Jan-2018 : Parallelization by adding OpenMP directives. 
 !/    19-Feb-2020 : Additions for OMP bit-reproducability (C.Bunney)
+!/    23-Mar-2018 : Add extra parenthese for single ATOMIC line update.
 !/
 !  1. Purpose :
 !
@@ -480,7 +481,7 @@
               ENDIF
 !  Also divided by another cell length as UCFL is in basic unit.
 !/OMPG/!$OMP ATOMIC 
-              AFCN(N) = AFCN(N) + FUMD(i)*UCFL(N) - FUDIFX(i)
+              AFCN(N) = AFCN(N) + (FUMD(i)*UCFL(N) - FUDIFX(i))
            ENDIF
 !! !$OMP END CRITICAL 
 
@@ -630,7 +631,7 @@
                 FCNt(M) = FCNt(M) + FUTRN*CTRNX(M) 
               ENDIF 
 !/OMPG/!$OMP ATOMIC 
-              AFCN(M) = AFCN(M) + FUMD(i)*UCFL(M)*FMR - FUDIFX(i)
+              AFCN(M) = AFCN(M) + (FUMD(i)*UCFL(M)*FMR - FUDIFX(i))
            ENDIF
 !! !$OMP END CRITICAL 
            ENDDO
