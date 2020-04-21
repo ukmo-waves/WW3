@@ -97,9 +97,10 @@
               shared mpp mpiexp thread GSE prop \
               stress s_ln source stab s_nl snls s_bot s_db miche s_tr s_bs \
               dstress s_ice s_is reflection s_xx \
-              wind windx rwind curr currx mgwind mgprop mggse \
+              wind windx wcor rwind curr currx mgwind mgprop mggse \
               subsec tdyn dss0 pdif tide refrx ig rotag arctic nnt mprf \
-              cou oasis agcm ogcm igcm trknc setup pdlib memck uost drhook
+              cou oasis agcm ogcm igcm trknc setup pdlib memck uost rstwind \
+              b4b drhook
   do
     case $type in
 #sort:mach:
@@ -247,11 +248,23 @@
       windx  ) TY='one'
                ID='wind interpolation in space'
                OK='WNX0 WNX1 WNX2' ;;
+#sort:wcor:
+      wcor   ) TY='upto1'
+               ID='wind speed correction'
+               TS='WCOR'
+               OK='WCOR' ;;
 #sort:rwind:
       rwind  ) TY='upto1'
                ID='wind vs. current definition'
                TS='RWND'
                OK='RWND' ;;
+
+#sort:rstwind:
+      rstwind  ) TY='upto1'
+               ID='wind in restart for wmesmf'
+               TS='WRST'
+               OK='WRST' ;;
+
 #sort:curr:
       curr   ) TY='one'
                ID='current interpolation in time'
@@ -380,6 +393,11 @@
                ID='unresolved obstacles source term'
                TS='UOST'
                OK='UOST' ;;
+#sort:b4b:
+      b4b    ) TY='upto1'
+               ID='bit-for-bit reproducability'
+               TS='B4B'
+               OK='B4B' ;;
 #sort:drhook:
       drhook ) TY='upto2'
                ID='dr.Hook profiling'
@@ -505,6 +523,7 @@
       memck  ) memck=$sw ;;
       setup  ) setup=$sw ;;
       uost   ) uost=$sw ;;
+      b4b    ) b4b=$sw ;;
       drhook ) hook1=$sw1 ; hook2=$sw2 ;;
               *    ) ;;
     esac
@@ -545,18 +564,23 @@
       echo ' ' ; exit 9
   fi
 
+  if [ -n "$b4b" ] && [ -z "$thread2" ]
+  then
+      echo ' '
+      echo "   *** !/B4B should be used in combination with !/OMPG, !/OMPH or !/OMPX"
+      echo ' ' ; exit 10
   if [ "$hook1" = 'HOKM' ]
   then
       echo ' '
       echo "   *** !/HOKM has to be used in combination with !/HOOK"
-      echo ' ' ; exit 6
+      echo ' ' ; exit 11
   fi
 
   if [ "$hook2" = 'HOKM' ] && [ "$mpp" != 'MPI' ]
   then
       echo ' '
       echo "   *** !/HOKM has to be used in combination with !/MPI"
-      echo ' ' ; exit 8
+      echo ' ' ; exit 12
   fi
 
   smco=$NULL
