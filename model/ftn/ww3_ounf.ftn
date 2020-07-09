@@ -862,11 +862,7 @@
       NCID = 0
 !
 !
-      IF (CAL360) THEN
-        CALL U2D('days since 1900-01-01 00:00:00',REFDATE,IERR)
-      ELSE
-        CALL U2D('days since 1990-01-01 00:00:00',REFDATE,IERR)
-      ENDIF
+      CALL U2D('days since 1990-01-01 00:00:00',REFDATE,IERR)
 
 ! 1.1 Set-up transfer files
       MFILL  = NF90_FILL_SHORT
@@ -4974,31 +4970,24 @@
       IRET = NF90_DEF_VAR(NCID, 'time', NF90_DOUBLE, DIMID(4+EXTRADIM), VARID(3+EXTRADIM))
 !/NC4      IF (NCTYPE.EQ.4) IRET = NF90_DEF_VAR_DEFLATE(NCID, VARID(3+EXTRADIM), 1, 1, DEFLATE)
       CALL CHECK_ERR(IRET)
-      IF (CAL360) THEN
-        IRET=NF90_PUT_ATT(NCID,VARID(3+EXTRADIM),'long_name','days since 1900-01-01')
-      ELSE
-        IRET=NF90_PUT_ATT(NCID,VARID(3+EXTRADIM),'long_name','julian day (UT)')
-      ENDIF
+      SELECT CASE (TRIM(CALTYPE))
+        CASE ('360_day')
+          IRET=NF90_PUT_ATT(NCID,VARID(3+EXTRADIM),'long_name','time in 360 day calendar')
+        CASE ('365_day')
+          IRET=NF90_PUT_ATT(NCID,VARID(3+EXTRADIM),'long_name','time in 365 day calendar')
+        CASE ('standard')
+          IRET=NF90_PUT_ATT(NCID,VARID(3+EXTRADIM),'long_name','julian day (UT)')
+      END SELECT
       CALL CHECK_ERR(IRET)
       IRET=NF90_PUT_ATT(NCID,VARID(3+EXTRADIM),'standard_name','time')
       CALL CHECK_ERR(IRET)
-      IRET=NF90_PUT_ATT(NCID,VARID(3+EXTRADIM),'calendar','standard')
-      CALL CHECK_ERR(IRET)
-      IF (CAL360) THEN
-        IRET=NF90_PUT_ATT(NCID,VARID(3+EXTRADIM),'units','days since 1900-01-01 00:00:00')
-      ELSE
-        IRET=NF90_PUT_ATT(NCID,VARID(3+EXTRADIM),'units','days since 1990-01-01 00:00:00')
-      ENDIF
+      IRET=NF90_PUT_ATT(NCID,VARID(3+EXTRADIM),'units','days since 1990-01-01 00:00:00')
       CALL CHECK_ERR(IRET)
       IRET=NF90_PUT_ATT(NCID,VARID(3+EXTRADIM),'conventions', &
         'relative julian days with decimal part (as parts of the day )')
       IRET=NF90_PUT_ATT(NCID,VARID(3+EXTRADIM),'axis','T')
       CALL CHECK_ERR(IRET)
-      IF (CAL360) THEN
-        IRET=NF90_PUT_ATT(NCID,VARID(3+extradim),'calendar', '360_day')
-      ELSE
-        IRET=NF90_PUT_ATT(NCID,VARID(3+extradim),'calendar', 'standard')
-      ENDIF
+      IRET=NF90_PUT_ATT(NCID,VARID(3+extradim),'calendar',TRIM(CALTYPE))
       CALL CHECK_ERR(IRET)
 !
 ! triangles for irregular grids

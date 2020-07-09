@@ -72,7 +72,7 @@
 !
       INTEGER, PRIVATE        :: PRFTB(8)
       LOGICAL, PRIVATE        :: FLPROF = .FALSE.
-      LOGICAL, PUBLIC         :: CAL360, NOLEAP
+      CHARACTER, PUBLIC       :: CALTYPE*8
 !
       CONTAINS
 !/ ------------------------------------------------------------------- /
@@ -257,7 +257,7 @@
 !
 ! Declare the number of days in month depending on calendar
 !
-      IF (CAL360) THEN
+      IF (TRIM(CALTYPE) .EQ. '360_day' ) THEN
         NDPM=(/ 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30 /)
       ELSE
         NDPM=(/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /)
@@ -270,11 +270,11 @@
       NM   = MIN ( 12 , MAX(1,NM) )
       ND   = MOD(NYMD,100) + M
       ! Add override for simulations with no leap years
-      IF (NOLEAP .OR. CAL360) THEN
-         LEAP = .false.
-      ELSE
+      IF (TRIM(CALTYPE) .EQ. 'standard' ) THEN
          LEAP = MOD(NY,400).EQ.0 .OR.                           &
               ( MOD(NY,4).EQ.0 .AND. MOD(NY,100).NE.0 )
+      ELSE
+         LEAP = .false.
       END IF
 !
 ! M = -1, change month if necessary :
@@ -411,13 +411,13 @@
           IF (NY1.EQ.NY2) GOTO 200
           IF (NST.GT.0) THEN
               NY2    = NY2 - 1
-              IF (CAL360) THEN
+              IF (TRIM(CALTYPE) .EQ. '360_day' ) THEN
                 ND     = ND  + MYMD21 ( NY2*10000 + 1230 )
               ELSE
                 ND     = ND  + MYMD21 ( NY2*10000 + 1231 )
               END IF
             ELSE
-              IF (CAL360) THEN
+              IF (TRIM(CALTYPE) .EQ. '360_day' ) THEN
                 ND     = ND  - MYMD21 ( NY2*10000 + 1230 )
               ELSE
                 ND     = ND  - MYMD21 ( NY2*10000 + 1231 )
@@ -510,7 +510,7 @@
 !
 ! Declare the number of days in month depending on calendar
 !
-      IF (CAL360) THEN
+      IF (TRIM(CALTYPE) .EQ. '360_day' ) THEN
         NDPM=(/ 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30 /)
       ELSE
         NDPM=(/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /)
@@ -522,11 +522,11 @@
       NM   = MOD(NYMD,10000) / 100
       ND   = MOD(NYMD,100)
       !Allow override for NoLeap simulations
-      IF (NOLEAP .OR. CAL360) THEN
-         LEAP=.false.
-      ELSE
+      IF (TRIM(CALTYPE) .EQ. 'standard' ) THEN
          LEAP = MOD(NY,400).EQ.0 .OR.                           &
               ( MOD(NY,4).EQ.0 .AND. MOD(NY,100).NE.0 )
+      ELSE
+         LEAP=.false.
       ENDIF
 !
 ! Loop over months :
@@ -1512,7 +1512,7 @@
 !
 ! Convert dates and times :
 !
-      IF (CAL360) THEN
+      IF (TRIM(CALTYPE) .EQ. '360_day' ) THEN
         A1 = (T2(1)-T1(1))*360 + (T2(2)-T1(2))*30 + (T2(3)-T1(3))
 
         E1 = 3600.0*T1(5) + 60.0*(T1(6)-T1(4)) + T1(7) + T1(8)/1000.0
@@ -1523,13 +1523,19 @@
         A1 = (14-T1(2))/12
         B1 = T1(1) + 4800 - A1
         C1 = T1(2) + 12*A1 - 3
-        D1 = T1(3) + (153*C1 + 2)/5 + 365*B1 + B1/4 -B1/100 + B1/400
+        D1 = T1(3) + (153*C1 + 2)/5 + 365*B1
+        IF (TRIM(CALTYPE) .EQ. 'standard' ) THEN
+          D1 = D1 + B1/4 -B1/100 + B1/400
+        ENDIF
         E1 = 3600.0*T1(5) + 60.0*(T1(6)-T1(4)) + T1(7) + T1(8)/1000.0
 !
         A2 = (14-T2(2))/12
         B2 = T2(1) + 4800 - A2
         C2 = T2(2) + 12*A2 - 3
-        D2 = T2(3) + (153*C2 + 2)/5 + 365*B2 + B2/4 -B2/100 + B2/400
+        D2 = T2(3) + (153*C2 + 2)/5 + 365*B2
+        IF (TRIM(CALTYPE) .EQ. 'standard' ) THEN
+          D2 = D2 + B2/4 -B2/100 + B2/400
+        ENDIF
         E2 = 3600.0*T2(5) + 60.0*(T2(6)-T2(4)) + T2(7) + T2(8)/1000.0
 !
         TSUB = DBLE(D2-D1) + (E2-E1)/86400.0d0

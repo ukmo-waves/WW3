@@ -520,7 +520,7 @@
                           IPBPO, ISBPO, XBPO, YBPO, RDBPO, FNMPRE,    &
                           IHMAX, HSPMIN, WSMULT, WSCUT, FLCOMB,       &
                           NOSWLL, PTMETH, PTFCUT
-      USE W3TIMEMD, ONLY: CAL360, NOLEAP
+      USE W3TIMEMD, ONLY: CALTYPE
       USE W3NMLGRIDMD
 !
 !/NL3      USE W3SNL3MD, ONLY: LAMMAX, DELTHM
@@ -694,8 +694,7 @@
 
       CHARACTER               :: COMSTR*1, PNAME*30, RFORM*16,        &
                                  FROM*4, FNAME*60, TNAME*60, LINE*80, &
-                                 STATUS*20,FNAME2*60, PNAME2*40,      &
-                                 CALTYPE*60
+                                 STATUS*20,FNAME2*60, PNAME2*40
       CHARACTER(LEN=6)        :: YESXNO(2)
 !/FLX3      CHARACTER(LEN=18)       :: TYPEID
 !/ ------------------------------------------------------------------- /
@@ -894,7 +893,7 @@
                       RWNDC, FACBERG, NOSW, GSHIFT, WCOR1, WCOR2,     &
                       STDX, STDY, STDT, ICEHMIN, ICEHINIT, ICEDISP,   &
                       ICESLN, ICEWIND, ICESNL, ICESDS, ICEHFAC,       &
-                      ICEHDISP, ICEDDISP, ICEFDISP, CAL360, NOLEAP,   &
+                      ICEHDISP, ICEDDISP, ICEFDISP, CALTYPE,          &
                       TRCKCMPR, PTM, PTFC, BTBET
            NAMELIST /OUTS/ P2SF, I1P2SF, I2P2SF,                      &
                              US3D, I1US3D, I2US3D,                    &
@@ -2241,8 +2240,7 @@
       STDY = -1. 
       STDT = -1. 
       ICEDISP = .FALSE.
-      CAL360 = .FALSE.
-      NOLEAP = .FALSE.
+      CALTYPE = 'standard'
 ! Variables for 3D array output
       E3D=0 
       I1E3D=1
@@ -2586,13 +2584,9 @@
       WRITE (NDSO,967) FHMAX, FHMAX/SQRT(2.), YESXNO(J)
       IF ( FHMAX.LT.0.50 .AND. J.EQ.1 ) WRITE (NDST,968)
 !
-      IF ( CAL360 ) THEN
-        CALTYPE = 'Climatological (360 days)'
-      ELSE IF ( NOLEAP ) THEN
-        CALTYPE = 'Standard (365 days, no leap)'
-      ELSE
-        CALTYPE = 'Standard (365 days + leap)'
-      ENDIF
+      IF (TRIM(CALTYPE) .NE. 'standard' .AND.                           &
+          TRIM(CALTYPE) .NE. '360_day'  .AND.                           &
+          TRIM(CALTYPE) .NE. '365_day' ) GOTO 2003 
       WRITE (NDST,1973) CALTYPE
       WRITE (NDSO,*)
 !
@@ -2773,8 +2767,8 @@
                                 STDX, STDY, STDT, ICEHMIN, ICEHFAC,   &
                                 ICEHINIT, ICEDISP, ICEHDISP,          &
                                 ICESLN, ICEWIND, ICESNL, ICESDS,      &
-                                ICEDDISP,ICEFDISP, CAL360, NOLEAP,    &
-                                TRCKCMPR, BTBETA
+                                ICEDDISP,ICEFDISP, CALTYPE, TRCKCMPR, &
+                                BTBETA
         ELSE
           WRITE (NDSO,2966) CICE0, CICEN, LICE, PMOVE, XSEED, FLAGTR, &
                                 XP, XR, XFILT, IHMAX, HSPMIN, WSMULT, &
@@ -2783,8 +2777,8 @@
                                 STDX, STDY, STDT,  ICEHMIN, ICEHFAC,  &
                                 ICEHINIT, ICEDISP, ICEHDISP,          &
                                 ICESLN, ICEWIND, ICESNL, ICESDS,      &
-                                ICEDDISP, ICEFDISP, CAL360, NOLEAP,   &
-                                TRCKCMPR, BTBETA
+                                ICEDDISP, ICEFDISP, CALTYPE, TRCKCMPR,&
+                                BTBETA
           END IF
 !
 !/FLD1         WRITE(NDSO,2987) TAIL_ID, TAIL_LEV, TAIL_TRAN1, TAIL_TRAN2
@@ -5201,6 +5195,10 @@
       WRITE (NDSE,1002) IERR
       CALL EXTCDE ( 62 )
 !
+ 2003 CONTINUE
+      WRITE (NDSE,1003)
+      CALL EXTCDE ( 64 )
+!
  2222 CONTINUE
       IF ( GTYPE .NE. UNGTYPE) THEN
           IF ( NX*NY .NE. NSEA ) THEN
@@ -5701,8 +5699,7 @@
                '       Hrms,max/d factor       (-) :',F9.3/           &
                '       Limiter activated           :  ',A)
   968 FORMAT ( '          *** FACTOR DANGEROUSLY LOW ***')
- 1973 FORMAT (/'    Calendar type :'/                                 &
-               '       ', A)
+ 1973 FORMAT (/'    Calendar type                  :  ',A)
 !
 !/REF1  969 FORMAT (/'  Shoreline reflection     ',A/                  &
 !/REF1               ' --------------------------------------------------')
@@ -5795,8 +5792,8 @@
                '        ICESLN = ',F6.2,', ICEWIND = ',F6.2,          &
                      ', ICESNL = ',F6.2,', ICESDS = ',F5.2,','/       &
                '        ICEDDISP = ',F5.2,', ICEFDISP = ',F5.2,       &
-                     ', CAL360 = ',L3,' , NOLEAP = ',L3,','/          &
-               '        TRCKCMPR = ', L3,', BTBET  = ', F6.2, ' /')
+                     ', CALTYPE = ',A8,' , TRCKCMPR = ', L3,','/      &
+               '        BTBET  = ', F6.2, ' /')
 !
  2976 FORMAT ( '  &OUTS P2SF  =',I2,', I1P2SF =',I2,', I2P2SF =',I3,','/&    
                '        US3D  =',I2,', I1US3D =',I3,', I2US3D =',I3,','/&  
@@ -5978,6 +5975,10 @@
  1002 FORMAT (/' *** WAVEWATCH III ERROR IN W3GRID : '/               &
                '     ERROR IN READING FROM INPUT FILE'/               &
                '     IOSTAT =',I5/)
+!
+ 1003 FORMAT (/' *** WAVEWATCH III ERROR IN W3GRID : '/               &
+               '     INVALID CALENDAR TYPE: SELECT ONE OF:',          &
+               '     standard, 360_day, or 365_day '/)
 !
  1004 FORMAT (/' *** WAVEWATCH III ERROR IN W3GRID : '/               &
                '     CANNOT READ UNFORMATTED (IDFM = 3) FROM UNIT',   &
@@ -6290,7 +6291,6 @@
                           READ (NDS,NML=OUTS,END=801,ERR=802,IOSTAT=J)
                         CASE('MISC')
                           READ (NDS,NML=MISC,END=801,ERR=802,IOSTAT=J)
-                          IF ( CAL360 .AND. NOLEAP ) GOTO 805
                         CASE DEFAULT
                           GOTO 803
                         END SELECT
@@ -6332,11 +6332,6 @@
 !/NL3      CALL EXTCDE(4)
 !/NL3      RETURN
 !
-  805 CONTINUE
-      WRITE (NDSE,1005)
-      CALL EXTCDE(5)
-      RETURN
-!
 ! Formats
 !
  1001 FORMAT (/' *** WAVEWATCH III ERROR IN READNL : '/          &
@@ -6349,8 +6344,6 @@
 !/NL2               '     TEMP DEPTH ARRAY TOO SMALL, .LE. ',I8/)
 !/NL3 1004 FORMAT (/' *** WAVEWATCH-III ERROR IN READNL : '/          &
 !/NL3               '     TEMP QPARMS ARRAY TOO SMALL, .LE. ',I8/)
- 1005 FORMAT (/' *** WAVEWATCH III ERROR IN READNL : '/          &
-               '     UNDETERMINED CALENDAR: CAL360 and NOLEAP'/)
 !/
 !/ End of READNL ----------------------------------------------------- /
 !/
