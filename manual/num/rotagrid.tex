@@ -30,18 +30,21 @@ lat-lon grid frameworks, boundary conditions data provided to and output from th
 rotated grid use spectra referenced to a standard grid north and standard lat-lon
 grid points values, which are converted into rotated grid lat-lon inside \ws.
 The list of 2D spectral output locations in {\bf ww3\_shel.inp} or
-{\bf ww3\_shel.nml} are also specified in standard lat-lon. When the boundary
-conditions are applied to a model on a standard lat-lon grid, the {\code RTD}
-switch is not required in compiling the executables for that model.
+{\bf ww3\_shel.nml} are also specified in standard lat-lon.
+
+When nesting from a standard grid to a rotated grid model, both the outer and inner
+grids should be built with the {\code RTD} switch set when compiling executables for
+the models. When nesting from a rotated grid to a standard grid model, the inner
+(standard) grid model does not require to be built with {\code RTD}.
 
 Output of spectra at boundary points to one-way nested inner grids are transferred
-as described in Appendix~\ref{app:nest}. Output b.c.\ may be defined in the input
+as described in Appendix~\ref{app:nest}. Output b.c.\ are defined in the input
 file (see {\bf ww3\_grid.inp}, Sect.~\ref{sec:config011}) as a sequence of straight
 lines given in coordinates of the inner grid. If the inner grid is rotated, it's
 pole position must be defined as the values of the array elements
-{\code BPLAT(\sl{n})} and {\code BPLON(\sl{n})} under namelist {\code ROTB}. The
-array index {\sl{n}} is the index ({\sl{1:9}}) of the boundary conditions file
-{\file nest{\sl{n}}.ww3}.
+{\code BPLAT(\sl{n})} and {\code BPLON(\sl{n})} under namelist {\code ROTB}
+for the outer grid. The array index {\sl{n}} is the index ({\sl{1:9}}) of the boundary
+conditions file {\file nest{\sl{n}}.ww3}.
 
 Model directional and x-y vector outputs from a rotated grid can be converted
 to a standard grid north reference by setting the UNROT variable in the

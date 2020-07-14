@@ -55,7 +55,7 @@
 !/    13-Jan-2016 : Changed initial value of ICEDMAX    ( version 5.08 )
 !/    26-Mar-2018 : Sea-point only Wnd/Cur input.  JGLi ( version 6.04 )
 !/    07-Oct-2019 : RTD option with standard lat-lon
-!/                  grid when nesting to rotated grid   ( version ?.?? )
+!/                  grid when nesting to rotated grid   ( version 7.xx )
 !/
 !/    Copyright 2009-2014 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -905,7 +905,7 @@
 !/    12-Jun-2012 : Add /RTD option or rotated grid option. 
 !/                  (Jian-Guo Li)                       ( version 4.06 )
 !/    06-Jun-2018 : Add DEBUGIOBC/SETUP/DEBUGW3ULEV     ( version 6.04 )
-!/    13-Jun-2019 : Rotation only if POLAT<90 (C.Hansen)( version 6.?? ) 
+!/    13-Jun-2019 : Rotation only if POLAT<90 (C.Hansen)( version 7.xx ) 
 !/
 !  1. Purpose :
 !

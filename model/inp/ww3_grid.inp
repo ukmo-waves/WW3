@@ -369,15 +369,18 @@ $
 $ Output boundary conditions to rotated pole grids ------------------ $
 $
 $   Pole parameters    : Namelist ROTB
-$                        BPLAT(1:9)  : Dest. grid rotated pole latitude
-$                        BPLON(1:9)  : Rotated pole longitude
+$                        BPLAT(1:9) : Pole latitude of each destination grid
+$                        BPLON(1:9) : Pole longitude of each destination grid
 $
 $   Compile switch /RTD required.
 $
-$   In the section 'Output boundary points' below, the points must be
-$   given as straight lines in the reference system of each destination
-$   grid. The poles of each destination grids have default values of
-$   standard lat/lon.
+$   In the section 'Output boundary points' later in this file, the points must
+$   be given as straight lines in the reference system of each destination grid.
+$   The index J of BPLAT(J),BPLON(J) is incremented by one where a new output
+$   file is started by specifying a negative value for the number of points.
+$
+$   Each destination may be either a rotated grid or a standard (non-rotated)
+$   lat/lon grid. The default values for ROTB represent standard lat/lon grids:
 $
 $ &ROTB BPLAT(1)=90., BPLON(1)=-180., BPLAT(2)=90. / $ (etc.)
 $

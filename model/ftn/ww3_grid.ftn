@@ -106,7 +106,7 @@
 !/    22-Jan-2020 : Update default values for IS2       ( version 7.05 ) 
 !/    20-Feb-2020 : Include Romero's dissipation in ST4 ( version 7.06 )
 !/    15-Apr-2020 : Adds optional opt-out for CFL on BC ( version 7.08 )
-!/    24-Jun-2020 : RTD output b. c. to rotated grid.   ( version 7.?? )
+!/    24-Jun-2020 : RTD output b. c. to rotated grid.   ( version 7.xx )
 !/
 !/    Copyright 2009-2013 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -5242,10 +5242,18 @@
 ! ... Error output
 !
                 ELSE
-                WRITE (NDSE,995) FACTOR*XO, FACTOR*YO
+                  IF ( FLAGLL ) THEN
+                      WRITE (NDSE,2995) FACTOR*XO, FACTOR*YO
+                    ELSE
+                      WRITE (NDSE,995) FACTOR*XO, FACTOR*YO
+                    END IF
                 END IF
               ELSE
-              WRITE (NDSE,994) FACTOR*XO, FACTOR*YO
+                IF ( FLAGLL ) THEN
+                    WRITE (NDSE,2994) FACTOR*XO, FACTOR*YO
+                  ELSE
+                    WRITE (NDSE,994) FACTOR*XO, FACTOR*YO
+                  END IF
               END IF
 !
             END DO
@@ -6048,8 +6056,8 @@
   993 FORMAT ( '       ',I4,2(' |',F8.2))
  1993 FORMAT ( '       ',I4,2(' |',F8.2),                        &
               '        ',I4,2(' |',F8.2))
-  994 FORMAT ( '   *** POINT OUTSIDE GRID (SKIPPED) : X,Y =',2F7.2)
-  995 FORMAT ( '   *** POINT ON LAND      (SKIPPED) : X,Y =',2F7.2)
+  994 FORMAT ( '   *** POINT OUTSIDE GRID (SKIPPED) : X,Y =',2F10.5)
+  995 FORMAT ( '   *** POINT ON LAND      (SKIPPED) : X,Y =',2F10.5)
  2992 FORMAT (/'         Nr.|     X     |     Y     '/           &
                '       -----|-----------|-----------')
  3992 FORMAT (/'         Nr.|     X     |     Y     ',           &
