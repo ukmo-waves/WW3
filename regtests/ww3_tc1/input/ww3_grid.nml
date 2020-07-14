@@ -35,6 +35,7 @@
 !     RUN%FL360CAL         = F             ! 360-day calendar
 ! -------------------------------------------------------------------- !
 &RUN_NML
+  RUN%FLDRY        =  T
   RUN%FLSOU        =  T
   RUN%FL360CAL     =  T
 /
