@@ -2008,8 +2008,9 @@
   if [ "$calendar" = 'y' ] && [ "$shrd" = 'y' ]
   then
     echo ' ' >> matrix.body
-    echo "$rtst       -w work_C365  -o netcdf  $ww3 ww3_tc1" >> matrix.body
-    echo "$rtst       -w work_C360  -o netcdf  -i input_CAL360 $ww3 ww3_tc1" >> matrix.body
+    echo "$rtst -g STD  -w work_STD  -o netcdf $ww3 ww3_tc1" >> matrix.body
+    echo "$rtst -g C360 -w work_C360 -o netcdf $ww3 ww3_tc1" >> matrix.body
+    echo "$rtst -g C365 -w work_C365 -o netcdf $ww3 ww3_tc1" >> matrix.body
   fi
 
 # --------------------------------------------------------------------------- #

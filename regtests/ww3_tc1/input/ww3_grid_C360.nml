@@ -32,12 +32,10 @@
 !     RUN%FLCTH            = F             ! direction shift
 !     RUN%FLCK             = F             ! wavenumber shift
 !     RUN%FLSOU            = F             ! source terms
-!     RUN%FL360CAL         = F             ! 360-day calendar
 ! -------------------------------------------------------------------- !
 &RUN_NML
   RUN%FLDRY        =  T
   RUN%FLSOU        =  T
-  RUN%FL360CAL     =  T
 /
 
 ! -------------------------------------------------------------------- !
@@ -72,7 +70,7 @@
 !     TIMESTEPS%DTMIN      = 0.         ! minimum source term time step (s)
 ! -------------------------------------------------------------------- !
 &TIMESTEPS_NML
-  TIMESTEPS%DTMAX        =  600.
+  TIMESTEPS%DTMAX        =  86400.
   TIMESTEPS%DTXY         =  600.
   TIMESTEPS%DTKTH        =  600.
   TIMESTEPS%DTMIN        =  15.
@@ -136,8 +134,8 @@
 !     GRID%DMIN             = 0.        ! abs. minimum water depth (m)
 ! -------------------------------------------------------------------- !
 &GRID_NML
-  GRID%NAME         =  'HOMOGENEOUS SOURCE TERM TEST'
-  GRID%NML          =  '../input_fld_CAL/namelists_HOMOGENEOUS.nml'
+  GRID%NAME         =  '360_day SOURCE TERM TEST'
+  GRID%NML          =  '../input/namelists_360_day.nml'
   GRID%TYPE         =  'RECT'
   GRID%COORD        =  'SPHE'
   GRID%CLOS         =  'NONE'
@@ -220,7 +218,7 @@
 ! -------------------------------------------------------------------- !
 &DEPTH_NML
   DEPTH%SF        =  -2500.
-  DEPTH%FILENAME  =  '../input_fld_CAL/HOMOGENEOUS.depth'
+  DEPTH%FILENAME  =  '../input/STANDARD.depth'
   DEPTH%IDLA      =  3
 /
 

@@ -3,7 +3,7 @@ $ WAVEWATCH III Grid output post-processing                            $
 $--------------------------------------------------------------------- $
 $ Time, time increment and number of outputs
 $
- 19680228 230000 3600    2 
+ 19680228 000000 86400    99 
 $
 $
 $ Output request flags identifying fields as in ww3_shel.inp. See that

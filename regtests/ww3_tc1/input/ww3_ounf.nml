@@ -30,9 +30,9 @@
 !     FIELD%TYPE                 = 3                  ! [2 = SHORT, 3 = it depends , 4 = REAL]
 ! -------------------------------------------------------------------- !
 &FIELD_NML
-  FIELD%TIMESTART        =  '19680228 230000'
-  FIELD%TIMESTRIDE       =  '3600'
-  FIELD%TIMECOUNT        =  '2'
+  FIELD%TIMESTART        =  '19680228 000000'
+  FIELD%TIMESTRIDE       =  '86400'
+  FIELD%TIMECOUNT        =  '99'
   FIELD%LIST             =  'HS'
 /
 

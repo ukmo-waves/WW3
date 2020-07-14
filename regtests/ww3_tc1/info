@@ -18,13 +18,13 @@
 #     + one point grid without propagation.                                 #
 #     + Spectral grid: ntheta = 24, nf = 25 f1 = 0.042  , fgamma = 1.1      #
 #   * switch options :                                                      #
-#     + switch          : Ardhuin et al. (2010).                            #
+#     + switch          : WAM 3 phyics.                                     #
 #                                                                           #
 #  Example run_test commands:                                               #
 #  (some details will vary by local system and configuration)               #
-#  ./bin/run_test -w work_C365 -o netcdf ../model ww3_tc1                   #
-#
-#  ./bin/run_test -w work_C360 -o netcdf -i input_CAL360 ../model ww3_tc1   #
+#  ./bin/run_test -g STD  -w work_STD  -o netcdf ../model ww3_tc1           #
+#  ./bin/run_test -g C360 -w work_C360 -o netcdf ../model ww3_tc1           #
+#  ./bin/run_test -g C365 -w work_C365 -o netcdf ../model ww3_tc1           #
 #
 #                                              Hendrik Tolman, Jun 2002     #
 #                                                   Last Mod : Jun 2020     #
