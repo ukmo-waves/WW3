@@ -2007,7 +2007,10 @@
  if [ "$coup" = 'y' ]
  then
    echo ' ' >> matrix.body
-   echo "$rtst -s OASACM -w work_OASACM -C OASIS -i input_OASACM $ww3 ww3_tp2.14" >> matrix.body
+   echo "$rtst -s OASACM -w work_OASACM -c $cmplr -C OASIS -f -p $mpi -n $np -o netcdf $ww3 ww3_tp2.14" >> matrix.body
+   echo "$rtst -s OASACM2 -w work_OASACM2 -c $cmplr -C OASIS -f -p $mpi -n $np -o netcdf $ww3 ww3_tp2.14" >> matrix.body
+   echo "$rtst -s OASOCM -w work_OASOCM -c $cmplr -C OASIS -f -p $mpi -n $np -o netcdf $ww3 ww3_tp2.14" >> matrix.body
+   echo "$rtst -s OASICM -w work_OASICM -c $cmplr -C OASIS -f -p $mpi -n $np -o netcdf $ww3 ww3_tp2.14" >> matrix.body
  fi
 
 # --------------------------------------------------------------------------- #

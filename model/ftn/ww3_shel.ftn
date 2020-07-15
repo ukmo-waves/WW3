@@ -2414,6 +2414,7 @@
  2008 CONTINUE
       IF ( IAPROC .EQ. NAPERR ) WRITE (NDSE,1008) IERR
       CALL EXTCDE ( 1008 )
+!
 !/COU 2009 CONTINUE
 !/COU      IF ( IAPROC .EQ. NAPERR ) WRITE (NDSE,1009) ODAT(33), NINT(DTMAX)
 !/COU      CALL EXTCDE ( 1009 )
@@ -2556,13 +2557,16 @@
  1008 FORMAT (/' *** WAVEWATCH III ERROR IN W3SHEL : *** '/           &
                '     ERROR IN OPENING OUTPUT FILE'/                   &
                '     IOSTAT =',I5/)
+!
 !/COU 1009 FORMAT (/' *** WAVEWATCH III ERROR IN W3SHEL : *** '/           &
 !/COU               '     COUPLING TIME STEP NOT MULTIPLE OF'/             &
 !/COU               '     MODEL TIME STEP: ',I6, I6/)
+!
 !/COU 1010 FORMAT (/' *** WAVEWATCH III WARNING IN W3SHEL : *** '/         &
 !/COU               '     COUPLING TIME STEP NOT DEFINED, '/               &
 !/COU               '     IT WILL BE OVERRIDEN TO DEFAULT VALUE'/          &
 !/COU               '     FROM ',I6, ' TO ',I6/)
+!
  1054 FORMAT (/' *** WAVEWATCH III ERROR IN W3SHEL : *** '/           &
                '     POINT OUTPUT ACTIVATED BUT NO POINTS DEFINED'/)
 !

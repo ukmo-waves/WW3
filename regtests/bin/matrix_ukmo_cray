@@ -142,6 +142,13 @@ fi
 # 2.  Execute matrix.base ...                                                 #
 # --------------------------------------------------------------------------- #
              
+# Compiler configuration, required for coupling
+  if [ "$comp" == "GNU" ] ; then
+    export cmplr="ukmo_cray_gnu"
+  elif [ "$comp" == "CCE" ] ; then
+    export cmplr="ukmo_cray"
+  fi
+
   $main_dir/../regtests/bin/matrix.base
 
 # --------------------------------------------------------------------------- #
