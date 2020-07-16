@@ -53,6 +53,7 @@
 !/    14-Sep-2018 : Remove PALM implementation          ( version 6.06 )
 !/    04-Oct-2019 : Inline Output implementation        ( version 6.07 )
 !/                  (Roberto Padilla-Hernandez)
+!/    16-Jul-2020 : Variable coupling time step         ( version 7.08 )
 !/
 !/    Copyright 2009-2012 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights

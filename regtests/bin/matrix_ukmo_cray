@@ -63,6 +63,7 @@
 if [[ $comp == "CCE" ]]; then
   # Load targetted versions of Cray Development Tools (bug in Fortran StreamIO
   # for older versions) and netCDF/HDF5 modules:
+    export cmplr="ukmo_cray"
     echo "  module load  cdt/18.12"                         >> matrix.head
     echo "  module load cray-netcdf/4.6.1.3"                >> matrix.head
     echo "  module load cray-hdf5/1.10.2.0"                 >> matrix.head
@@ -70,6 +71,7 @@ if [[ $comp == "CCE" ]]; then
 elif [[ $comp == "GNU" ]]; then
     # ParMETIS library not currently working with Cray compiler.
     # Use GNU compiler for programs that use PDLIB.
+    export cmplr="ukmo_cray_gnu"
     echo "  module switch PrgEnv-cray PrgEnv-gnu/5.2.82"    >> matrix.head
     echo "  module load cray-netcdf"                        >> matrix.head
     echo "  export METIS_PATH=/home/d02/frey/WW3/ParMETIS_GNU" >> matrix.head
@@ -81,10 +83,9 @@ fi
   echo "  export WWATCH3_NETCDF=NC4"                        >> matrix.head
   echo "  export NETCDF_CONFIG=\$(which nc-config)"         >> matrix.head
 
-# Compiler option. Choose appropriate compiler and set cmplOption to
+# Compiler option. Set cmplOption to
 # y if using for the first time or using a different compiler
 
-  cmplr=cray_xc.${comp}
   export cmplOption='n'
 
   export  mpi='mpiexec'
@@ -142,13 +143,6 @@ fi
 # 2.  Execute matrix.base ...                                                 #
 # --------------------------------------------------------------------------- #
              
-# Compiler configuration, required for coupling
-  if [ "$comp" == "GNU" ] ; then
-    export cmplr="ukmo_cray_gnu"
-  elif [ "$comp" == "CCE" ] ; then
-    export cmplr="ukmo_cray"
-  fi
-
   $main_dir/../regtests/bin/matrix.base
 
 # --------------------------------------------------------------------------- #
