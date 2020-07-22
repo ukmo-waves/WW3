@@ -18,6 +18,7 @@ swtstr=$4
 echo ''
 echo '   setup coupling environment'
 export WWATCH3_DIR=`grep WWATCH3_DIR $WWATCH3_ENV | awk -F' ' '{print $2}' `
+export WWATCH3_CC=`grep WWATCH3_CC $WWATCH3_ENV | awk -F' ' '{print $2}' `
 
 echo '   compile oasis coupler'
 cd $path_i/oasis3-mct/util/make_dir
@@ -52,8 +53,7 @@ then
      # shorten comp_mpi
      comp_mpi_exe="$(echo $comp_mpi | awk -F' ' '{print $1}')"
      # sed cmplr.tmpl
-     sed -e "s/<optc_short>/$optcs/" -e "s/<optl_short>/$optls/" -e "s/<comp_mpi>/$comp_mpi/" -e "s/<comp_mpi_exe>/$comp_mpi_exe/" cmplr.tmpl > cmplr
-     sed -i "s/icc/gcc/g" cmplr
+     sed -e "s/<optc_short>/$optcs/" -e "s/<optl_short>/$optls/" -e "s/<comp_mpi>/$comp_mpi/" -e "s/<wwatch3_cc>/$WWATCH3_CC/" -e "s/<comp_mpi_exe>/$comp_mpi_exe/" cmplr.tmpl > cmplr
     echo "      sed cmplr.tmpl => cmplr"
   else
     echo "ERROR: cmplr.$cmplr not found" 2>&1
