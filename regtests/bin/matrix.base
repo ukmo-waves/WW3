@@ -86,7 +86,7 @@
   echo "  echo '      Multi 08 (with ice)                : $multi08'"          >> matrix.head
   echo "  echo '      Assim Update of the restart file   : $assim'"            >> matrix.head
   echo "  echo '      Atmosphere, ocean, and ice coupling: $coup'"             >> matrix.head
-  echo "  echo '      Calendar type                      : $calendar'"         >> matri
+  echo "  echo '      Calendar type                      : $calendar'"         >> matrix.head
   echo "  echo ' '"                                                            >> matrix.head
   if [ -n "$filter" ]
   then
