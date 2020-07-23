@@ -156,6 +156,7 @@
                                  XBPO(:), YBPO(:), RDBPO(:,:),         &
                                  ABPIN(:,:), ABPIN2(:,:,:)
 !/RTD      REAL, ALLOCATABLE     :: XTMP(:), YTMP(:), ANGTMP(:)
+!/RTD      LOGICAL               :: ISRTD
 !
       REAL, ALLOCATABLE       :: TMPSPCI(:,:),TMPSPCO(:,:)
       
@@ -213,6 +214,9 @@
 !
       CALL W3IOGR ( 'READ', NDSM )
       WRITE (NDSO,920) GNAME
+!/RTD!
+!/RTD      ISRTD = POLAT .LT. 90.0
+!/RTD!
 !
 !--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! 3.  Read requests from input file.
@@ -368,7 +372,7 @@
           END IF
         END DO
         ALLOCATE(XBPO(NBO),YBPO(NBO))
-!/RTD       ALLOCATE(XTMP(NBO), YTMP(NBO), ANGTMP(NBO))
+!/RTD       IF (ISRTD) ALLOCATE(XTMP(NBO), YTMP(NBO), ANGTMP(NBO))
         ALLOCATE (IPBPO(NBO,4),RDBPO(NBO,4))
         IBO=0
         DO ISEA=1,NSEA
@@ -389,13 +393,15 @@
             END SELECT !GTYPE
           END IF
         END DO
-!/RTD
-!/RTD        ! Convert grid boundary cell locations to standard pole
-!/RTD        XTMP = XBPO
-!/RTD        YTMP = YBPO
-!/RTD        CALL W3EQTOLL(YTMP, XTMP, YBPO, XBPO, ANGTMP, POLAT, POLON, NBO)
-!/RTD        DEALLOCATE(XTMP, YTMP, ANGTMP)
-!/RTD
+!/RTD!
+!/RTD        IF (ISRTD) THEN
+!/RTD          ! Convert grid boundary cell locations to standard pole
+!/RTD          XTMP = XBPO
+!/RTD          YTMP = YBPO
+!/RTD          CALL W3EQTOLL(YTMP, XTMP, YBPO, XBPO, ANGTMP, POLAT, POLON, NBO)
+!/RTD          DEALLOCATE(XTMP, YTMP, ANGTMP)
+!/RTD        ENDIF
+!/RTD!
 !
         OPEN(NDSB,FILE='nest.ww3',FORM='UNFORMATTED',status='unknown')
         ALLOCATE(DIMID(NBO2,3),DIMLN(NBO2,3),NCID(NBO2))
