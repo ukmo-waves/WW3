@@ -155,6 +155,7 @@ fi
   export     uost='y' # ww3_ts4 Unresolved Obstacles Source Term (UOST)
   export    assim='y' # Restart spectra update
   export     coup='y' # Atmosphere, ocean, and ice coupling
+  export calendar='y' # Calendar type
 
   export  multi01='y' # mww3_test_01 (wetting and drying)
   export  multi02='y' # mww3_test_02 (basic two-way nesting test))

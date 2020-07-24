@@ -31,7 +31,7 @@
              prop1D prop2D time fetch hur1mg \
              multi01 multi02 multi03 multi04 multi05 \
              hybd shwtr unstr pdlib smcgr mudice infgrv \
-             uost assim coup multi06 multi07 multi08
+             uost assim calendar coup multi06 multi07 multi08
   do
     eval " value=\$$par"
 #   echo "$par = $value"
@@ -86,6 +86,7 @@
   echo "  echo '      Multi 08 (with ice)                : $multi08'"          >> matrix.head
   echo "  echo '      Assim Update of the restart file   : $assim'"            >> matrix.head
   echo "  echo '      Atmosphere, ocean, and ice coupling: $coup'"             >> matrix.head
+  echo "  echo '      Calendar type                      : $calendar'"         >> matrix.head
   echo "  echo ' '"                                                            >> matrix.head
   if [ -n "$filter" ]
   then
@@ -2012,6 +2013,16 @@
    echo "$rtst -s OASOCM -w work_OASOCM -C OASIS -f -p $mpi -n $np -o netcdf $ww3 ww3_tp2.14" >> matrix.body
    echo "$rtst -s OASICM -w work_OASICM -C OASIS -f -p $mpi -n $np -o netcdf $ww3 ww3_tp2.14" >> matrix.body
  fi
+ 
+# 365_day and 360_day calendars, no switch sharing here
+
+  if [ "$calendar" = 'y' ] && [ "$shrd" = 'y' ]
+  then
+    echo ' ' >> matrix.body
+    echo "$rtst -g STD  -w work_STD  -o netcdf $ww3 ww3_tc1" >> matrix.body
+    echo "$rtst -g C360 -w work_C360 -o netcdf $ww3 ww3_tc1" >> matrix.body
+    echo "$rtst -g C365 -w work_C365 -o netcdf $ww3 ww3_tc1" >> matrix.body
+  fi
 
 # --------------------------------------------------------------------------- #
 # 3.  End of script output                                                    #
