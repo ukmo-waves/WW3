@@ -2014,9 +2014,8 @@
    echo "$rtst -s OASICM -w work_OASICM -C OASIS -f -p $mpi -n $np -o netcdf $ww3 ww3_tp2.14" >> matrix.body
  fi
  
-# 365_day and 360_day calendars, no switch sharing here
-
-  if [ "$calendar" = 'y' ] && [ "$shrd" = 'y' ]
+  # 365_day and 360_day calendars, no switch sharing here
+  if [ "$calendar" = 'y' ]
   then
     echo ' ' >> matrix.body
     echo "$rtst -g STD  -w work_STD  -o netcdf $ww3 ww3_tc1" >> matrix.body
