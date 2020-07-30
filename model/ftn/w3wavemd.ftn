@@ -80,6 +80,7 @@
 !/                  (M. Accensi & F. Ardhuin, IFREMER)
 !/    27-Aug-2015 : Update for ICEH, ICEF               ( version 5.08 )
 !/    14-Sep-2018 : Remove PALM implementation          ( version 6.06 )
+!/    30-Jul-2020 : Update oasis coupling condition     ( version 7.08 )
 !/
 !/    Copyright 2009-2014 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -2400,7 +2401,7 @@
 !/OASIS ! Send variables to atmospheric or ocean circulation or ice model
 !/OASIS !
 !/OASIS                              IF (DTOUT(7).NE.0) THEN
-!/OASIS                                IF ( (MOD(ID_OASIS_TIME/DTOUT(7),1.0)  .LT. 1.E-7 ) .AND. &
+!/OASIS                                IF ( (MOD(ID_OASIS_TIME, NINT(DTOUT(7))) .EQ. 0) .AND. &
 !/OASIS                                     (DSEC21 (TIME00, TIME) .GT. 0.0) ) THEN
 !/OASACM                                  CALL SND_FIELDS_TO_ATMOS()
 !/OASOCM                                  CALL SND_FIELDS_TO_OCEAN()

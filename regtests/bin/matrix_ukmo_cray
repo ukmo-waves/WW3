@@ -38,7 +38,7 @@
   # Set Cray compiler variant; CCE (Cray Compiler Environment) or GNU.
   # Use GNU for programs compiled with PDLIB, CCE for all others.
   comp="CCE"
-  #comp = "GNU"
+  #comp="GNU"
 
 
 # 1. Set up for compilation environemnt on Cray XC (broadwell processors)
