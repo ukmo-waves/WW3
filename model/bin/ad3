@@ -335,7 +335,6 @@ then
   $path_b/comp $name > comp.out.$name 2> comp.err.$name
   OK="$?"
 
-
 # 3.b Error escape location  - - - - - - - - - - - - - - - - - - - - - - - - -
   if [ "$OK" != '0' ]
   then

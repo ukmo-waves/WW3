@@ -85,6 +85,17 @@
            opt="$opt -I`$NETCDF_CONFIG --includedir`" ;;
     esac
   fi
+  
+  # drhook include and lib dir
+  if [ "$hook_mod" = 'yes' ]
+  then
+    if [ -z "$HOOK_INCDIR" ]
+    then
+      echo "ERROR: \$HOOK_INCDIR not defined"; echo ' '
+      return 1
+    fi
+    opt="$opt -I${HOOK_INCDIR}"
+  fi
 
   # ftn include dir
   opt="$opt -I$path_i"

@@ -132,6 +132,17 @@
       libs="$libs $METIS_PATH/lib/libparmetis.a $METIS_PATH/lib/libmetis.a"
     fi
   fi
+ 
+  # drhook library dir
+  if [ "$hook_mod" = 'yes' ]
+  then
+    if [ -z "$HOOK_LIBDIR" ]
+    then
+      echo "ERROR: \$HOOK_LIBDIR not defined"; echo ' '
+      exit 1
+    fi
+    libs="$libs -L$HOOK_LIBDIR -ldrhook"
+  fi
 
   # OMP support
   if [ "$omp_mod" = 'yes' ] ; then

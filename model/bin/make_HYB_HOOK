@@ -1,0 +1,180 @@
+#!/bin/bash -e
+# --------------------------------------------------------------------------- #
+# make_HOOK   : Script to manage consecutive compiling of parallel and non-   #
+#               parallel elements of WAVEWATCH III, using standard compile    #
+#               scripts. HYB version.                                         #
+#                                                                             #
+#                                                      Hendrik L. Tolman      #
+#                                                      April 2014             #
+#                                                                             #
+#    Copyright 2014 National Weather Service (NWS),                           #
+#       National Oceanic and Atmospheric Administration.  All rights          #
+#       reserved.  WAVEWATCH III is a trademark of the NWS.                   #
+#       No unauthorized use without permission.                               #
+#                                                                             #
+# --------------------------------------------------------------------------- #
+
+set -e
+
+# --------------------------------------------------------------------------- #
+# 1. Preparations                                                             #
+# --------------------------------------------------------------------------- #
+
+# 1.a ID header  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+  echo ' '
+  echo '                ************************************'
+  echo '             *** WAVEWATCH III compile for HYB_HOOK ***'
+  echo '                ************************************'
+  echo ' '
+
+
+# 1.c Read data from the environment file  - - - - - - - - - - - - - - - - - -
+
+  source $(dirname $0)/w3_setenv
+  main_dir=$WWATCH3_DIR
+  temp_dir=$WWATCH3_TMP
+  source=$WWATCH3_SOURCE
+  list=$WWATCH3_LIST
+
+
+# 1.d Check / make directories   - - - - - - - - - - - - - - - - - - - - - - -
+
+  # bin dir
+  if [ ! -d $main_dir/bin ]
+  then
+    echo ' '
+    echo "[ERROR] Directory $main_dir/bin not found"
+    echo '        Please check the content of your directory model'
+    exit 1
+  fi
+
+  # switch file
+  switch=switch_UKMO_gbl_drhook
+  switch_file=$main_dir/bin/$switch
+  if [ ! -e $switch_file ] || [ ! -r $switch_file ]
+  then
+    echo ' '
+    echo "[ERROR] switch file $switch_file not found"
+    echo "        Please run $main_dir/bin/w3_setup <main_dir> -c <comp> -s <switch>"
+    exit 1
+  else
+    echo ' '
+    echo "Using switch $switch_file, changes may be made to MPI/DIST/SHRD/OMP."
+  fi
+
+  # comp file
+  comp_file=$main_dir/bin/comp
+  if [ ! -e $comp_file ] || [ ! -r $comp_file ]
+  then
+    echo ' '
+    echo "[ERROR] comp file $comp_file not found"
+    echo "        Please run $main_dir/bin/w3_setup <main_dir> -c <comp> -s <switch>"
+    exit 1
+  fi
+
+  # link file
+  link_file=$main_dir/bin/link
+  if [ ! -e $link_file ] || [ ! -r $link_file ]
+  then
+    echo ' '
+    echo "[ERROR] link file $comp_file not found"
+    echo "        Please run $main_dir/bin/w3_setup <main_dir> -c <comp> -s <switch>"
+    exit 1
+  fi
+
+# 1.e Check NetCDF setup - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+  if [ -z "$WWATCH3_NETCDF" ]
+  then
+    ww3_NetCDF=
+  else
+    ww3_NetCDF="ww3_prnc ww3_ounf ww3_ounp ww3_bounc ww3_trnc ww3_prtide"
+  fi
+
+# --------------------------------------------------------------------------- #
+# 2. Process switch files                                                     #
+# --------------------------------------------------------------------------- #
+
+  ./sort_switch -e HOOK -r $switch
+  ./sort_switch -e HOKM -r $switch
+  ./sort_switch -v -r $switch
+
+  sed -e 's/DIST/SHRD/g' \
+      -e 's/OMPG //g'\
+      -e 's/OMPX //g'\
+      -e 's/OMPH //g'\
+      -e 's/MPI //g'                $switch_file > switch.SEQ
+  sed 's/SHRD/DIST MPI OMPH OMPG/g' switch.SEQ > switch.HYB
+
+  ./sort_switch -a HOOK -r switch.HYB
+  ./sort_switch -a HOKM -r switch.HYB
+
+  if [ -z $HOOK_INCDIR ]
+  then
+     echo "\$HOOK_INCDIR is not set. Please set it before continuing."
+     exit 1
+  fi
+
+  if [ -z $HOOK_LIBDIR ]
+  then
+     echo "\$HOOK_LIBDIR is not set. Please set it before continuing."
+     exit 1
+  fi
+
+# --------------------------------------------------------------------------- #
+# 3. Compile non-MPI codes                                                    #
+# --------------------------------------------------------------------------- #
+  echo "==> non-MPI/OMP"
+  rm -rf $temp_dir $main_dir/obj $main_dir/mod
+  rm -rf $main_dir/exe
+
+  cp switch switch.hold
+  cp switch.SEQ switch
+# ./w3_make ww3_grid ww3_strt ww3_prep ww3_outf ww3_outp ww3_trck ww3_grib \
+#         ww3_uprstr ww3_gspl ww3_gint gx_outf gx_outp ww3_systrk ww3_bound \
+#         $ww3_NetCDF
+  ./w3_make ww3_grid ww3_ounf 
+
+  mv ../exe/exec_type ../exe/exec_type_SEQ
+  cp -r ../exe ../exe_SEQ
+  mv $temp_dir ../tmp_SEQ
+# --------------------------------------------------------------------------- #
+# 3. Compile HYB codes                                                        #
+# --------------------------------------------------------------------------- #
+  echo "==> MPI/OMP"
+  cp switch.HYB switch
+
+  if [ $ESMFMKFILE ]
+  then
+    ./w3_make ww3_shel ww3_multi ww3_multi_esmf ww3_sbs1
+  else
+    ./w3_make ww3_shel 
+  fi
+  
+  mv ../exe/exec_type ../exe/exec_type_HYB
+  mv ../exe_SEQ/* ../exe
+  rm -r ../exe_SEQ
+  mv $temp_dir ../tmp_HYB
+
+# --------------------------------------------------------------------------- #
+# 4. Reset switch file                                                        #
+# --------------------------------------------------------------------------- #
+
+  mv switch.hold switch
+  mv switch.SEQ ../exe/
+  mv switch.HYB ../exe/
+
+# --------------------------------------------------------------------------- #
+# 5. Clean up                                                                 #
+# --------------------------------------------------------------------------- #
+
+
+  echo ' '
+  echo ' '
+  echo '                   *******************************'
+  echo '                 ***       End of program        ***'
+  echo '                   *******************************'
+  echo ' '
+
+# end of script ------------------------------------------------------------- #

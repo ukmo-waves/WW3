@@ -270,9 +270,9 @@
 !
       USE W3NMLSHELMD
 
-!/HOOK ! DrHook Modules
-!/HOOK USE parkind1, ONLY: jprb, jpim
-!/HOOK USE yomhook, ONLY: lhook, dr_hook
+!/HOOK      ! DrHook Modules
+!/HOOK      USE parkind1, ONLY: jprb, jpim
+!/HOOK      USE yomhook, ONLY: lhook, dr_hook
 
       IMPLICIT NONE
 !
@@ -307,7 +307,8 @@
 !/COU      INTEGER             :: OFL
 !/F90      INTEGER             :: CLKDT1(8), CLKDT2(8), CLKDT3(8) 
 !/MPI      INTEGER             :: IERR_MPI
-!
+!/MPI      LOGICAL             :: RUN
+
       REAL                :: FACTOR, DTTST, XX, YY,                    &
                              HA(NHMAX,-7:8), HD(NHMAX,-7:8),           &
                              HS(NHMAX,-7:8)
@@ -332,7 +333,7 @@
       CHARACTER(LEN=1024) :: FLDIN
       CHARACTER(LEN=80)   :: LINEIN
       CHARACTER(LEN=8)    :: WORDS(6)=''
-!/HOOK CHARACTER(LEN=*), PARAMETER :: routinename = 'W3SHEL'
+!/HOOK      CHARACTER(LEN=*), PARAMETER :: routinename = 'W3SHEL'
 !/COU      CHARACTER(LEN=30)       :: OFILE
 !
       LOGICAL             :: FLLSTL, FLLSTI, FLFLG, FLHOM, TFLAGI,     &
@@ -347,12 +348,11 @@
 !/OMPH      INTEGER             :: THRLEV
 !/OASIS      LOGICAL             :: L_MASTER    
 !
-!/HOOK !DrHook Variables
-!/HOOK INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-!/HOOK INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-!/HOOK REAL(KIND=jprb)               :: zhook_handle
-!/HOKM REAL(KIND=jprb)          :: zhook_handle_rendezvous
-!/
+!/HOOK      !DrHook Variables
+!/HOOK      INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK      REAL(KIND=jprb)               :: zhook_handle
+!/HOKM      REAL(KIND=jprb)          :: zhook_handle_rendezvous
 !/ ------------------------------------------------------------------- /
 !/
       DATA IDFLDS / 'ice param. 1 ' , 'ice param. 2 ' ,               &
@@ -391,6 +391,28 @@
 !/OASIS     OASISED=1
 !/PDLIB     LPDLIB = .TRUE.
 !  
+!/MEMCHECK      write(740+IAPROC,*) 'memcheck_____:', 'WW3_SHEL SECTION 1'
+!/MEMCHECK      call getMallocInfo(mallinfos)
+!/MEMCHECK      call printMallInfo(IAPROC,mallInfos)
+!
+!/OMPH      FLHYBR = .TRUE.
+
+!/OASIS IF (OASISED.EQ.1) THEN
+!/OASIS   CALL CPL_OASIS_INIT(MPI_COMM)
+!/OASIS ELSE
+!/DEBUGINIT      write(740+IAPROC,*), 'Before MPI_INIT, ww3_shel'
+!/MPI       CALL MPI_INITIALIZED ( RUN,IERR_MPI )  
+!/OMPH       ! For hybrid MPI-OpenMP specify required thread level. JGLi06Sep2019
+!/OMPH       IF( FLHYBR ) THEN
+!/OMPH         CALL MPI_INIT_THREAD( MPI_THREAD_FUNNELED, THRLEV, IERR_MPI)
+!/OMPH       ELSE
+!/MPI         CALL MPI_INIT ( IERR_MPI )
+!/OMPH       ENDIF
+!/DEBUGINIT      write(740+IAPROC,*), 'After MPI_INIT, ww3_shel'
+!/MPI      MPI_COMM = MPI_COMM_WORLD
+
+!/OASIS END IF
+!  
       CALL W3NMOD ( 1, 6, 6 )
       CALL W3NDAT (    6, 6 )
       CALL W3NAUX (    6, 6 )
@@ -402,29 +424,9 @@
       CALL W3SETA ( 1, 6, 6 )
       CALL W3SETO ( 1, 6, 6 )
       CALL W3SETI ( 1, 6, 6 )
-
-!/MEMCHECK      write(740+IAPROC,*) 'memcheck_____:', 'WW3_SHEL SECTION 1'
-!/MEMCHECK      call getMallocInfo(mallinfos)
-!/MEMCHECK      call printMallInfo(IAPROC,mallInfos)
 !
 !/SHRD      NAPROC = 1
 !/SHRD      IAPROC = 1
-!
-!/OMPH      FLHYBR = .TRUE.
-
-!/OASIS IF (OASISED.EQ.1) THEN
-!/OASIS   CALL CPL_OASIS_INIT(MPI_COMM)
-!/OASIS ELSE
-!/DEBUGINIT      write(740+IAPROC,*), 'Before MPI_INIT, ww3_shel'
-!/OMPH       ! For hybrid MPI-OpenMP specify required thread level. JGLi06Sep2019
-!/OMPH       IF( FLHYBR ) THEN
-!/OMPH         CALL MPI_INIT_THREAD( MPI_THREAD_FUNNELED, THRLEV, IERR_MPI)
-!/OMPH       ELSE
-!/MPI      CALL MPI_INIT      ( IERR_MPI )
-!/OMPH       ENDIF
-!/DEBUGINIT      write(740+IAPROC,*), 'After MPI_INIT, ww3_shel'
-!/MPI      MPI_COMM = MPI_COMM_WORLD
-!/OASIS END IF
 !
 !/NCC      CALL WW_CMP_START
 !/NCC      MPI_COMM = MPI_COMM_WW
@@ -434,8 +436,7 @@
 !/MPI      CALL MPI_COMM_RANK ( MPI_COMM, IAPROC, IERR_MPI )
 !/MPI      IAPROC = IAPROC + 1
 
-!/HOOK    CALL dr_hook(RoutineName,zhook_in,zhook_handle)
-
+!/HOOK      CALL dr_hook(routinename, zhook_in, zhook_handle)
 !
 !/NCO/!     IF ( IAPROC .EQ. 1 ) CALL W3TAGB                         &
 !/NCO/!                         ('WAVEFCST',1998,0007,0050,'NP21   ')
@@ -459,7 +460,6 @@
 !/COU      NDSO   =  333
 !/COU      NDSE   =  333
 !/COU      NDST   =  333
-
 
       NDSF(-7)  = 1008
       NDSF(-6)  = 1009
@@ -507,7 +507,10 @@
 
       IF ( IAPROC .EQ. NAPOUT ) WRITE (NDSO,900)
 !
-!/HOOK      IF ( IAPROC .EQ. NAPOUT ) WRITE (NDSO,'(A)') 'DrHook Enabled'
+!/HOOK      IF ( IAPROC .EQ. NAPOUT ) THEN
+!/HOOK          IF ( lhook ) WRITE (NDSO,'(A)') 'DrHook Enabled'
+!/HOOK      ENDIF
+
       IF ( IAPROC .EQ. NAPERR ) THEN
         NDSEN  = NDSE
       ELSE
@@ -586,7 +589,7 @@
 
 !/MEMCHECK       write(740+IAPROC,*) 'memcheck_____:', 'WW3_SHEL SECTION 2a'
 !/MEMCHECK       call getMallocInfo(mallinfos)
-!/MEMCHECK       call printMallInfo(IAPROC,mallInfos)
+!/MEMCHECK       call printMallInfo(IAPROMPIC,mallInfos)
 
 !
 !--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1308,9 +1311,9 @@
                        (NDSS,FILE=TRIM(FNMPRE)//'ww3_shel.scratch')
                 ELSE
                   NDSI2  = NDSS
-!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_1",zhook_in,zhook_handle_rendezvous)
+!/HOKM                  CALL dr_hook(routinename//"_rendezvous_1",zhook_in,zhook_handle_rendezvous)
 !/MPI                  CALL MPI_BARRIER (MPI_COMM,IERR_MPI)
-!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_1",zhook_out,zhook_handle_rendezvous)
+!/HOKM                  CALL dr_hook(routinename//"_rendezvous_1",zhook_out,zhook_handle_rendezvous)
                   OPEN (NDSS,FILE=TRIM(FNMPRE)//'ww3_shel.scratch')
                   REWIND (NDSS)
 !
@@ -1368,15 +1371,15 @@
               IF ( NPTS.EQ.0 .AND. IAPROC.EQ.NAPOUT )               &
                    WRITE (NDSO,2947)
               IF ( IAPROC .EQ. 1 ) THEN
-!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_2",zhook_in,zhook_handle_rendezvous)
+!/HOKM                CALL dr_hook(routinename//"_rendezvous_2",zhook_in,zhook_handle_rendezvous)
 !/MPI                CALL MPI_BARRIER ( MPI_COMM, IERR_MPI )
-!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_2",zhook_out,zhook_handle_rendezvous)
+!/HOKM                CALL dr_hook(routinename//"_rendezvous_2",zhook_out,zhook_handle_rendezvous)
                 CLOSE (NDSS,STATUS='DELETE')
               ELSE
                 CLOSE (NDSS)
-!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_3",zhook_in,zhook_handle_rendezvous)
+!/HOKM                CALL dr_hook(routinename//"_rendezvous_3",zhook_in,zhook_handle_rendezvous)
 !/MPI                CALL MPI_BARRIER ( MPI_COMM, IERR_MPI )
-!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_3",zhook_out,zhook_handle_rendezvous)
+!/HOKM                CALL dr_hook(routinename//"_rendezvous_3",zhook_out,zhook_handle_rendezvous)
               END IF
 !
 
@@ -1799,9 +1802,9 @@
 !
 
 !
-!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_4",zhook_in,zhook_handle_rendezvous)
+!/HOKM      CALL dr_hook(routinename//"_rendezvous_4",zhook_in,zhook_handle_rendezvous)
 !/MPI      CALL MPI_BARRIER ( MPI_COMM, IERR_MPI )
-!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_4",zhook_out,zhook_handle_rendezvous)
+!/HOKM      CALL dr_hook(routinename//"_rendezvous_4",zhook_out,zhook_handle_rendezvous)
 !
       IF ( IAPROC .EQ. NAPOUT ) THEN
 !/F90        CALL DATE_AND_TIME ( VALUES=CLKDT2 )
@@ -2439,9 +2442,9 @@
       CALL EXTCDE ( 1054 )
  2222 CONTINUE
 
-!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_5",zhook_in,zhook_handle_rendezvous)
+!/HOKM      CALL dr_hook(routinename//"_rendezvous_5",zhook_in,zhook_handle_rendezvous)
 !/MPI      CALL MPI_BARRIER ( MPI_COMM, IERR_MPI )
-!/HOKM    CALL dr_hook(RoutineName//"_rendezvous_5",zhook_out,zhook_handle_rendezvous)
+!/HOKM      CALL dr_hook(routinename//"_rendezvous_5",zhook_out,zhook_handle_rendezvous)
 
       IF ( IAPROC .EQ. NAPOUT ) THEN
 !/F90          CALL DATE_AND_TIME ( VALUES=CLKDT3 )
@@ -2458,7 +2461,7 @@
 !
 !/NCO/!     IF ( IAPROC .EQ. 1 ) CALL W3TAGE('WAVEFCST')
 
-!/HOOK    CALL dr_hook(RoutineName,zhook_out,zhook_handle)
+!/HOOK      IF ( lhook ) CALL dr_hook(routinename,zhook_out,zhook_handle)
 
 !/OASIS      IF (OASISED.EQ.1) THEN
 !/OASIS        CALL CPL_OASIS_FINALIZE

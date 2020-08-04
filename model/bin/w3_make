@@ -634,7 +634,6 @@ EOF
       fi
       export hook_mod
 
-
       # if esmf is included in program name, then the compile
       # requires DIST switch and the ESMFMKFILE is
       # processed to get required ESMF compile options

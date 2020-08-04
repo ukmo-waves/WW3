@@ -265,9 +265,9 @@
 ! 10. Source code :
 !
 !/ ------------------------------------------------------------------- /
-!/HOOK  ! DrHook Modules
-!/HOOK USE parkind1, ONLY: jprb, jpim
-!/HOOK USE yomhook, ONLY: lhook, dr_hook
+!/HOOK      ! DrHook Modules
+!/HOOK      USE parkind1, ONLY: jprb, jpim
+!/HOOK      USE yomhook, ONLY: lhook, dr_hook
 
       IMPLICIT NONE
 !/
@@ -285,15 +285,15 @@
       CHARACTER(128)          :: MSG
       CHARACTER(256)          :: LINE, TEST
 !/
-!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'NEXTLN'
+!/HOOK      CHARACTER(LEN=*), PARAMETER :: routinename = 'NEXTLN'
 
-!/HOOK  !DrHook Variables
-!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-!/HOOK  REAL(KIND=jprb)               :: zhook_handle
+!/HOOK      !DrHook Variables
+!/HOOK      INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK      REAL(KIND=jprb)               :: zhook_handle
 !/ ------------------------------------------------------------------- /
 !/
-!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
+!/HOOK      CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/S      CALL STRACE (IENT, 'NEXTLN')
 !
   100 CONTINUE
@@ -308,7 +308,7 @@
         ! otherwise, backup to beginning of line
           BACKSPACE ( NDSI, ERR=802, IOSTAT=IERR, IOMSG=MSG )
         ENDIF
-!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
+!/HOOK       CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !
   800 CONTINUE
@@ -726,9 +726,9 @@
 ! 10. Source code :
 !
 !/ ------------------------------------------------------------------- /
-!/HOOK  ! DrHook Modules
-!/HOOK USE parkind1, ONLY: jprb, jpim
-!/HOOK USE yomhook, ONLY: lhook, dr_hook
+!/HOOK      ! DrHook Modules
+!/HOOK      USE parkind1, ONLY: jprb, jpim
+!/HOOK      USE yomhook, ONLY: lhook, dr_hook
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -744,15 +744,15 @@
 !/F90      CHARACTER(LEN=5)        :: ZONE
 !/F90      INTEGER                 :: VALUES(8)
 !/
-!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'WWTIME'
+!/HOOK      CHARACTER(LEN=*), PARAMETER :: routinename = 'WWTIME'
 
-!/HOOK  !DrHook Variables
-!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-!/HOOK  REAL(KIND=jprb)               :: zhook_handle
+!/HOOK      !DrHook Variables
+!/HOOK      INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK      REAL(KIND=jprb)               :: zhook_handle
 !/ ------------------------------------------------------------------- /
 !/
-!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
+!/HOOK      CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 ! This is supposed to be standard F90
 !
 !/F90      STRNG = '--:--:--'
@@ -765,7 +765,7 @@
 !
 !/DUM      STRNG = '--:--:--'
 !
-!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
+!/HOOK      CALL dr_hook(RoutineName,zhook_out,zhook_handle)
       RETURN
 !/
 !/ End of WWTIME ----------------------------------------------------- /
@@ -1027,9 +1027,9 @@
 !   Routine is distinct from W3SPECTN since orders spectrum as dirn, freq
 !
 ! Subroutine arguments
-!/HOOK  ! DrHook Modules
-!/HOOK USE parkind1, ONLY: jprb, jpim
-!/HOOK USE yomhook, ONLY: lhook, dr_hook
+!/HOOK      ! DrHook Modules
+!/HOOK      USE parkind1, ONLY: jprb, jpim
+!/HOOK      USE yomhook, ONLY: lhook, dr_hook
         IMPLICIT NONE
         INTEGER, INTENT(IN) :: NFreq, NDirc          ! No. freq and dirn bins
         REAL,    INTENT(IN) :: Alpha                 ! Turning angle (degrees)
@@ -1041,19 +1041,19 @@
         REAL, Dimension(NFreq)      ::  Wrkfrq, Tmpfrq
         REAL, Dimension(NDirc,NFreq)::  Wrkspc
 
-!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'W3ACTURN'
+!/HOOK      CHARACTER(LEN=*), PARAMETER :: routinename = 'W3ACTURN'
 
-!/HOOK  !DrHook Variables
-!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-!/HOOK  REAL(KIND=jprb)               :: zhook_handle
+!/HOOK      !DrHook Variables
+!/HOOK      INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK      REAL(KIND=jprb)               :: zhook_handle
 
-!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
+!/HOOK      CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 
 ! Check input bin numbers
         IF( (NFreq .LT. 0) .OR. (NDirc .LT. 0) )  THEN
            PRINT*, " Invalid bin number NF or ND", NFreq, NDirc
-!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
+!/HOOK      CALL dr_hook(RoutineName,zhook_out,zhook_handle)
            RETURN
         ELSE
            Ddirc=360.0/FLOAT(NDirc)
@@ -1111,7 +1111,7 @@
 
 ! Spectral turning completed
 
-!/HOOK  CALL dr_hook(RoutineName,zhook_out,zhook_handle)
+!/HOOK      CALL dr_hook(RoutineName,zhook_out,zhook_handle)
        RETURN 
        END SUBROUTINE W3ACTURN
 !

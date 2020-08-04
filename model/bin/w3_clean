@@ -171,9 +171,10 @@ EOF
 
     # remove tmp folder if empty
     cd $main_dir
-    if [ "$(ls -A $temp_dir 2> /dev/null)" = "" ]
+    if [ $cleanup_model ]
     then
-      rm -r $temp_dir
+      echo "   Remove $temp_dir"
+      rm -fr $temp_dir
     fi
   fi
 

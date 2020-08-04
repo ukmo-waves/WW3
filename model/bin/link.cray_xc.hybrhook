@@ -1,7 +1,8 @@
-#!/bin/sh
+#!/bin/bash -e
 # --------------------------------------------------------------------------- #
-# comp  : Link script for use in ad3 - Customised for compilation on the      #
-#         IBM Power6 supercomputer using the xlf90_r compiler                 #
+# link  : Linker script for use in make (customized for hardware and          #
+#         optimization. Note that this script will not be replaced if part    #
+#         of WAVEWATCH III is re-installed.                                   #
 #                                                                             #
 # use   : link name [name ... ]                                               #
 #           name: name of source code file without the extension.             #
@@ -9,14 +10,16 @@
 #                                                                             #
 # error codes :  all error output directly to screen.                         #
 #                                                                             #
-#                                                      Hendrik L. Tolman      #
-#                                                      February 2005          #
+# remarks :                                                                   #
 #                                                                             #
-# Modification history:                                                       #
+#  - Upon (first) installation of WAVEWATCH III the user needs to check the   #
+#    existing compilers and options available in the script cmplr.env         #
 #                                                                             #
-#   26-Jan-2015  Modified original compile script for use on Cray XC          #
-#                                              (Chris Bunney, UK Met Office)  #
+#  - This version is a template for mpt/intel/gnu/pgi with optimized or       #
+#    debugging options by adding _debug                                       #
 #                                                                             #
+#                                                      M. Accensi             #
+#                                                      August   2018          #
 # --------------------------------------------------------------------------- #
 # 1. Preparations                                                             #
 # --------------------------------------------------------------------------- #
@@ -26,50 +29,20 @@
   then
     echo "usage: link name [name]" ; exit 1
   fi
-
   prog=$1
   echo "      Linking $prog"
   input="$*"
 
-# 1.b Internal variables - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 1.b Get data from setup file - - - - - - - - - - - - - - - - - - - - - - - - 
 
-  ww3_env="$HOME/.wwatch3.env"   # setup file
+  source $(dirname $0)/w3_setenv
+  main_dir=$WWATCH3_DIR
+  temp_dir=$WWATCH3_TMP
+  source=$WWATCH3_SOURCE
+  list=$WWATCH3_LIST
 
-# 1.c Read data from the environment file  - - - - - - - - - - - - - - - - - -
 
-  cd
-  if [ -f $ww3_env ]
-  then
-    set `grep WWATCH3_DIR $ww3_env` ; shift
-    main_dir="$*"
-    echo "*** Set main_dir as $main_dir ***"
-  else
-    echo "*** Set-up file $ww3_env not found ***"
-    exit 2
-  fi
-
-  if [ -n "`grep MPI $main_dir/bin/switch`" ]
-  then
-    export mpi_mod='yes'
-  else
-    export mpi_mod='no'
-  fi
-
-  if [ -n "`grep OMP $main_dir/bin/switch`" ]
-  then
-    export omp_mod='yes'
-  else
-    export omp_mod='no'
-  fi
-
-  if [ -n "`grep HOOK $main_dir/bin/switch`" ]
-  then
-    export hook_mod='yes'
-  else
-    export hook_mod='no'
-  fi
-
-# 1.d Initial clean-up - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# 1.c Initial clean-up - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
   rm -f $main_dir/exe/$prog
 
@@ -82,99 +55,115 @@
   error='n'
   set $input
 
-  # For limking with UKMO C I/O and COEX compression libraries (C Bunney) 
-  LINK_UKMO_LIBS="no"
-
   while [ "$#" -gt '0' ]
   do
     file=$1.o
     if [ -f "$file" ]
     then
       objects="$objects $file"
-
-      # ChrisB: if we are linking with w3iogoffmd, then set a flag
-      #         to link the portable C I/O and COEX compression libraries.
-      if [[ "$file" = "w3iogoffmd.o" || "$file" == "ww3_mgpp.o" || \
-            "$file" == "ww3_mopp.o" || "$file" == "ww3_moff.o" ]]; then
-         LINK_UKMO_LIBS="yes"
-      fi
     else
       echo "      *** file $file not found ***"
       error='y'
     fi
     shift
   done
+  if [ "$error" = 'y' ]
+  then
+    echo "*** Missing object files ***"
+    exit 3
+  fi
 
 # --------------------------------------------------------------------------- #
-# 3. Link all things                                                          #
+# 3. Link                                                                     #
 # --------------------------------------------------------------------------- #
-# Add here the correct linker call including switches
 
-# Intel compiler ------------------------------------------------------------
-# 3.a Build options and determine compiler name
-#     No GRIB libraries for this one
+# 3.a Build options and determine compiler name - - - - - - - - - - - - - - - -
 
-  # Chris B: Linker flags:
-  #
-  opt="-o $prog"
- 
-  if [ "$mpi_mod" = 'yes' ]
-  then
-    comp=ftn		# TODO: Same exec?
+  # compiler
+  if [ "$mpi_mod" = 'yes' ] ; then
+    comp='ftn'
   else
-    comp=ftn
+    comp='ftn'
   fi
 
-  # NETCDF :
-  # NOTE: Explicit setting of NetCDF paths on Cray is not required as this
-  # is handled by loading the cray-netcdf module
-  if [[ $prog = "ww3_ncop" || $prog = "ww3_ounf" || $prog = "ww3_ounp" || $prog = "ww3_smcnf" ]]; then
-      module load cray-netcdf
-      #NCLIB="${NCLIB} -L/critical/opt/hdf5/1.8.12_serial_xlf13/lib -lhdf5_hl -lhdf5 -lz"
-  else
-      module unload cray-netcdf
+  # linking options
+  opt="-o $prog -O3"
+
+  # oasis coupler archive
+  if [ "$prog" = 'ww3_shel' ] || [ "$prog" = 'ww3_multi' ] || [ "$prog" = 'ww3_sbs1' ] ||  \
+     [ "$prog" = 'ww3_prnc' ] || [ "$prog" = 'ww3_prep' ] || [ "$prog" = 'ww3_prtide' ] || \
+     [ "$prog" = 'ww3_gspl' ] ; then
+    if [ "$oasis_mod" = 'yes' ] ; then
+      if [ -z "$(env | grep OASISDIR)" ] ; then
+        echo ''
+        echo "[ERROR] OASISDIR is not defined"
+        exit 1
+      fi
+      echo "link with oasis"
+      libs="$libs $OASISDIR/lib/libpsmile.MPI1.a $OASISDIR/lib/libmct.a $OASISDIR/lib/libmpeu.a $OASISDIR/lib/libscrip.a"
+    fi
   fi
 
- # Chris B (UKMO) Link in the Met Office portable C I/O library
- # and data compression library:
- UKMO_LIBS="/home/nwp/ofrd/frey/FCM/wavelib"
- libs=""
- if [[ "$LINK_UKMO_LIBS" = "yes" ]]; then
-    libs="-L${UKMO_LIBS} -lcoex"
- fi
-
-# if [ "$omp_mod" = 'yes' ]
-# then
-#   opt="$opt -mp"
-# fi
-
-if [ "$hook_mod" = 'yes' ]
-then
-  if [ -z "$HOOK_LIBDIR" ]
+  # grib library
+  if [ "$ncep_grib_compile" = 'yes' ]
   then
-    echo "ERROR: \$HOOK_LIBDIR not defined"; echo ' '
-    exit 1
+    opt="$opt -convert big_endian -assume byterecl -prec-div -prec-sqrt -ip"
+    libs="$libs ${G2_LIB4} ${W3NCO_LIB4} ${BACIO_LIB4} ${JASPER_LIB} ${PNG_LIB} ${Z_LIB}"
   fi
-  libs="$libs -L$HOOK_LIBDIR -ldrhook"
-fi
 
-  case $prog in
-    'ww3_grib'  ) libs="$libs -L /nwprod/lib -l w3_4 -l bacio_4" ;;
-       *        ) libs="$libs" ;;
-  esac
-
-  if [ "$netcdf_compile" = 'yes' ]
-  then
+  # netcdf library dir
+  if [ "$netcdf_compile" = 'yes' ] ; then
     case $WWATCH3_NETCDF in
       NC3) libs="$libs -L$NETCDF_LIBDIR -lnetcdf" ;;
       NC4) if [ "$mpi_mod" = 'no' ]; then comp="`$NETCDF_CONFIG --fc`"; fi
            libs="$libs `$NETCDF_CONFIG --flibs`" ;;
     esac
   fi
+  
+  # drhook library dir
+  if [ "$hook_mod" = 'yes' ]
+  then
+    if [ -z "$HOOK_LIBDIR" ]
+    then
+      echo "ERROR: \$HOOK_LIBDIR not defined"; echo ' '
+      exit 1
+    fi
+    libs="$libs -L$HOOK_LIBDIR -ldrhook"
+  fi
 
-# 3.b Link
+  # parmetis library 
+  if [ "$prog" = 'ww3_shel' ] || [ "$prog" = 'ww3_multi' ] || [ "$prog" = 'ww3_sbs1' ] ; then
+    if [ "$pdlib_mod" = 'yes' ] ; then
+      if [ -z "$(env | grep METIS_PATH)" ] ; then
+        echo ''
+        echo "[ERROR] METIS_PATH is not defined"
+        exit 1
+      fi
+      echo "link with parmetis" 
+      libs="$libs $METIS_PATH/lib/libparmetis.a $METIS_PATH/lib/libmetis.a"
+    fi
+  fi
 
-  eval $comp $opt $objects $libs                         > link.out 2> link.err
+  # OMP support
+  if [ "$omp_mod" = 'yes' ] ; then
+    opt="$opt -h omp"
+  fi
+
+  opt="$opt $EXTRA_LINK_OPTIONS"
+
+# 3.b Link - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+  rprfx="-Wl,-rpath,"
+  rpath=
+  for path in $libs
+  do
+    if [ "${path:0:2}" = '-L' ]
+    then
+      rpath="$rpath ${rprfx}${path//-L/}"
+    fi
+  done
+
+  $comp $opt $objects $libs $rpath                  > link.out 2> link.err
   OK="$?"
 
 # --------------------------------------------------------------------------- #
@@ -191,6 +180,7 @@ fi
     echo ' '
     rm -f link.???
     rm -f $prog
+    exit $OK
   else
     if [ ! -f $prog ]
     then
@@ -201,6 +191,7 @@ fi
       cat link.err
       echo ' '
       rm -f link.???
+      exit 1
     else
       mv $prog $main_dir/exe/.
       rm -f link.???

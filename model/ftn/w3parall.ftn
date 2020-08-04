@@ -1300,27 +1300,24 @@
 !/
 !/ ------------------------------------------------------------------- /
 !/
-!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'INIT_GET_ISEA'
-
-!/HOOK  !DrHook Variables
-!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-!/HOOK  REAL(KIND=jprb)               :: zhook_handle
 !/
 !/ ------------------------------------------------------------------- /
 !/
 !/ ------------------------------------------------------------------- /
 !
-      USE W3ODATMD, ONLY: OUTPTS, IAPROC, NAPROC
-      USE W3GDATMD, ONLY: GTYPE, UNGTYPE
-      USE CONSTANTS, ONLY : LPDLIB
-!/PDLIB      USE YOWNODEPOOL, ONLY: iplg
       IMPLICIT NONE
 !/S      INTEGER, SAVE           :: IENT = 0
       INTEGER, intent(in) :: JSEA
       INTEGER, intent(out) :: ISEA
-!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
+!/HOOK  CHARACTER(LEN=*), PARAMETER :: routinename = 'INIT_GET_ISEA'
+!/HOOK  !DrHook Variables
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+!/HOOK  INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+!/HOOK  REAL(KIND=jprb)               :: zhook_handle
+
 !/S      CALL STRACE (IENT, 'INIT_GET_ISEA')
+
+!/HOOK  CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 !/SHRD          ISEA         = JSEA
 !/DIST          IF (.NOT. LPDLIB) THEN
 !/DIST            ISEA         = IAPROC + (JSEA-1)*NAPROC

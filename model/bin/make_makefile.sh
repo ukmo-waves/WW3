@@ -569,6 +569,8 @@
       echo ' '
       echo "   *** !/B4B should be used in combination with !/OMPG, !/OMPH or !/OMPX"
       echo ' ' ; exit 10
+  fi
+
   if [ "$hook1" = 'HOKM' ]
   then
       echo ' '
