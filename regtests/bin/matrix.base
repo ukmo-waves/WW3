@@ -31,7 +31,6 @@
              prop1D prop2D time fetch hur1mg \
              multi01 multi02 multi03 multi04 multi05 \
              hybd shwtr unstr pdlib smcgr mudice infgrv \
-             uost assim calendar multi06 multi07 multi08
              uost assim calendar oasis multi06 multi07 multi08
   do
     eval " value=\$$par"
