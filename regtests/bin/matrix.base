@@ -32,6 +32,7 @@
              multi01 multi02 multi03 multi04 multi05 \
              hybd shwtr unstr pdlib smcgr mudice infgrv \
              uost assim calendar multi06 multi07 multi08
+             uost assim calendar oasis multi06 multi07 multi08
   do
     eval " value=\$$par"
 #   echo "$par = $value"
@@ -85,6 +86,7 @@
   echo "  echo '      Multi 07 (unstr. + reg. grds)      : $multi07'"          >> matrix.head
   echo "  echo '      Multi 08 (with ice)                : $multi08'"          >> matrix.head
   echo "  echo '      Assim Update of the restart file   : $assim'"            >> matrix.head
+  echo "  echo '      OASIS coupling                     : $oasis'"            >> matrix.head
   echo "  echo '      Calendar type                      : $calendar'"         >> matrix.head
   echo "  echo ' '"                                                            >> matrix.head
   if [ -n "$filter" ]
@@ -888,6 +890,7 @@
     echo "$rtst -s ST2      -w work_ST2      $ww3 ww3_ts1" >> matrix.body
     echo "$rtst -s ST3      -w work_ST3      $ww3 ww3_ts1" >> matrix.body
     echo "$rtst -s ST4      -w work_ST4      $ww3 ww3_ts1" >> matrix.body
+    echo "$rtst -s ST4      -w work_ST4_T700 -g ST4_T700 -N $ww3 ww3_ts1" >> matrix.body
     echo "$rtst -s ST4_WRT  -w work_ST4_WRT  $ww3 ww3_ts1" >> matrix.body
     echo "$rtst -s ST4_GMD  -w work_ST4_GMD  $ww3 ww3_ts1" >> matrix.body
     echo "$rtst -s ST4_TSA  -w work_ST4_TSA  $ww3 ww3_ts1" >> matrix.body
@@ -2003,9 +2006,18 @@
    echo "$rtst -s ST4 -w work_UPD6_U_cap -i input_UPD6_U_cap $ww3 ww3_ta1" >> matrix.body
   fi
 
-# 365_day and 360_day calendars, no switch sharing here
-
-  if [ "$calendar" = 'y' ] && [ "$shrd" = 'y' ]
+ #Test of atmosphere, ocean, and ice coupling using OASIS 
+ if [ "$oasis" = 'y' ] && [ "$dist" = 'y' ]
+ then
+   echo ' ' >> matrix.body
+   echo "$rtst -s OASACM -w work_OASACM -C OASIS -f -p $mpi -n $np -o netcdf $ww3 ww3_tp2.14" >> matrix.body
+   echo "$rtst -s OASACM2 -w work_OASACM2 -C OASIS -f -p $mpi -n $np -o netcdf $ww3 ww3_tp2.14" >> matrix.body
+   echo "$rtst -s OASOCM -w work_OASOCM -C OASIS -f -p $mpi -n $np -o netcdf $ww3 ww3_tp2.14" >> matrix.body
+   echo "$rtst -s OASICM -w work_OASICM -C OASIS -f -p $mpi -n $np -o netcdf $ww3 ww3_tp2.14" >> matrix.body
+ fi
+ 
+  # 365_day and 360_day calendars, no switch sharing here
+  if [ "$calendar" = 'y' ]
   then
     echo ' ' >> matrix.body
     echo "$rtst -g STD  -w work_STD  -o netcdf $ww3 ww3_tc1" >> matrix.body
