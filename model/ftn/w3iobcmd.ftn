@@ -104,7 +104,7 @@
 !/    01-Mar-2018 : Rotate boundary points and directions 
 !/                  of input spectra for rotated grids  ( version 6.02 )
 !/    07-Oct-2019 : RTD option with standard lat-lon
-!/                  grid when nesting to rotated grid   ( version 7.xx )
+!/                  grid when nesting to rotated grid   ( version 7.11 )
 !/
 !  1. Purpose :
 !
