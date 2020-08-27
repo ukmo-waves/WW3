@@ -7,7 +7,7 @@
 !/                  |           M. Accensi              |
 !/                  |                                   |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         04-Jan-2018 |
+!/                  | Last update :         24-Aug-2020 |
 !/                  +-----------------------------------+
 !/
 !/    For updates see subroutines.
@@ -136,12 +136,17 @@
 !/COU    CHARACTER(1024)             :: RECEIVED
 !/COU  END TYPE NML_COUPLING_T
 !
+  TYPE NML_RESTART_T
+    CHARACTER(1024)             :: EXTRA
+  END TYPE NML_RESTART_T
+!
   TYPE NML_OUTPUT_TYPE_T
     TYPE(NML_POINT_T)           :: POINT
     TYPE(NML_FIELD_T)           :: FIELD
     TYPE(NML_TRACK_T)           :: TRACK
     TYPE(NML_PARTITION_T)       :: PARTITION
 !/COU    TYPE(NML_COUPLING_T)       :: COUPLING
+    TYPE(NML_RESTART_T)         :: RESTART
   END TYPE NML_OUTPUT_TYPE_T
 
 
@@ -906,11 +911,12 @@
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |           M. Accensi              |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         15-May-2018 |
+!/                  | Last update :         24-Aug-2020 |
 !/                  +-----------------------------------+
 !/
 !/    09-Aug-2016 : Adding comments                     ( version 5.12 )
 !/    15-May-2018 : Update namelist                     ( version 6.05 )
+!/    24-Aug-2020 : Update namelist                     ( version 7.xx )
 !/
 !  1. Purpose :
 !
@@ -998,6 +1004,7 @@
       ITYPE(I)%PARTITION%FORMAT = .TRUE.
 !/COU      ITYPE(I)%COUPLING%SENT      = 'unset'
 !/COU      ITYPE(I)%COUPLING%RECEIVED  = 'unset'
+      ITYPE(I)%RESTART%EXTRA = 'unset'
     END DO
     ALLTYPE%FIELD%LIST   = 'unset'
     ALLTYPE%POINT%NAME   = 'unset'
@@ -1012,6 +1019,7 @@
     ALLTYPE%PARTITION%FORMAT = .TRUE.
 !/COU    ALLTYPE%COUPLING%SENT      = 'unset'
 !/COU    ALLTYPE%COUPLING%RECEIVED  = 'unset'
+    ALLTYPE%RESTART%EXTRA = 'unset'
 
 
     ! read OUTPUT_TYPE namelist
@@ -1700,11 +1708,12 @@
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |           M. Accensi              |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         15-May-2018 |
+!/                  | Last update :         24-Aug-2020 |
 !/                  +-----------------------------------+
 !/
 !/    09-Aug-2016 : Adding comments                     ( version 5.12 )
 !/    15-May-2018 : Update namelist                     ( version 6.05 )
+!/    24-Aug-2020 : Update namelist                     ( version 7.xx )
 !/
 !  1. Purpose :
 !
@@ -1782,6 +1791,7 @@
       WRITE (NDSN,13) TRIM(MSG),'PARTITION % FORMAT   = ', NML_OUTPUT_TYPE(I)%PARTITION%FORMAT
 !/COU      WRITE (NDSN,10) TRIM(MSG),'COUPLING % SENT         = ', TRIM(NML_OUTPUT_TYPE(I)%COUPLING%SENT)
 !/COU      WRITE (NDSN,10) TRIM(MSG),'COUPLING % RECEIVED     = ', TRIM(NML_OUTPUT_TYPE(I)%COUPLING%RECEIVED)
+      WRITE (NDSN,10) TRIM(MSG),'RESTART % EXTRA      = ', TRIM(NML_OUTPUT_TYPE(I)%RESTART%EXTRA)
     END DO
     WRITE (NDSN,'(A)')
 

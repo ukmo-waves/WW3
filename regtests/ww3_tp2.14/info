@@ -18,7 +18,7 @@
 # -a makefile must be defined in the oasis3-mct/util/make_dir with the      #
 #  same extension as comp & link in ww3 bin folder                          #
 #                                                                           #
-# -netCDF4 librairies must be installed and NETCDF variables setup          #
+# -netCDF4 libraries must be installed and NETCDF variables setup           #
 #                                                                           #
 # Remarks :                                                                 #
 #                                                                           #
