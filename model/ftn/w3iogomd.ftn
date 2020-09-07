@@ -656,6 +656,7 @@
            CASE('U2')
              FLG2D(10,2)=.TRUE.
 !/COU           CASE('DRY')
+           CASE('UNSET')
            CASE DEFAULT
              IF ( IAPROC .EQ. NAPOUT ) WRITE (NDSEN,1004) TRIM(TESTSTR)
            END SELECT
