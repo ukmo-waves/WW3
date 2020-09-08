@@ -309,6 +309,8 @@ $
 $ Type 4 : Restart files (no additional data required).
 $                               The data file is restartN.ww3, see
 $                               w3iors.ftn for additional doc.
+$          Flag for second restart (data server mode)
+$          Flag for extra fields in the restart file (coupling restart)
 $
    19680606 030000  3600  19680607 030000 F F
 $

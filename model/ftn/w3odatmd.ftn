@@ -144,10 +144,10 @@
 !      IRQGO     I.A.  Public   Array with MPI handles W3IOGO.
 !      FLOGRD    L.A.  Public   FLags for output fields.
 !      FLOGR2    L.A.  Public   FLags for coupling fields.
-!      FLOGRR    L.A.  Public   FLags for coupling restart.
+!      FLOGRR    L.A.  Public   FLags for optional coupling restart (2D).
 !      FLOGD     L.A.  Public   Flags for output groups
 !      FLOG2     L.A.  Public   Flags for coupling groups
-!      FLOGR     L.A.  Public   FLags for coupling restart.
+!      FLOGR     L.A.  Public   FLags for optional coupling restart (1D).
 !     ----------------------------------------------------------------
 !
 !     Elements of OUT2 are aliased to pointers with the same
