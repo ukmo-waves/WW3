@@ -257,7 +257,6 @@
       USE W3IOGRMD, ONLY: W3IOGR
       USE W3IOGOMD, ONLY: W3READFLGRD, FLDOUT, W3FLGRDFLAG
       USE W3IOPOMD
-      USE W3IORSMD, ONLY : OARST
       USE W3SERVMD, ONLY : NEXTLN, EXTCDE
       USE W3TIMEMD
 !/MEMCHECK      USE MallocInfo_m
@@ -1252,14 +1251,11 @@
             WRITE(*,*)(ODAT(I),I=5*(8-1)+1,5*8)
           END IF
           IF (WORDS(7) .EQ. 'T') THEN
-            OARST = .TRUE.
             CALL NEXTLN ( COMSTR , NDSI , NDSEN )
             READ (NDSI,*,END=2001,ERR=2002) FLDRST
             CALL W3FLGRDFLAG ( NDSO, NDSO, NDSE, FLDRST, FLOGR,  &
                                FLOGRR, IAPROC, NAPOUT, IERR )
             IF ( IERR .NE. 0 ) GOTO 2222
-          ELSE
-            OARST = .FALSE.
           END IF
         ELSE
 !
