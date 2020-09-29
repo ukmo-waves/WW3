@@ -256,6 +256,7 @@
 !/
       USE W3IOGRMD, ONLY: W3IOGR
       USE W3IOGOMD, ONLY: W3READFLGRD, FLDOUT, W3FLGRDFLAG
+      USE W3IORSMD, ONLY: OARST
       USE W3IOPOMD
       USE W3SERVMD, ONLY : NEXTLN, EXTCDE
       USE W3TIMEMD
@@ -1460,16 +1461,6 @@
 
         ! force minimal allocation to avoid memory seg fault
         IF ( .NOT.ALLOCATED(X) .AND. NPTS.EQ.0 ) ALLOCATE ( X(1), Y(1), PNAMES(1) )
-! 
-!/COU        ! Sent coupled fields must be written in the restart when coupling at T+0
-!/COU        IF (CPLT0) THEN
-!/COU          DO J=1, NOGRP
-!/COU            FLOGR(J)  = FLOGR(J)  .OR. FLG2(J)
-!/COU            DO I=1, NGRPP
-!/COU              FLOGRR(J,I) = FLOGRR(J,I) .OR. FLGR2(J,I)
-!/COU            END DO
-!/COU          END DO
-!/COU        ENDIF
 
 ! 2.6 Homogeneous field data
 
@@ -1799,6 +1790,18 @@
 !/TIDE        IF (FLAGSTIDE(1)) CALL W3FLDTIDE1 ( 'READ',  NDSF(1), NDST, NDSEN, NX, NY, IDSTR(1), IERR )
 !/TIDE        IF (FLAGSTIDE(2)) CALL W3FLDTIDE1 ( 'READ',  NDSF(2), NDST, NDSEN, NX, NY, IDSTR(2), IERR )
 !/TIDE      END IF
+! 
+!/COU      ! Sent coupled fields must be written in the restart when coupling at T+0
+!/COU      IF (CPLT0) THEN
+!/COU        DO J=1, NOGRP
+!/COU          FLOGR(J)  = FLOGR(J)  .OR. FLG2(J)
+!/COU          DO I=1, NGRPP
+!/COU            FLOGRR(J,I) = FLOGRR(J,I) .OR. FLGR2(J,I)
+!/COU          END DO
+!/COU        END DO
+!/COU      ENDIF
+!
+      OARST = ANY(FLOGR)
 !
      CALL W3INIT ( 1, .FALSE., 'ww3', NDS, NTRACE, ODAT, FLGRD, FLGR2, FLGD,    &
                    FLG2, NPTS, X, Y, PNAMES, IPRT, PRTFRM, MPI_COMM,   &
