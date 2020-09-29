@@ -58,7 +58,7 @@
 !/
 !/ Private parameter statements (ID strings)
 !/
-      CHARACTER(LEN=10), PARAMETER, PRIVATE :: VERINI = '2020-08-24'
+      CHARACTER(LEN=10), PARAMETER, PRIVATE :: VERINI = '2020-09-25'
       CHARACTER(LEN=26), PARAMETER, PRIVATE ::                        &
                                IDSTR = 'WAVEWATCH III RESTART FILE'
 !/
@@ -70,7 +70,7 @@
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |           H. L. Tolman            |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         24-Aug-2020 |
+!/                  | Last update :         25-Sep-2020 |
 !/                  +-----------------------------------+
 !/
 !/    12-Jan-1999 : Final FORTRAN 77                    ( version 1.18 )
@@ -103,7 +103,7 @@
 !/    19-Dec-2019 : Optional second stream of           ( version 7.00 )
 !/                  restart files 
 !/                  (Roberto Padilla-Hernandez & J.H. Alves)
-!/    24-Aug-2020 : Extra fields for coupled restart    ( version 7.xx )
+!/    25-Sep-2020 : Extra fields for coupled restart    ( version 7.xx )
 
 !/
 !/    Copyright 2009-2013 National Weather Service (NWS),

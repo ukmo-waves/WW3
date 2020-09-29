@@ -7,7 +7,7 @@
 !/                  |           M. Accensi              |
 !/                  |                                   |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         24-Aug-2020 |
+!/                  | Last update :         25-Sep-2020 |
 !/                  +-----------------------------------+
 !/
 !/    For updates see subroutines.
@@ -912,12 +912,12 @@
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |           M. Accensi              |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         24-Aug-2020 |
+!/                  | Last update :         25-Sep-2020 |
 !/                  +-----------------------------------+
 !/
 !/    09-Aug-2016 : Adding comments                     ( version 5.12 )
 !/    15-May-2018 : Update namelist                     ( version 6.05 )
-!/    24-Aug-2020 : Update namelist                     ( version 7.xx )
+!/    25-Sep-2020 : Update namelist                     ( version 7.xx )
 !/
 !  1. Purpose :
 !
@@ -1711,12 +1711,12 @@
 !/                  | WAVEWATCH III           NOAA/NCEP |
 !/                  |           M. Accensi              |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         24-Aug-2020 |
+!/                  | Last update :         25-Sep-2020 |
 !/                  +-----------------------------------+
 !/
 !/    09-Aug-2016 : Adding comments                     ( version 5.12 )
 !/    15-May-2018 : Update namelist                     ( version 6.05 )
-!/    24-Aug-2020 : Update namelist                     ( version 7.xx )
+!/    25-Sep-2020 : Update namelist                     ( version 7.xx )
 !/
 !  1. Purpose :
 !
