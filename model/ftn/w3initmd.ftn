@@ -57,7 +57,7 @@
 !/    05-Jun-2018 : Adds PDLIB/MEMCHECK/DEBUG           ( version 6.04 )
 !/    21-Aug-2018 : Add WBT parameter                   ( version 6.06 )
 !/    26-Aug-2018 : UOST (Mentaschi et al. 2015, 2018)  ( version 6.06 )
-!/    24-Aug-2020 : Extra fields for coupling restart   ( version 7.xx )
+!/    25-Sep-2020 : Extra fields for coupling restart   ( version 7.xx )
 !/
 !/    Copyright 2009-2013 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -846,16 +846,6 @@
 !
 ! 3.  Model initialization ------------------------------------------- /
 ! 3.a Read restart file
-!
-!/COU      ! Sent coupled fields must be written in the restart
-!/COU      DO J=1, NOGRP
-!/COU        FLOGR(J)  = FLOGR(J)  .OR. FLG2(J)
-!/COU        DO K=1, NGRPP
-!/COU          FLOGRR(J,K) = FLOGRR(J,K) .OR. FLGR2(J,K)
-!/COU        END DO
-!/COU      END DO
-!
-      OARST = ANY(FLOGR)
 !
       VA(:,:) = 0.
 !/DEBUGMPI     CALL TEST_MPI_STATUS("Case 15")

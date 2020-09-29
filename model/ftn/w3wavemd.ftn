@@ -249,7 +249,7 @@
 !/                  OASIS/DEBUGINIT/DEBUGSRC/DEBUGRUN/DEBUGCOH
 !/                  DEBUGIOBP/DEBUGIOBC                 ( version 6.04 )
 !/    14-Sep-2018 : Remove PALM implementation          ( version 6.06 )
-!/    24-Aug-2020 : Oasis coupling at T+0               ( version 7.xx )
+!/    25-Sep-2020 : Oasis coupling at T+0               ( version 7.xx )
 !/
 !  1. Purpose :
 !
@@ -396,7 +396,7 @@
 !/SETUP      USE W3WAVSET, only : WAVE_SETUP_COMPUTATION
 !/NETCDF_QAD      USE W3NETCDF, only : OUTPUT_NETCDF_QUICK_AND_DIRTY
 
-!/OASIS      USE W3OACPMD, ONLY: ID_OASIS_TIME
+!/OASIS      USE W3OACPMD, ONLY: ID_OASIS_TIME, CPLT0
 !/OASOCM      USE W3OGCMMD, ONLY: SND_FIELDS_TO_OCEAN
 !/OASACM      USE W3AGCMMD, ONLY: SND_FIELDS_TO_ATMOS
 !/OASICM      USE W3IGCMMD, ONLY: SND_FIELDS_TO_ICE
@@ -2436,13 +2436,16 @@
 !/OASIS                        !
 !/OASIS                        IF (DTOUT(7).NE.0) THEN
 !/OASIS                          IF ( (MOD(ID_OASIS_TIME/DTOUT(7),1.0)  .LT. 1.E-7 ) .AND. &
-!/OASIS                               (DSEC21 (TIME00, TIME) .GT. 0.0) .AND.               &
-!/OASIS                               (DSEC21 (TIME, TIMEN) .GT. 0.0) ) THEN
-!/OASIS                            ID_OASIS_TIME = NINT(DSEC21 ( TIME00 , TIME ))
+!/OASIS                               (DSEC21 (TIME00, TIME) .GT. 0.0) ) THEN 
+!/OASIS                            IF ( (CPLT0 .AND. (DSEC21 (TIME, TIMEN) .GT. 0.0)) .OR. &
+!/OASIS                                  .NOT. CPLT0 ) THEN
+!/OASIS                              IF (CPLT0) ID_OASIS_TIME = NINT(DSEC21 ( TIME00 , TIME ))
 !/OASIS
-!/OASACM                            CALL SND_FIELDS_TO_ATMOS()
-!/OASOCM                            CALL SND_FIELDS_TO_OCEAN()
-!/OASICM                            CALL SND_FIELDS_TO_ICE()
+!/OASACM                             CALL SND_FIELDS_TO_ATMOS()
+!/OASOCM                             CALL SND_FIELDS_TO_OCEAN()
+!/OASICM                             CALL SND_FIELDS_TO_ICE()
+!/OASIS                              IF (.NOT. CPLT0) ID_OASIS_TIME = NINT(DSEC21 ( TIME00 , TIME ))
+!/OASIS                            ENDIF
 !/OASIS                          ENDIF
 !/OASIS                        ENDIF
                         END IF

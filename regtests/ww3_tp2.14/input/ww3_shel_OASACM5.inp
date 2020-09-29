@@ -118,7 +118,7 @@ $ Type 7 : Coupling. (must be fully commented if not used with switch COU)
 $          Namelist type selection is used here.
 $          Diagnostic fields to exchange. (see namcouple for more information)
 $
-   20110902 020000  360  20110902 030000
+   20110902 020000  360  20110902 030000 T
  N
 $
 $   - Sent fields by ww3:

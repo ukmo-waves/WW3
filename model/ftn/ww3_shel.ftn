@@ -267,7 +267,7 @@
 !/NCC      USE WW_cc, ONLY: MPI_COMM_WW
 !/OASIS USE W3OACPMD, ONLY: CPL_OASIS_INIT, CPL_OASIS_GRID,            &
 !/OASIS                     CPL_OASIS_DEFINE, CPL_OASIS_FINALIZE,      &
-!/OASIS                     ID_OASIS_TIME
+!/OASIS                     ID_OASIS_TIME, CPLT0
 !/OASOCM      USE W3OGCMMD, ONLY: SND_FIELDS_TO_OCEAN
 !/OASACM      USE W3AGCMMD, ONLY: SND_FIELDS_TO_ATMOS
 !/OASICM      USE W3IGCMMD, ONLY: SND_FIELDS_TO_ICE
@@ -936,6 +936,7 @@
 !/COU                                 FLGR2, IAPROC, NAPOUT, IERR )
 !/COU              IF ( IERR .NE. 0 ) GOTO 2222
 !/COU              FLDIN = NML_OUTPUT_TYPE%COUPLING%RECEIVED
+!/COU              CPLT0 = NML_OUTPUT_TYPE%COUPLING%COUPLET0
 
             END IF ! J
           END IF ! ODAT
@@ -1289,6 +1290,22 @@
           END IF
 
 
+!/COU        ELSE IF(J .EQ. 7) THEN
+!/COU          WORDS(1:6)=''
+!/COU          READ (NDSI,'(A)') LINEIN
+!/COU          READ(LINEIN,*,iostat=ierr) WORDS
+!/COU 
+!/COU          READ(WORDS( 1 ), * ) ODAT(31)
+!/COU          READ(WORDS( 2 ), * ) ODAT(32)
+!/COU          READ(WORDS( 3 ), * ) ODAT(33)
+!/COU          READ(WORDS( 4 ), * ) ODAT(34)
+!/COU          READ(WORDS( 5 ), * ) ODAT(35)
+!/COU 
+!/COU          IF (WORDS(6) .EQ. 'T') THEN
+!/COU            CPLT0 = .TRUE.
+!/COU          ELSE
+!/COU            CPLT0 = .FALSE.
+!/COU          END IF
         ELSE
           OFILES(J)=0
           READ (NDSI,*,END=2001,ERR=2002)(ODAT(I),I=5*(J-1)+1,5*J)
@@ -1774,6 +1791,16 @@
 !/TIDE        IF (FLAGSTIDE(2)) CALL W3FLDTIDE1 ( 'READ',  NDSF(2), NDST, NDSEN, NX, NY, IDSTR(2), IERR )
 !/TIDE      END IF
 ! 
+!/COU      ! Sent coupled fields must be written in the restart when coupling at T+0
+!/COU      IF (CPLT0) THEN
+!/COU        DO J=1, NOGRP
+!/COU          FLOGR(J)  = FLOGR(J)  .OR. FLG2(J)
+!/COU          DO I=1, NGRPP
+!/COU            FLOGRR(J,I) = FLOGRR(J,I) .OR. FLGR2(J,I)
+!/COU          END DO
+!/COU        END DO
+!/COU      ENDIF
+!
      CALL W3INIT ( 1, .FALSE., 'ww3', NDS, NTRACE, ODAT, FLGRD, FLGR2, FLGD,    &
                    FLG2, NPTS, X, Y, PNAMES, IPRT, PRTFRM, MPI_COMM,   &
                    FLAGSTIDEIN=FLAGSTIDE )
@@ -1874,7 +1901,7 @@
 !/NCC      END IF
 
 !/OASIS      ! Send coupling fields at the initial time step
-!/OASIS      IF ( FLOUT(7) ) THEN
+!/OASIS      IF ( FLOUT(7) .AND. CPLT0 ) THEN
 !/OASACM       CALL SND_FIELDS_TO_ATMOS()
 !/OASOCM       CALL SND_FIELDS_TO_OCEAN()
 !/OASICM       CALL SND_FIELDS_TO_ICE()
