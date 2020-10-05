@@ -25,6 +25,7 @@
 !/                   with SMC grids (Andy Saulter)       ( version 6.07 )
 !/    01-Nov-2019 :  UPD5 and UPD6 use wind data either from anl.XXX file
 !/                   or from restart under WRST switch (Andy Saulter)
+!/    06-Oct-2020 :  Added namelist input options        ( version 7.11 )
 !/
 !/    Copyright 2010 National Weather Service (NWS),
 !/    National Oceanic and Atmospheric Administration.  All rights
@@ -325,6 +326,8 @@
       USE W3ODATMD, ONLY: NDSE, NDSO, NDST, IDOUT, FNMPRE  
 !/WRST      USE W3IDATMD
 !
+      USE W3NMLUPRSTRMD
+!
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -333,9 +336,12 @@
       INTEGER                 :: NDSI, NDSM, NDSTRC, NTRACE, IERR, I, J
       CHARACTER               :: COMSTR*1 
 !
+      TYPE(NML_RESTART_T)     :: NML_RESTART
+      TYPE(NML_UPDATE_T)      :: NML_UPDATE
+!
 !      REAL, ALLOCATABLE       :: BETAW(:)
 !      LOGICAL, ALLOCATABLE    :: MASK(:)
-      LOGICAL                 :: anl_exists, CORWSEA
+      LOGICAL                 :: anl_exists, CORWSEA, FLGNML
       INTEGER                 :: IMOD,  NDSEN, IX, IY, IK, ITH, &
                                  IXW, IYW
       REAL, ALLOCATABLE       :: UPDPRCNT(:,:),VATMP(:), HSIG(:,:),     &
@@ -406,34 +412,52 @@
 !/SMC      WRITE (NDSO,*) '*** UPRSTR set to work with SMC grid model'
 !/
 !/ ------------------------------------------------------------------- /
-!  2. Read the ww3_uprstr.inp
-!/
-      J      = LEN_TRIM(FNMPRE)
-      OPEN (NDSI,FILE=FNMPRE(:J)//'ww3_uprstr.inp',STATUS='OLD',       &
-            ERR=800,IOSTAT=IERR)
-      READ (NDSI,'(A)',END=801,ERR=802) COMSTR
-      IF (COMSTR.EQ.' ') COMSTR = '$'
-      WRITE (NDSO,901) COMSTR
+!  2. Read the ww3_uprstr input data
 !
-      CALL NEXTLN ( COMSTR , NDSI , NDSEN )
-      READ (NDSI,*,END=2001,ERR=2002) TIME
-      CALL NEXTLN ( COMSTR , NDSI , NDSEN )
-      READ (NDSI,*,END=2001,ERR=2002) UPDPROC
-      CALL NEXTLN ( COMSTR , NDSI , NDSEN )
-      IF (UPDPROC .EQ. 'UPD0F') THEN
-          READ (NDSI,*,END=2001,ERR=2002) PRCNTG
-      ELSE
-          IF ((UPDPROC .EQ. 'UPD2') .OR. (UPDPROC .EQ. 'UPD3')) THEN
-!      CALL NEXTLN ( COMSTR , NDSI , NDSEN )
-              READ (NDSI,*,END=2001,ERR=2002) PRCNTG_CAP
-!/F              CALL NEXTLN ( COMSTR , NDSI , NDSEN )
-!/F              READ (NDSI,*,END=2001,ERR=2002) FLNMCOR
-          ELSE
-              READ (NDSI,*,END=2001,ERR=2002) PRCNTG_CAP, THRWSEA
-          END IF
-          CALL NEXTLN ( COMSTR , NDSI , NDSEN )
-          READ (NDSI,*,END=2001,ERR=2002) FLNMANL
+! process ww3_uprstr namelist
+!
+      INQUIRE(FILE=TRIM(FNMPRE)//"ww3_uprstr.nml", EXIST=FLGNML) 
+      IF (FLGNML) THEN
+        ! Read namelist
+        CALL W3NMLUPRSTR (NDSI, TRIM(FNMPRE)//'ww3_uprstr.nml', NML_RESTART, &
+                          NML_UPDATE, IERR)
+        READ(NML_RESTART%RESTARTTIME, *) TIME
+        UPDPROC = NML_UPDATE%UPDPROC
+        PRCNTG = NML_UPDATE%PRCNTG
+        PRCNTG_CAP = NML_UPDATE%PRCNTGCAP
+        THRWSEA = NML_UPDATE%THRWSEA
+        FLNMANL = NML_UPDATE%FILE
       END IF
+!/
+! otherwise read from the .inp file
+      IF (.NOT. FLGNML) THEN
+         J      = LEN_TRIM(FNMPRE)
+         OPEN (NDSI,FILE=FNMPRE(:J)//'ww3_uprstr.inp',STATUS='OLD',       &
+               ERR=800,IOSTAT=IERR)
+         READ (NDSI,'(A)',END=801,ERR=802) COMSTR
+         IF (COMSTR.EQ.' ') COMSTR = '$'
+         WRITE (NDSO,901) COMSTR
+!
+         CALL NEXTLN ( COMSTR , NDSI , NDSEN )
+         READ (NDSI,*,END=2001,ERR=2002) TIME
+         CALL NEXTLN ( COMSTR , NDSI , NDSEN )
+         READ (NDSI,*,END=2001,ERR=2002) UPDPROC
+         CALL NEXTLN ( COMSTR , NDSI , NDSEN )
+         IF (UPDPROC .EQ. 'UPD0F') THEN
+             READ (NDSI,*,END=2001,ERR=2002) PRCNTG
+         ELSE
+             IF ((UPDPROC .EQ. 'UPD2') .OR. (UPDPROC .EQ. 'UPD3')) THEN
+!         CALL NEXTLN ( COMSTR , NDSI , NDSEN )
+                 READ (NDSI,*,END=2001,ERR=2002) PRCNTG_CAP
+!/F                 CALL NEXTLN ( COMSTR , NDSI , NDSEN )
+!/F                 READ (NDSI,*,END=2001,ERR=2002) FLNMCOR
+             ELSE
+                 READ (NDSI,*,END=2001,ERR=2002) PRCNTG_CAP, THRWSEA
+             END IF
+             CALL NEXTLN ( COMSTR , NDSI , NDSEN )
+             READ (NDSI,*,END=2001,ERR=2002) FLNMANL
+         END IF
+      ENDIF
 !/T      WRITE (NDSO,*)' TIME: ',TIME
 !/
 !/ ------------------------------------------------------------------- /
