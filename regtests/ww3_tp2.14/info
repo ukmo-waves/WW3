@@ -111,9 +111,9 @@
 #  ./bin/run_test -r ww3_grid -s OASACM5 -w work_OASACM5 -C OASIS -f        #
 #                 -p mpirun -n 4 -o netcdf ../model ww3_tp2.14              #
 #  ./bin/run_test -r ww3_shel -s OASACM5 -w work_OASACM5 -C OASIS -f        #
-#                 -p mpirun -n 4 -o netcdf $ww3 ww3_tp2.14                  #
+#                 -p mpirun -n 4 -o netcdf ../model ww3_tp2.14              #
 #  ./bin/run_test -r ww3_ounf -s OASACM5 -w work_OASACM5 -C OASIS -f        #
-#                 -p mpirun -n 4 -o netcdf $ww3 ww3_tp2.14                  #
+#                 -p mpirun -n 4 -o netcdf ../model ww3_tp2.14              #
 #                                                                           #
 #                                             M. Accensi, Feb 2015          #
 #                                             Ifremer Institute             #
