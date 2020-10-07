@@ -770,6 +770,9 @@
 !/SMC               IX = 1
 !/SMC               IY = ISEA
 !/SMC               IF( SMCWND ) THEN
+!/SMC                  ! Wind arrays allocated using (X,Y) convention for regular grids
+!/SMC                  ! but overriding here for the SMC grid which are always defined
+!/SMC                  ! as (NSEA,1) by switching the IY and IX dimension values around
 !/SMC                  IXW = IY
 !/SMC                  IYW = IX
 !/SMC               ELSE
@@ -895,6 +898,9 @@
 !/SMC               IX = 1
 !/SMC               IY = ISEA
 !/SMC               IF( SMCWND ) THEN
+!/SMC                  ! Wind arrays allocated using (X,Y) convention for regular grids
+!/SMC                  ! but overriding here for the SMC grid which are always defined
+!/SMC                  ! as (NSEA,1) by switching the IY and IX dimension values around
 !/SMC                  IXW = IY
 !/SMC                  IYW = IX
 !/SMC               ELSE
@@ -1149,6 +1155,11 @@
       CHARACTER(12), PARAMETER :: MYNAME='CHECK_PRCNTG'
 !/T
 !/T      WRITE (NDSO,*) trim(MYNAME)," The original correction is ",PRCNTG 
+!/T      WRITE (NDSO,*) trim(MYNAME)," The cap is ",PRCNTG_CAP
+      IF ( PRCNTG_CAP < 1. ) THEN
+         WRITE (NDSO,*) trim(MYNAME)," WARNING: PRCNTG_CAP set < 1."
+         WRITE (NDSO,*) trim(MYNAME),"          This may introduce spurious corrections"
+      END IF
 !/T      WRITE (NDSO,*) trim(MYNAME)," The cap is ",PRCNTG_CAP
       IF ( PRCNTG > 1. ) THEN
 !/T      WRITE (NDSO,*) trim(MYNAME)," PRCNTG > 1."
