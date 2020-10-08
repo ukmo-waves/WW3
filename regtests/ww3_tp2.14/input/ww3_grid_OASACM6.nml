@@ -141,8 +141,8 @@
   GRID%TYPE         =  'RECT'
   GRID%COORD        =  'SPHE'
   GRID%CLOS         =  'NONE'
-  GRID%ZLIM         =  0.0
-  GRID%DMIN         =  1.0
+  GRID%ZLIM         =  -0.1
+  GRID%DMIN         =  10.0
 /
 
 ! -------------------------------------------------------------------- !
@@ -218,8 +218,51 @@
 ! -------------------------------------------------------------------- !
 &DEPTH_NML
   DEPTH%SF        =  -1.
+  DEPTH%FROM      =  'NAME'
   DEPTH%FILENAME  =  'SMC_unused_file'
+  DEPTH%IDF       =  30
   DEPTH%FORMAT    =  '(....)'
+/
+
+! -------------------------------------------------------------------- !
+! Define the SMC grid
+! -------------------------------------------------------------------- !
+&SMC_NML
+  SMC%MCELS%IDF       =  32
+  SMC%MCELS%IDLA      =  1
+  SMC%MCELS%IDFM      =  1
+  SMC%MCELS%FORMAT    =  '(....)'
+  SMC%MCELS%FILENAME  =  '../input/BrestSMCels.dat'
+
+  SMC%ISIDE%IDF       =  33
+  SMC%ISIDE%IDLA      =  1
+  SMC%ISIDE%IDFM      =  1
+  SMC%ISIDE%FORMAT    =  '(....)'
+  SMC%ISIDE%FILENAME  =  '../input/BrestISides.dat'
+
+  SMC%JSIDE%IDF       =  34
+  SMC%JSIDE%IDLA      =  1
+  SMC%JSIDE%IDFM      =  1
+  SMC%JSIDE%FORMAT    =  '(....)'
+  SMC%JSIDE%FILENAME  =  '../input/BrestJSides.dat'
+
+  SMC%SUBTR%IDF       =  31
+  SMC%SUBTR%IDLA      =  1
+  SMC%SUBTR%IDFM      =  1
+  SMC%SUBTR%FORMAT    =  '(....)'
+  SMC%SUBTR%FILENAME  =  '../input/BrestObstrs.dat'
+/
+
+! -------------------------------------------------------------------- !
+! Define the mask
+! -------------------------------------------------------------------- !
+&MASK_NML
+  MASK%IDF       =  39
+  MASK%IDLA      =  1
+  MASK%IDFM      =  1
+  MASK%FORMAT    =  '(....)'
+  MASK%FROM      =  'NAME'
+  MASK%FILENAME  =  'SMC_unused_file'
 /
 
 ! -------------------------------------------------------------------- !
