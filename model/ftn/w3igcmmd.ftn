@@ -98,7 +98,7 @@
       USE W3OACPMD,  ONLY: ID_OASIS_TIME, IL_NB_SND, SND_FLD, CPL_OASIS_SND
       USE W3GDATMD,  ONLY: NSEAL, NSEA 
       USE W3WDATMD,  ONLY: ICEF
-      USE W3ADATMD,  ONLY: NSEALM, TAUICE
+      USE W3ADATMD,  ONLY: TAUICE
       USE W3ODATMD,  ONLY: UNDEF, NAPROC, IAPROC
 !
 !/ ------------------------------------------------------------------- /
@@ -107,7 +107,7 @@
       REAL(kind=8), DIMENSION(NSEAL,1) :: RLA_OASIS_SND
       INTEGER                          :: IB_DO, NDSO
       LOGICAL                          :: LL_ACTION   
-      REAL(kind=8), DIMENSION(NSEALM)  :: TMP
+      REAL(kind=8), DIMENSION(NSEAL)   :: TMP
       INTEGER                          :: JSEA, ISEA
 !
 !----------------------------------------------------------------------
@@ -121,7 +121,7 @@
          ! Ice floe diameters (m)
          ! ---------------------------------------------------------------------     
          CASE ('WW3_ICEF')
-            TMP(1:NSEALM) = 0.0 
+            TMP(1:NSEAL) = 0.0 
             DO JSEA=1, NSEAL
                ISEA=IAPROC+(JSEA-1)*NAPROC
                IF(ICEF(ISEA) /= UNDEF) TMP(JSEA)=ICEF(ISEA)
@@ -130,14 +130,14 @@
             CALL CPL_OASIS_SND(IB_DO, ID_OASIS_TIME, RLA_OASIS_SND, LL_ACTION)
 
          CASE ('WW3_TWIX')
-            TMP(1:NSEALM) = 0.0 
-            WHERE(TAUICE(:,1) /= UNDEF) TMP(:)=TAUICE(:,1)
+            TMP(1:NSEAL) = 0.0 
+            WHERE(TAUICE(1:NSEAL,1) /= UNDEF) TMP(1:NSEAL)=TAUICE(1:NSEAL,1)
             RLA_OASIS_SND(:,1) = DBLE(TMP(1:NSEAL))
             CALL CPL_OASIS_SND(IB_DO, ID_OASIS_TIME, RLA_OASIS_SND, LL_ACTION)
 
          CASE ('WW3_TWIY')
-            TMP(1:NSEALM) = 0.0 
-            WHERE(TAUICE(:,2) /= UNDEF) TMP(:)=TAUICE(:,2)
+            TMP(1:NSEAL) = 0.0 
+            WHERE(TAUICE(1:NSEAL,2) /= UNDEF) TMP(1:NSEAL)=TAUICE(1:NSEAL,2)
             RLA_OASIS_SND(:,1) = DBLE(TMP(1:NSEAL))
             CALL CPL_OASIS_SND(IB_DO, ID_OASIS_TIME, RLA_OASIS_SND, LL_ACTION)
 
