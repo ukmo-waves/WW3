@@ -136,7 +136,6 @@
             DO JSEA=1, NSEAL
                 ISEA=IAPROC+(JSEA-1)*NAPROC
                 IF(CY(ISEA) /= UNDEF) TMP(JSEA)=CY(ISEA)
-                TMP(JSEA)=CY(ISEA)
             END DO
             RLA_OASIS_SND(:,1) = DBLE(TMP(1:NSEAL))
             CALL CPL_OASIS_SND(IB_DO, ID_OASIS_TIME, RLA_OASIS_SND, LL_ACTION)
