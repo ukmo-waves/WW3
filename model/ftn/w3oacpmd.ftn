@@ -295,7 +295,7 @@
 !/SMC             ! ----------------------------------
 !/SMC             NNODES = NSEA
 !/SMC             !
-!/SMC             ! Distinguish between 2 and 4-level SMC models
+!/SMC             ! Calculate the smallest grid cell increments depending on the number of SMC levels 
 !/SMC             DLON = SX / MRFct 
 !/SMC             DLAT = SY / MRFct 
 !/SMC             ! 
