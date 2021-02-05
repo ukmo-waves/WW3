@@ -615,6 +615,8 @@
 !
 !/MPI                        CALL MPI_STARTALL                        &
 !/MPI                           ( 1, IRQRSS(IB), IERR_MPI )
+!/MPI                        CALL MPI_WAITALL                         &
+!/MPI                           ( 1, IRQRSS(IB), STAT1, IERR_MPI )
 !
 !/MPI                      END IF
 !/MPI                    END DO
