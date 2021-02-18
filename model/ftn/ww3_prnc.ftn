@@ -1977,15 +1977,16 @@
                                   NORM = NORM + RD22(IX,IY)
 
                     IF(NORM.GT.EPS) THEN
-                      A3(IX,IY) = SQRT (                              &
+                      A3(IX,IY) = SQRT ( (                            &
                            RD11(IX,IY) * ( XC(IX21(IX,IY),IY21(IX,IY))**2   &
-                                  + YC(IX21(IX,IY),IY21(IX,IY))**2 ) / NORM &
+                                         + YC(IX21(IX,IY),IY21(IX,IY))**2 ) &
                          + RD21(IX,IY) * ( XC(IX22(IX,IY),IY21(IX,IY))**2   &
-                                  + YC(IX22(IX,IY),IY21(IX,IY))**2 ) / NORM &
+                                         + YC(IX22(IX,IY),IY21(IX,IY))**2 ) &
                          + RD12(IX,IY) * ( XC(IX21(IX,IY),IY22(IX,IY))**2   &
-                                  + YC(IX21(IX,IY),IY22(IX,IY))**2 ) / NORM &
+                                         + YC(IX21(IX,IY),IY22(IX,IY))**2 ) &
                          + RD22(IX,IY) * ( XC(IX22(IX,IY),IY22(IX,IY))**2   &
-                                  + YC(IX22(IX,IY),IY22(IX,IY))**2 ) / NORM )
+                                         + YC(IX22(IX,IY),IY22(IX,IY))**2 ))&
+                                                                    / NORM )
                     ELSE
                       A3(IX,IY) = SQRT ( XC(IX,IY)**2 + YC(IX,IY)**2 )
                     END IF
