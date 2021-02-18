@@ -244,6 +244,9 @@
                                  FILLVALUE, TIMEDELAY
       REAL                    :: ACC = 0.05
 !
+      REAL(8), PARAMETER      :: EPS = 1.0D-6
+      REAL                    :: NORM
+!
       REAL                    :: SCFAC(2), ADDOFF(2), RW(4)
 !
       REAL, ALLOCATABLE       :: RD11(:,:), RD21(:,:),                &
@@ -1809,6 +1812,23 @@
                           + RD21(IX,IY) * XC(IX22(IX,IY),IY21(IX,IY)) &
                           + RD12(IX,IY) * XC(IX21(IX,IY),IY22(IX,IY)) &
                           + RD22(IX,IY) * XC(IX22(IX,IY),IY22(IX,IY))
+
+                    ! Correct interpolation for boundary points
+                    NORM = 0.0
+                    IF(ABS(XC(IX21(IX,IY),IY21(IX,IY))).GT.EPS)       &
+                                NORM = NORM + RD11(IX,IY)
+                    IF(ABS(XC(IX22(IX,IY),IY21(IX,IY))).GT.EPS)       &
+                                NORM = NORM + RD21(IX,IY)
+                    IF(ABS(XC(IX21(IX,IY),IY22(IX,IY))).GT.EPS)       &
+                                NORM = NORM + RD12(IX,IY)
+                    IF(ABS(XC(IX22(IX,IY),IY22(IX,IY))).GT.EPS)       &
+                                NORM = NORM + RD22(IX,IY)
+
+                    IF(NORM.GT.EPS) THEN
+                      FA(IX, IY) = FA(IX, IY) / NORM
+                    ELSE
+                      FA(IX,IY) = XC(IX,IY)
+                    END IF
                     END DO
                   END DO
 !
@@ -1821,6 +1841,22 @@
                           + XD21(IX,IY) * YC(JX22(IX,IY),JY21(IX,IY)) &
                           + XD12(IX,IY) * YC(JX21(IX,IY),JY22(IX,IY)) &
                           + XD22(IX,IY) * YC(JX22(IX,IY),JY22(IX,IY))
+
+                        NORM = 0.0
+                        IF(ABS(YC(JX21(IX,IY),JY21(IX,IY))).GT.EPS)   &
+                                    NORM = NORM + XD11(IX,IY)
+                        IF(ABS(YC(JX22(IX,IY),JY21(IX,IY))).GT.EPS)   &
+                                    NORM = NORM + XD21(IX,IY)
+                        IF(ABS(YC(JX21(IX,IY),JY22(IX,IY))).GT.EPS)   &
+                                    NORM = NORM + XD12(IX,IY)
+                        IF(ABS(YC(JX22(IX,IY),JY22(IX,IY))).GT.EPS)   &
+                                    NORM = NORM + XD22(IX,IY)
+
+                        IF(NORM.GT.EPS) THEN
+                          FA(IX, IY) = FA(IX, IY) / NORM
+                        ELSE
+                          FA(IX,IY) = YC(IX,IY)
+                        END IF
                         END DO
                       END DO
                   END IF
@@ -1836,18 +1872,67 @@
                           + RD21(IX,IY) * XC(IX22(IX,IY),IY21(IX,IY)) &
                           + RD12(IX,IY) * XC(IX21(IX,IY),IY22(IX,IY)) &
                           + RD22(IX,IY) * XC(IX22(IX,IY),IY22(IX,IY))
+                    NORM = 0.0
+                    IF(ABS(XC(IX21(IX,IY),IY21(IX,IY))).GT.EPS)       &
+                                NORM = NORM + RD11(IX,IY)
+                    IF(ABS(XC(IX22(IX,IY),IY21(IX,IY))).GT.EPS)       &
+                                NORM = NORM + RD21(IX,IY)
+                    IF(ABS(XC(IX21(IX,IY),IY22(IX,IY))).GT.EPS)       &
+                                NORM = NORM + RD12(IX,IY)
+                    IF(ABS(XC(IX22(IX,IY),IY22(IX,IY))).GT.EPS)       &
+                                NORM = NORM + RD22(IX,IY)
+
+                    IF(NORM.GT.EPS) THEN
+                      FX(IX, IY) = FX(IX, IY) / NORM
+                    ELSE
+                      FX(IX,IY) = XC(IX,IY)
+                    END IF
+
                     FY(IX,IY)                                         &
                           = RD11(IX,IY) * YC(IX21(IX,IY),IY21(IX,IY)) &
                           + RD21(IX,IY) * YC(IX22(IX,IY),IY21(IX,IY)) &
                           + RD12(IX,IY) * YC(IX21(IX,IY),IY22(IX,IY)) &
                           + RD22(IX,IY) * YC(IX22(IX,IY),IY22(IX,IY))
+                    NORM = 0.0
+                    IF(ABS(YC(IX21(IX,IY),IY21(IX,IY))).GT.EPS)       &
+                                NORM = NORM + RD11(IX,IY)
+                    IF(ABS(YC(IX22(IX,IY),IY21(IX,IY))).GT.EPS)       &
+                                NORM = NORM + RD21(IX,IY)
+                    IF(ABS(YC(IX21(IX,IY),IY22(IX,IY))).GT.EPS)       &
+                                NORM = NORM + RD12(IX,IY)
+                    IF(ABS(YC(IX22(IX,IY),IY22(IX,IY))).GT.EPS)       &
+                                NORM = NORM + RD22(IX,IY)
+
+                    IF(NORM.GT.EPS) THEN
+                      FY(IX, IY) = FY(IX, IY) / NORM
+                    ELSE
+                      FY(IX,IY) = YC(IX,IY)
+                    END IF
+
+                    A1(IX,IY) = MAX ( 1.E-10 ,                        &
+                                  SQRT( FX(IX,IY)**2 + FY(IX,IY)**2 ) )
+
                     FA(IX,IY)                                         &
                           = RD11(IX,IY) * AC(IX21(IX,IY),IY21(IX,IY)) &
                           + RD21(IX,IY) * AC(IX22(IX,IY),IY21(IX,IY)) &
                           + RD12(IX,IY) * AC(IX21(IX,IY),IY22(IX,IY)) &
                           + RD22(IX,IY) * AC(IX22(IX,IY),IY22(IX,IY))
-                    A1(IX,IY) = MAX ( 1.E-10 ,                        &
-                                  SQRT( FX(IX,IY)**2 + FY(IX,IY)**2 ) )
+                    NORM = 0.0
+                    IF(ABS(AC(IX21(IX,IY),IY21(IX,IY))).GT.EPS)       &
+                                NORM = NORM + RD11(IX,IY)
+                    IF(ABS(AC(IX22(IX,IY),IY21(IX,IY))).GT.EPS)       &
+                                NORM = NORM + RD21(IX,IY)
+                    IF(ABS(AC(IX21(IX,IY),IY22(IX,IY))).GT.EPS)       &
+                                NORM = NORM + RD12(IX,IY)
+                    IF(ABS(AC(IX22(IX,IY),IY22(IX,IY))).GT.EPS)       &
+                                NORM = NORM + RD22(IX,IY)
+
+                    IF(NORM.GT.EPS) THEN
+                      FA(IX, IY) = FA(IX, IY) / NORM
+                    ELSE
+                      FA(IX,IY) = AC(IX,IY)
+                    END IF
+
                     A2(IX,IY)                                         &
                          = RD11(IX,IY) * SQRT(XC(IX21(IX,IY),IY21(IX,IY))**2  &
                                              +YC(IX21(IX,IY),IY21(IX,IY))**2) &
@@ -1857,15 +1942,53 @@
                                              +YC(IX21(IX,IY),IY22(IX,IY))**2) &
                          + RD22(IX,IY) * SQRT(XC(IX22(IX,IY),IY22(IX,IY))**2  &
                                              +YC(IX22(IX,IY),IY22(IX,IY))**2)
-                    A3(IX,IY) = SQRT (                                &
+                    NORM = 0.0
+                    IF(SQRT(XC(IX21(IX,IY),IY21(IX,IY))**2  &
+                               +YC(IX21(IX,IY),IY21(IX,IY))**2).GT.EPS) &
+                                NORM = NORM + RD11(IX,IY)
+                    IF(SQRT(XC(IX22(IX,IY),IY21(IX,IY))**2  &
+                               +YC(IX22(IX,IY),IY21(IX,IY))**2).GT.EPS) &
+                                NORM = NORM + RD21(IX,IY)
+                    IF(SQRT(XC(IX21(IX,IY),IY22(IX,IY))**2  &
+                               +YC(IX21(IX,IY),IY22(IX,IY))**2).GT.EPS) &
+                                NORM = NORM + RD12(IX,IY)
+                    IF(SQRT(XC(IX22(IX,IY),IY22(IX,IY))**2  &
+                               +YC(IX22(IX,IY),IY22(IX,IY))**2).GT.EPS) &
+                                NORM = NORM + RD22(IX,IY)
+
+                    IF(NORM.GT.EPS) THEN
+                      A2(IX, IY) = A2(IX, IY) / NORM
+                    ELSE
+                      A2(IX,IY) = SQRT(XC(IX,IY)**2 + YC(IX,IY)**2)
+                    END IF
+
+                    NORM = 0.0
+                    IF(XC(IX21(IX,IY),IY21(IX,IY))**2 +                     &
+                                 YC(IX21(IX,IY),IY21(IX,IY))**2.GT.EPS)     &
+                                  NORM = NORM + RD11(IX,IY)
+                    IF(XC(IX22(IX,IY),IY21(IX,IY))**2 +                     &
+                                 YC(IX22(IX,IY),IY21(IX,IY))**2.GT.EPS)     &
+                                  NORM = NORM + RD21(IX,IY)
+                    IF(XC(IX21(IX,IY),IY22(IX,IY))**2 +                     &
+                                 YC(IX21(IX,IY),IY22(IX,IY))**2.GT.EPS)     &
+                                  NORM = NORM + RD12(IX,IY)
+                    IF(XC(IX22(IX,IY),IY22(IX,IY))**2 +                     &
+                                 YC(IX22(IX,IY),IY22(IX,IY))**2.GT.EPS)     &
+                                  NORM = NORM + RD22(IX,IY)
+
+                    IF(NORM.GT.EPS) THEN
+                      A3(IX,IY) = SQRT (                              &
                            RD11(IX,IY) * ( XC(IX21(IX,IY),IY21(IX,IY))**2   &
-                                         + YC(IX21(IX,IY),IY21(IX,IY))**2 ) &
+                                  + YC(IX21(IX,IY),IY21(IX,IY))**2 ) / NORM &
                          + RD21(IX,IY) * ( XC(IX22(IX,IY),IY21(IX,IY))**2   &
-                                         + YC(IX22(IX,IY),IY21(IX,IY))**2 ) &
+                                  + YC(IX22(IX,IY),IY21(IX,IY))**2 ) / NORM &
                          + RD12(IX,IY) * ( XC(IX21(IX,IY),IY22(IX,IY))**2   &
-                                         + YC(IX21(IX,IY),IY22(IX,IY))**2 ) &
+                                  + YC(IX21(IX,IY),IY22(IX,IY))**2 ) / NORM &
                          + RD22(IX,IY) * ( XC(IX22(IX,IY),IY22(IX,IY))**2   &
-                                         + YC(IX22(IX,IY),IY22(IX,IY))**2 ) )
+                                  + YC(IX22(IX,IY),IY22(IX,IY))**2 ) / NORM )
+                    ELSE
+                      A3(IX,IY) = SQRT ( XC(IX,IY)**2 + YC(IX,IY)**2 )
+                    END IF
                     END DO
                   END DO
 !
