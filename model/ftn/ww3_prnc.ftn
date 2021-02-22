@@ -1813,7 +1813,12 @@
                           + RD12(IX,IY) * XC(IX21(IX,IY),IY22(IX,IY)) &
                           + RD22(IX,IY) * XC(IX22(IX,IY),IY22(IX,IY))
 
-                    ! Correct interpolation for boundary points
+                    ! Correction for points along the land/sea interface:
+                    ! If one point used in the interpolation has value
+                    ! zero, it should not be used as it is not part of
+                    ! the sea grid, and the rest of the interpolation
+                    ! coefficients scaled so that they sum 1 - otherwise
+                    ! we will create unphysical values along the coast
                     NORM = 0.0
                     IF(ABS(XC(IX21(IX,IY),IY21(IX,IY))).GT.EPS)       &
                                 NORM = NORM + RD11(IX,IY)
@@ -1827,6 +1832,11 @@
                     IF(NORM.GT.EPS) THEN
                       FA(IX, IY) = FA(IX, IY) / NORM
                     ELSE
+                      ! This cover the case when one point is on the
+                      ! boundary but is not an ocean grid point - the
+                      ! default value was zero but it is better to give
+                      ! it a sensible value, as it is still used
+                      ! and may generate a division by zero
                       FA(IX,IY) = XC(IX,IY)
                     END IF
                     END DO
