@@ -235,7 +235,8 @@
                                    touch ww3_ounp.ftn
                                    touch ww3_ounf.ftn
                                    touch ww3_shel.ftn
-                                   touch gx_outp.ftn ;;
+                                   touch gx_outp.ftn 
+                                   touch ww3_mopp.ftn ;;
      's_db'   ) cd $main_dir/ftn ; touch w3gdatmd.ftn
                                    touch w3srcemd.ftn
                                    touch w3iogrmd.ftn
@@ -290,7 +291,8 @@
                                    touch ww3_outp.ftn
                                    touch ww3_ounp.ftn
                                    touch gx_outf.ftn
-                                   touch gx_outp.ftn ;;
+                                   touch gx_outp.ftn
+                                   touch ww3_mopp.ftn ;;
 'reflection'  )cd $main_dir/ftn ;  touch w3gdatmd.ftn
                                    touch w3iogrmd.ftn
                                    touch w3iorsmd.ftn
@@ -380,7 +382,8 @@
                                    touch ww3_ounf.ftn
                                    touch ww3_ounp.ftn
                                    touch ww3_outf.ftn
-                                   touch ww3_grid.ftn ;;
+                                   touch ww3_grid.ftn
+                                   touch ww3_mopp.ftn ;;
      'arctic' ) cd $main_dir/ftn ; touch w3gdatmd.ftn
                                    touch w3iogrmd.ftn
                                    touch w3psmcmd.ftn

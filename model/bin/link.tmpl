@@ -138,6 +138,15 @@
     opt="$opt <optomp>"
   fi
 
+  # COEX library support (UK Met Office only)
+  if [ "$prog" = 'ww3_mopp' ]; then
+    if [[ -z ${WAVELIB} ]]; then
+	  echo "ERROR: WAVELIB environment variable not set"
+	  exit 1
+	fi
+    libs="$libs -L${WAVELIB} -lcoex"
+  fi
+
   opt="$opt $EXTRA_LINK_OPTIONS"
 
 # 3.b Link - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

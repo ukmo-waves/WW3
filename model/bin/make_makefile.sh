@@ -877,6 +877,7 @@
   progs="$progs ww3_multi_esmf  ww3_uprstr"
   progs="$progs libww3"
   progs="$progs libww3.so"
+  progs="$progs ww3_mopp ww3_smcint ww3_spec2ibm"  # Met Office specific post-processors
 
   for prog in $progs
   do
@@ -1100,6 +1101,16 @@
                 IO='w3iogrmd w3iogomd w3iorsmd' 
                aux="constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd" 
                aux="$aux w3parall w3nmluprstrmd" ;; 
+#
+## --- Met Office specific programs:
+#
+     ww3_mopp) IDstring='Gridded Met Office PP output'
+               core=
+               data="w3parall wmmdatmd $memcode w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd"
+               prop=
+             source="$pdlibcode $pdlibyow $db $bt $setupcode $tr $trx $stx $nlx $btx $is $uostmd"
+                 IO='w3iogrmd w3iogomd'
+                aux="constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd pplookmd $smco" ;;
     esac
 
     # if esmf is included in program name, then
@@ -1390,6 +1401,10 @@
          'W3PARALL'     ) modtest=w3parall.o ;;
          'W3SMCOMD'     ) modtest=w3smcomd.o ;;
          'W3OUNFMETAMD' ) modtest=w3ounfmetamd.o ;;
+#
+## Met Office specific modules
+#
+         'PPLOOKMD'     ) modtest=pplookmd.o ;;
          *              ) modfound=no ;; 
       esac
 

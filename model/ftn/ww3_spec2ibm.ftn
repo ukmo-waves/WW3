@@ -1,0 +1,345 @@
+      PROGRAM WW3_SPEC2IBM
+!/
+!/                  +-----------------------------------+
+!/                  | WAVEWATCH III           NOAA/NCEP |
+!/                  |           Chris Bunney            |
+!/                  |           H. L. Tolman            |
+!/                  |                        FORTRAN 90 |
+!/                  | Last update :         11-Nov-2013 |
+!/                  +-----------------------------------+
+!/
+!/    27-Jan-2016 : Initial version, based on ww3_outp  ( version 4.18 )
+!/                       (Chris Bunney, UK Met Office)
+!/
+!  1. Purpose :
+!
+!     Spectral interpolation of point output and conversiong
+!     of file to GPCS/IBM number format.
+!
+!  2. Method :
+!
+!     Reads target spectral grid definition from ww3_spec2ibm.inp
+!     file. Then loops overs data in out_pnt.ww3:
+!
+!       1. Read data from out_pnt.ww3
+!       2. Perform spectral interpolation to requested spectral grid
+!       3. Write data out as big-endian IBM number format file.
+!
+!  3. Parameters :
+!
+!       None - standalone program
+!
+!  4. Subroutines used :
+!      Name      Type  Module   Description
+!     ----------------------------------------------------------------
+!      W3NMOD    Subr. W3GDATMD Set number of model.
+!      W3SETG    Subr.   Id.    Point to selected model.
+!      W3NDAT    Subr. W3WDATMD Set number of model for wave data.
+!      W3SETW    Subr.   Id.    Point to selected model for wave data.
+!      W3NAUX    Subr. W3ADATMD Set number of model for aux data.
+!      W3SETA    Subr.   Id.    Point to selected model for aux data.
+!      W3NOUT    Subr. W3ODATMD Set number of model for output.
+!      W3SETO    Subr.   Id.    Point to selected model for output.
+!      ITRACE    Subr. W3SERVMD Subroutine tracing initialization.
+!      STRACE    Subr.   Id.    Subroutine tracing.
+!      NEXTLN    Subr.   Id.    Get next line from input filw
+!      EXTCDE    Subr.   Id.    Abort program as graceful as possible.
+!      STME21    Subr. W3TIMEMD Convert time to string.
+!      TICK21    Subr.   Id.    Advance time.
+!      DSEC21    Func.   Id.    Difference between times.
+!      W3IOGR    Subr. W3IOGRMD Reading/writing model definition file.
+!      W3IOPO    Subr. W3IOPOMD Reading/writing raw point output file.
+!      W3CSPC    Subr. W3CSPCMD Spectral interpolation
+!     ----------------------------------------------------------------
+!
+!  5. Called by :
+!
+!     None, stand-alone program.
+!
+!  6. Error messages :
+!
+!     Checks on input, checks in W3IOPO.
+!
+!  7. Remarks :
+!
+!     Relies on usage of Cray IEG2IBM library routine to convert
+!     number formats. 
+!
+!  8. Structure :
+!
+!     See source code.
+!
+!  9. Switches :
+!
+!       !/S    Enable subroutine tracing.
+!
+! 10. Source code :
+!
+!/ ------------------------------------------------------------------- /
+
+      USE CONSTANTS
+!/
+      USE W3WDATMD, ONLY: W3SETW, W3NDAT
+!/NL1      USE W3ADATMD, ONLY: W3SETA, W3NAUX
+      USE W3ODATMD, ONLY: W3SETO, W3NOUT
+      USE W3IOGRMD, ONLY: W3IOGR
+      USE W3IOPOMD, ONLY: W3IOPO
+      USE W3SERVMD, ONLY : ITRACE, NEXTLN, EXTCDE
+!/S      USE W3SERVMD, ONLY : STRACE
+      USE W3TIMEMD, ONLY: STME21, TICK21, DSEC21
+!/
+      USE W3GDATMD
+      USE W3WDATMD, ONLY: TIME
+      USE W3ODATMD, ONLY: NDSE, NDST, NDSO, NOPTS, PTLOC, PTNME,        &
+                          DPO, WAO, WDO, ASO, CAO, CDO, SPCO, FNMPRE,   &
+                          IL, IW, II, GRDID
+! 
+      USE W3CSPCMD, ONLY: W3CSPC
+!
+      IMPLICIT NONE
+!/
+!/ ------------------------------------------------------------------- /
+!/ Local parameters
+!/
+      INTEGER                 :: NDSI, NDSM, NDSOP,  NDSTRC, NTRACE,    &
+                                 IERR, I, NDSTAB, IOTEST, IK, ITH, J
+      INTEGER                 :: ISCALE = 0
+      REAL                    :: M2KM
+      CHARACTER               :: COMSTR*1
+!
+      INTEGER                 :: DTZ(2)        ! Date/time of T+0
+      INTEGER                 :: FC_HOUR       ! Forecast hour
+      REAL, ALLOCATABLE       :: PTLOC_IBM(:,:)
+      REAL, ALLOCATABLE       :: SPC2(:,:), SPC2_IBM(:,:)
+      REAL, ALLOCATABLE       :: DPO2(:), WAO2(:), WDO2(:),             &
+                                 ASO2(:), CAO2(:), CDO2(:)
+      INTEGER                 :: NKO, NTHO, NSPEC2
+      REAL                    :: FR1O, TH1O
+!
+      CHARACTER(LEN=10), PARAMETER :: VEROPT = 'METOSPC1.1'
+      CHARACTER(LEN=31), PARAMETER ::                                   &
+                           IDSTR = 'WAVEWATCH III POINT OUTPUT FILE'
+
+!/
+!/ ------------------------------------------------------------------- /
+!/
+!
+!--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+! 1.  IO set-up.
+!
+      CALL W3NMOD ( 1, 6, 6 )
+      CALL W3SETG ( 1, 6, 6 )
+      CALL W3NDAT (    6, 6 )
+      CALL W3SETW ( 1, 6, 6 )
+!/NL1      CALL W3NAUX (    6, 6 )
+!/NL1      CALL W3SETA ( 1, 6, 6 )
+      CALL W3NOUT (    6, 6 )
+      CALL W3SETO ( 1, 6, 6 )
+!
+      NDSI   = 10
+      NDSM   = 20
+      NDSOP  = 20
+      NDSTAB = 30
+
+! 1.1 Open input file
+      J      = LEN_TRIM(FNMPRE)
+      OPEN (NDSI,FILE=FNMPRE(:J)//'ww3_spec2ibm.inp',STATUS='OLD',      &
+            ERR=800,IOSTAT=IERR)
+      READ (NDSI,'(A)',END=801,ERR=802) COMSTR
+      IF (COMSTR.EQ.' ') COMSTR = '$'
+      WRITE (NDSO,901) COMSTR
+!
+!--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+! 2.  Read model definition file.
+!
+      CALL W3IOGR ( 'READ', NDSM )
+      WRITE (NDSO,920) GNAME
+
+      IF ( FLAGLL ) THEN
+          M2KM = 1.
+      ELSE
+          M2KM = 1.E-3
+      END IF
+
+!
+!--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+! 3.  Read general data and first fields from file
+!
+      CALL W3IOPO ( 'READ', NDSOP, IOTEST )
+!
+      WRITE (NDSO,930)
+      DO I=1, NOPTS
+        IF ( FLAGLL ) THEN
+            WRITE (NDSO,931) PTNME(I), M2KM*PTLOC(1,I), M2KM*PTLOC(2,I)
+        ELSE
+            WRITE (NDSO,932) PTNME(I), M2KM*PTLOC(1,I), M2KM*PTLOC(2,I)
+        END IF
+      END DO
+
+      ! Get datetime t+zero (in v3.14, this was stored in the out_pnt.ww3
+      ! header. For this version, just take the first time in the file.
+      DTZ = TIME
+!
+! 3.  Read requests from input file.
+!     Output times
+!
+      WRITE (NDSO, 940)
+      WRITE (NDSO, 942) NK, NTH, FR1, TH(1)
+
+      CALL NEXTLN ( COMSTR , NDSI , NDSE )
+      READ (NDSI,*,END=801,ERR=802) NKO, NTHO, FR1O, TH1O
+      IF(NKO .LT. 0) NKO = NK
+      IF(NTHO .LT. 0) NTHO = NTH
+      IF(FR1O .LT. 0) FR1O = FR1
+      IF(TH1O .LT. 0) TH1O = TH(1)
+
+
+      WRITE (NDSO, 941)
+      WRITE (NDSO, 942) NKO, NTHO, FR1O, TH1O
+!      WRITE(60,'(2I5)') NK, NTH
+!      WRITE(60,'(2I5)') NKO, NTHO
+
+      NSPEC2 = NKO * NTHO
+
+! 3.1 Allocate storage for converted numbers:
+      ALLOCATE(PTLOC_IBM(2,NOPTS))
+      ALLOCATE(SPC2(NSPEC2,NOPTS), SPC2_IBM(NSPEC2,NOPTS))
+      ALLOCATE(DPO2(NOPTS), WAO2(NOPTS), WDO2(NOPTS),                   &
+               ASO2(NOPTS), CAO2(NOPTS), CDO2(NOPTS))
+
+! 3.1 Open output file and write header:
+!     (Note implicit big_endian byte order conversion on output file)
+      J = LEN_TRIM(FNMPRE)
+      OPEN(NDSTAB, FILE=FNMPRE(:J)//"out_pnt.gpcs.ww3", ERR=804,        &
+           IOSTAT=IERR, FORM='UNFORMATTED', STATUS="REPLACE",           &
+           CONVERT="big_endian")
+
+!     Convert number format (Cray specific routine):
+      CALL IEG2IBM(3, 2*NOPTS, PTLOC_IBM, 0, PTLOC, 1, 32, 32)
+
+!     Write out file header:
+      WRITE(NDSTAB) IDSTR, VEROPT, NKO, NTHO, NOPTS, DTZ
+
+!     Write out point locations:
+      WRITE(NDSTAB) ((PTLOC_IBM(J,I),J=1,2),I=1,NOPTS),                 &
+                    (PTNME(I),I=1,NOPTS)
+
+!--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+! 4.  Read data:
+!
+      WRITE(NDSO, 950)
+      DO WHILE(IOTEST .NE. -1)
+
+!       Calculate forecast hour
+        FC_HOUR = INT( DSEC21( DTZ, TIME ) / 3600 )
+        WRITE(NDSO, 951) TIME, FC_HOUR
+
+!       Write out read data/fc hour:
+        WRITE(NDSTAB) TIME, FC_HOUR
+
+
+        ! Interpolate spectral data
+        CALL W3CSPC ( SPCO, NK, NTH, XFR, FR1, TH(1),                   &
+                      SPC2, NKO, NTHO, XFR, FR1O, TH1O,                 &
+                      NOPTS, NDST, NDSE, FACHFE )
+
+        ! Convert intepolated spectra to IBM numbers:
+        CALL IEG2IBM(3, NSPEC2*NOPTS, SPC2_IBM, 0, SPC2, 1, 32, 32)
+
+        ! Convert axiliary data to IBM numbers:
+        CALL IEG2IBM(3, NOPTS, DPO2, 0, DPO, 1, 32, 32)
+        CALL IEG2IBM(3, NOPTS, WAO2, 0, WAO, 1, 32, 32)
+        CALL IEG2IBM(3, NOPTS, WDO2, 0, WDO, 1, 32, 32)
+        CALL IEG2IBM(3, NOPTS, ASO2, 0, ASO, 1, 32, 32)
+        CALL IEG2IBM(3, NOPTS, CAO2, 0, CAO, 1, 32, 32)
+        CALL IEG2IBM(3, NOPTS, CDO2, 0, CDO, 1, 32, 32)
+
+        ! Write converted data to file:
+        DO I=1, NOPTS
+          WRITE (NDSTAB) IW(I), II(I), IL(I), DPO2(I), WAO2(I), WDO2(I),&
+                ASO2(I), CAO2(I), CDO2(I), GRDID(I),                    &
+                (SPC2_IBM(J,I),J=1,NSPEC2)
+        ENDDO
+
+!        WRITE(60,'(8G11.4)') SPCO(:,40)
+!        WRITE(60,'(8G11.4)') SPC2(:,40)
+
+        ! Move to next record
+        CALL W3IOPO ( 'READ', NDSOP, IOTEST )
+      ENDDO
+
+      CLOSE(NDSTAB)
+
+      DEALLOCATE(SPC2, SPC2_IBM)
+      DEALLOCATE(DPO2, WAO2, WDO2, ASO2, CAO2, CDO2)
+      DEALLOCATE(PTLOC_IBM)
+      GOTO 888
+
+
+! Escape locations
+  800 CONTINUE
+      WRITE (NDSE,1000) IERR
+      CALL EXTCDE ( 40 )
+!
+  801 CONTINUE
+      WRITE (NDSE,1001)
+      CALL EXTCDE ( 41 )
+!
+  802 CONTINUE
+      WRITE (NDSE,1002) IERR
+      CALL EXTCDE ( 42 )
+!
+  804 CONTINUE
+      WRITE (NDSE,1004) IERR
+      CALL EXTCDE ( 44 )
+!
+  888 CONTINUE
+      WRITE (NDSO,999)
+!
+!!
+  900 FORMAT (/15X,'   *** WAVEWATCH III Spectral IBM Format ***   '/   &
+               15X,'==============================================='/)
+  901 FORMAT ( '  Comment character is ''',A,''''/)
+!
+  920 FORMAT ( '  Grid name : ',A/)
+!
+  930 FORMAT ( '  Points in file : '/                                   &
+               ' ------------------------------------')
+  931 FORMAT ( '      ',A,2F10.2)
+  932 FORMAT ( '      ',A,2(F8.1,'E3'))
+!
+  940 FORMAT (/'  Wave model spectral definition '/                     &
+               ' ------------------------------------' )
+!
+  941 FORMAT (/'  Output file spectral definition ' /                   &
+               ' ------------------------------------' )
+!
+  942 FORMAT ( '  Num freqs / dirs  :  ', I7,1X,I7 /                    &
+               '  First freq / dir  :  ', F7.5,1X,F7.1 )
+!
+  950 FORMAT (/'  Converting data ' /                                   &
+               ' ------------------------------------' )
+!
+  951 FORMAT ( '  Processing timestep: ',I8,1X,I6.6,' T+',I3.3 )
+!
+  999 FORMAT (/'  End of program '/                                     &
+               ' ========================================='/            &
+               '     WAVEWATCH III Spectral IBM Format '/)
+!
+!
+ 1000 FORMAT (/' *** WAVEWATCH III ERROR IN WW3_SPEC2IBM : '/           &
+               '     ERROR IN OPENING INPUT FILE'/                      &
+               '     IOSTAT =',I5/)
+!
+ 1001 FORMAT (/' *** WAVEWATCH III ERROR IN WW3_SPEC2IBM : '/           &
+               '     PREMATURE END OF INPUT FILE'/)
+!
+ 1002 FORMAT (/' *** WAVEWATCH III ERROR IN WW3_SPEC2IBM : '/           &
+               '     ERROR IN READING FROM INPUT FILE'/                 &
+               '     IOSTAT =',I5/)
+!
+ 1004 FORMAT (/' *** WAVEWATCH III ERROR IN WW3_SPEC2IBM : '/           &
+               '     ERROR IN OPENING IDL FILE'/                        &
+               '     IOSTAT =',I5/)
+
+      END PROGRAM WW3_SPEC2IBM

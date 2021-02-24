@@ -1,0 +1,1928 @@
+!/ ------------------------------------------------------------------- /
+      PROGRAM WW3_MOPP
+!/
+!/                  +-----------------------------------+
+!/                  | WAVEWATCH III           NOAA/NCEP |
+!/                  |        Chris Bunney, UKMO         |
+!/                  |           H. L. Tolman            |
+!/                  |                        FORTRAN 90 |
+!/                  | Last update :         12-Jan-2016 |
+!/                  +-----------------------------------+
+!/
+!/    12-Jan-2016 : Met Office PP format gridded output ( version 4.18 )
+!/                  post-processor, based on ww3_ounf code.
+!/                        (Chris Bunney, UK Met Office)
+!/    14-Oct-2016 : Extend to use further part. params  ( version 4.18 )
+!/
+!/    Copyright 2009-2012 National Weather Service (NWS),
+!/       National Oceanic and Atmospheric Administration.  All rights
+!/       reserved.  WAVEWATCH III is a trademark of the NWS. 
+!/       No unauthorized use without permission.
+!/
+!  1. Purpose :
+!
+!     Post-processing of grid output to Met Office PP format.
+!
+!  2. Method :
+!
+!     Data is read from the grid output file out_grd.ww3 (raw data)
+!     and from the file ww3_outf.inp ( NDSI, output requests ).
+!     Model definition and raw data files are read using WAVEWATCH III
+!     subroutines.
+!
+!     Output types : UK Met Office PP format
+!
+!  3. Parameters :
+!
+!  4. Subroutines used :
+!
+!      Name      Type  Module   Description
+!     ----------------------------------------------------------------
+!      W3NMOD    Subr. W3GDATMD Set number of model.
+!      W3SETG    Subr.   Id.    Point to selected model.
+!      W3NDAT    Subr. W3WDATMD Set number of model for wave data.
+!      W3SETW    Subr.   Id.    Point to selected model for wave data.
+!      W2NAUX    Subr. W3ADATMD Set number of model for aux data.
+!      W3SETA    Subr.   Id.    Point to selected model for aux data.
+!      ITRACE    Subr. W3SERVMD Subroutine tracing initialization.
+!      STRACE    Subr.   Id.    Subroutine tracing.
+!      NEXTLN    Subr.   Id.    Get next line from input file.
+!      EXTCDE    Subr.   Id.    Abort program as graceful as possible.
+!      STME21    Subr. W3TIMEMD Convert time to string.
+!      TICK21    Subr.   Id.    Advance time.
+!      DSEC21    Func.   Id.    Difference between times.
+!      W3IOGR    Subr. W3IOGRMD Reading/writing model definition file.
+!      W3IOGO    Subr. W3IOGOMD Reading/writing raw gridded data file.
+!      W3EXGO    Subr. Internal Execute grid output.
+!      W3TXTS    Subr. Internal Text output at sea points only.
+!     ----------------------------------------------------------------
+!
+!  5. Called by :
+!
+!     None, stand-alone program.
+!
+!  6. Error messages :
+!
+!     Checks on input, checks in W3IOxx.
+!
+!  7. Remarks :
+!
+!  8. Structure :
+!
+!     See source code.
+!
+!  9. Switches :
+!
+!     !/S     Enable subroutine tracing.
+!
+! 10. Source code :
+!
+!/ ------------------------------------------------------------------- /
+      USE CONSTANTS
+!/
+!     USE W3GDATMD, ONLY: W3NMOD, W3SETG
+      USE W3WDATMD, ONLY: W3NDAT, W3SETW
+      USE W3ADATMD, ONLY: W3NAUX, W3SETA
+      USE W3ODATMD, ONLY: W3NOUT, W3SETO
+      USE W3SERVMD, ONLY : ITRACE, NEXTLN, EXTCDE
+!/S      USE W3SERVMD, ONLY : STRACE
+      USE W3TIMEMD
+      USE W3IOGRMD, ONLY: W3IOGR
+      USE W3IOGOMD, ONLY: W3IOGO, W3READFLGRD
+!/
+      USE W3GDATMD
+      USE W3WDATMD, ONLY: TIME, WLV, ICE, BERG, UST, USTDIR
+      USE W3ADATMD, ONLY: DW, UA, UD, AS, CX, CY, HS, WLM, T0M1, THM,  &
+                          THS, FP0, THP0, DTDYN, FCUT,                 &
+                          ABA, ABD, UBA, UBD, SXX, SYY, SXY, USERO,    &
+                          PHS, PTP, PLP, PDIR, PSI, PWS, PWST, PNR,    &
+                          PTM1, PT1, PT2, PEP,                         &
+                          PTHP0, PQP, PSW, PPE, PGW, QP,               &
+                          TAUOX, TAUOY, TAUWIX,                        &
+                          TAUWIY, PHIAW, PHIOC, TUSX, TUSY, PRMS, TPMS,&
+                          USSX, USSY, MSSX, MSSY, MSSD, MSCX, MSCY,    &
+                          MSCD, CHARN, TWS,                            &
+                          TAUWNX, TAUWNY, BHD, T02, HSIG, CGE,         &
+                          T01, BEDFORMS, WHITECAP, TAUBBL, PHIBBL,     &
+                          CFLTHMAX, CFLXYMAX, CFLKMAX, TAUICE, PHICE,  &
+                          STMAXE, STMAXD, HMAXE, HCMAXE, HMAXD, HCMAXD,&
+                          P2SMS, EF, US3D, TH1M, STH1M, TH2M, STH2M,   &
+                          WN, USSP, WBT
+      USE W3ODATMD, ONLY: NDSO, NDSE, NDST, NOGRP, NGRPP, IDOUT,      &
+                          UNDEF, FLOGRD, FNMPRE, NOSWLL, NOGE
+
+!/SMC      USE W3SMCOMD ! For SMC regridding
+      USE PPLOOKMD ! For PP header lookup
+!
+      IMPLICIT NONE
+!/
+!/ ------------------------------------------------------------------- /
+!/ Local parameters
+!/
+      INTEGER                 :: NDSI, NDSM, NDSOG, NDSDAT, NDSDT,    &
+                                 NDSTRC, NTRACE, IERR, I, J, IFI, IFJ,&
+                                 TOUT(2), TDUM(2), IOTEST, NOUT,      &
+                                 IX1, IXN, IXS, IY1, IYN, IYS,        &
+                                 IOUT, IPART, MAPSTAOUT
+!
+      INTEGER, ALLOCATABLE    :: TABIPART(:)
+      INTEGER                 :: NBIPART
+      CHARACTER(LEN=30)       :: STRINGIPART
+      CHARACTER(LEN=128)      :: ENV
+
+!
+!/S      INTEGER, SAVE           :: IENT = 0
+      REAL                    :: DTREQ, DTEST
+      CHARACTER               :: COMSTR*1, IDTIME*23, IDDDAY*11,      &
+                                 TABNME*9, DESC*40
+      LOGICAL                 :: FLREQ(NOGRP,NGRPP), FLOG(NOGRP),     &
+                                 SCALE, LTEMP(NGRPP), FMAP, FMAP2
+      LOGICAL                 :: SMCGRD = .FALSE.
+!/SMC
+!/SMC! SMC grid specific variables:
+      REAL                    :: SXOUT, SYOUT, DXOUT, DYOUT
+      INTEGER                 :: NXOUT, NYOUT
+!
+! PP header storage:
+      INTEGER                 :: PPIHEAD(64)   ! PP integer header
+      REAL                    :: PPRHEAD(64)   ! PP real header
+      EQUIVALENCE(PPIHEAD(1), PPRHEAD(1))
+      INTEGER                 :: DATETIME_TZERO(2)
+      INTEGER                 :: PP_LBPROJ, PP_LBEXP, PP_LBHEM, PP_LBCODE
+      REAL                    :: PP_BPLAT, PP_BPLON
+      LOGICAL                 :: L_FLIPZLAT = .FALSE.
+      LOGICAL                 :: VECTOR = .FALSE.
+
+!/
+!/ ------------------------------------------------------------------- /
+!/
+! 1.  IO set-up.
+!
+      CALL W3NMOD ( 1, 6, 6 )
+      CALL W3SETG ( 1, 6, 6 )
+      CALL W3NDAT (    6, 6 )
+      CALL W3SETW ( 1, 6, 6 )
+      CALL W3NAUX (    6, 6 )
+      CALL W3SETA ( 1, 6, 6 )
+      CALL W3NOUT (    6, 6 )
+      CALL W3SETO ( 1, 6, 6 )
+!
+!/SMC      SMCGRD = .TRUE.
+      NDSI   = 10
+      NDSM   = 20
+      NDSOG  = 20
+      NDSDAT = 50
+!
+      NDSTRC =  6
+      NTRACE = 10
+      CALL ITRACE ( NDSTRC, NTRACE )
+!
+!/S      CALL STRACE (IENT, 'W3OUTF')
+!
+      WRITE (NDSO,900)
+!
+      J      = LEN_TRIM(FNMPRE)
+      OPEN (NDSI,FILE=FNMPRE(:J)//'ww3_mopp.inp',STATUS='OLD',       &
+            ERR=800,IOSTAT=IERR)
+      READ (NDSI,'(A)',END=801,ERR=802) COMSTR
+      IF (COMSTR.EQ.' ') COMSTR = '$'
+      WRITE (NDSO,901) COMSTR
+!
+!--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+! 2.  Read model definition file.
+!
+      CALL W3IOGR ( 'READ', NDSM )
+      WRITE (NDSO,920) GNAME
+
+!
+! 2a. Read PP Lookup file (ppheader.txt)
+!
+      CALL PP_LOOKUP_INIT()
+!
+!--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+! 3.  Read general data and first fields from file
+!
+      CALL W3IOGO ( 'READ', NDSOG, IOTEST )
+!
+      WRITE (NDSO,930)
+      DO IFI=1, NOGRP
+        DO IFJ=1, NGRPP
+          IF ( FLOGRD(IFI,IFJ) ) WRITE (NDSO,931) IDOUT(IFI,IFJ)
+          END DO
+        END DO
+!
+!--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+! 4.  Read requests from input file.
+!     Output times
+!
+      CALL NEXTLN ( COMSTR , NDSI , NDSE )
+      READ (NDSI,*,END=801,ERR=802) TOUT, DTREQ, NOUT
+      DTREQ  = MAX ( 0. , DTREQ )
+      IF ( DTREQ.EQ.0. ) NOUT = 1
+      NOUT   = MAX ( 1 , NOUT )
+!
+      CALL STME21 ( TOUT , IDTIME )
+      WRITE (NDSO,940) IDTIME
+!
+      TDUM = 0
+      CALL TICK21 ( TDUM , DTREQ )
+      CALL STME21 ( TDUM , IDTIME )
+      IF ( DTREQ .GE. 86400. ) THEN
+          WRITE (IDDDAY,'(I10,1X)') INT(DTREQ/86400.)
+        ELSE
+          IDDDAY = '           '
+        END IF
+      IDTIME(1:11) = IDDDAY
+      IDTIME(21:23) = '   '
+      WRITE (NDSO,941) IDTIME, NOUT
+!
+! ... Output fields
+!
+      CALL W3READFLGRD ( NDSI, NDSO, 9, NDSE, COMSTR, FLOG,      &
+                         FLREQ, 1, 1, IERR )
+      IF (IERR.NE.0) GOTO 800 
+!
+! ... MAPSTA, MAPSTA_EACH
+!
+      CALL NEXTLN ( COMSTR , NDSI , NDSE )
+      READ (NDSI,*,END=801,ERR=802) FMAP, FMAP2
+      IF( FMAP ) THEN
+        IF( FMAP2 ) THEN
+          MAPSTAOUT = 2
+        ELSE
+          MAPSTAOUT = 1
+        ENDIF
+      ELSE
+        MAPSTAOUT = 0
+      ENDIF
+!
+! ... Required partitions:
+!
+      CALL NEXTLN ( COMSTR , NDSI , NDSE )
+      READ (NDSI,('(A)'),END=801,ERR=802) STRINGIPART
+
+      ! Extract partition numbers from string:
+      ALLOCATE(TABIPART(10)) ! Max of 10 partitions!
+      CALL INTARR(STRINGIPART, TABIPART, 10, NBIPART)
+!
+      WRITE(NDSO, 960)
+      I = 1
+      DO WHILE(I .LE. NBIPART)
+         ! Check for out of range partition numbers
+         IF( TABIPART(I) .LT. 0 .OR. TABIPART(I) .GT. NOSWLL ) THEN
+            WRITE(NDSO,'(6X,"INVALID PARTITION NO: ",I2," - IGNORED")') &
+                  TABIPART(I)
+            TABIPART(I:9) = TABIPART(I+1:10)
+            NBIPART = NBIPART - 1
+            CYCLE
+         ENDIF
+
+!         IF( TABIPART(I) .EQ. 0 ) THEN
+!            DESC = 'Classic wind-sea    (wave age cut-off)'
+!         ELSE IF( TABIPART(I) .EQ. 1 ) THEN
+!            DESC = 'Classic total swell (wave age cut-off)'
+!         ELSE
+!            WRITE(DESC, '("Wave system no. ", I2)') TABIPART(I) - 1
+!         ENDIF
+         WRITE(DESC, '("Wave partition no. ", I2)') TABIPART(I)
+
+         I = I + 1
+
+         WRITE(NDSO,'(6X,A40)') DESC
+      ENDDO
+!
+      WRITE (NDSO,942) 'Met Office PP file'
+! ... Field IX,IY range, or grid definition for SMC grid
+!
+      IF( SMCGRD ) THEN
+!/SMC      WRITE(NDSO, 4100)
+!/SMC      CALL NEXTLN ( COMSTR , NDSI , NDSE )
+!/SMC      READ (NDSI,*,END=801,ERR=802) SXO, SYO, EXO, EYO, XCELFAC, YCELFAC
+!/SMC
+!/SMC      ! For PP files, SMC output type is always 2 (re-gridded)
+!/SMC      SMCTYPE = 2
+!/SMC
+!/SMC      ! Calculate regridding weights:
+!/SMC      ALLOCATE(XIDX(NSEA), YIDX(NSEA), XSPAN(NSEA),                   &
+!/SMC               YSPAN(NSEA), WTS(NSEA), SMCIDX(NSEA))
+!/SMC      CALL SMC_INTERP()
+!/SMC      WRITE(NDSO, 4110) NXO, NYO, SXO, SYO, DXO, DYO
+!/SMC
+!/SMC      ! Allocate space for coverage array and new MAPSTA array
+!/SMC      ALLOCATE(COV(NXO,NYO), MAPSMC(NXO,NYO))
+!/SMC
+!/SMC      ! CB: IXN and IXY are calculated by SMC_INTERP for SMC GRID
+!/SMC      IX1 = 1
+!/SMC      IXN = NXO
+!/SMC      IY1 = 1
+!/SMC      IYN = NYO
+!/SMC
+!/SMC      ! Set output grid definition to calculated SMC grid
+!/SMC      NXOUT = NXO
+!/SMC      NYOUT = NYO
+!/SMC      SXOUT = SXO
+!/SMC      SYOUT = SYO
+!/SMC      DXOUT = DXO
+!/SMC      DYOUT = DYO
+      ELSE
+        NXOUT = NX
+        NYOUT = NY
+        SXOUT = X0
+        SYOUT = Y0
+        DXOUT = SX
+        DYOUT = SY
+      ENDIF
+!
+! ... Read envronment variables for:
+!         WW3_DATETIME_TZERO  - The datetimte of T+0 for the forecast
+!         WW3_PP_LBPROJ       - The PP projection code for the config
+!         WW3_PP_LBEXP        - The PP experiment code for the config
+!
+     ! Get TZERO_DATETIME from env var, if set:
+      CALL GETENV("WW3_DATETIME_TZERO", ENV)
+      ENV = TRIM(ENV)
+      IF(ENV .NE. '') THEN
+         READ(ENV,'(I8,1X,I6)') DATETIME_TZERO
+      ELSE
+         ! Default T0 to first time in file:
+         DATETIME_TZERO = TOUT
+      ENDIF
+ 
+      ! Get PP projection code:
+      CALL GETENV( "WW3_PP_LBPROJ", ENV )
+      J = LEN_TRIM(ENV)
+      IF( ENV(:J) .NE. '' ) THEN
+         ! Convert LBPROJ to INTEGER:
+         READ( ENV,*) PP_LBPROJ
+      ELSE
+         PP_LBPROJ = 801   ! Default to 801
+      ENDIF
+ 
+      ! Get PP experiment code:
+      CALL GETENV( "WW3_PP_LBEXP", ENV )
+      J = LEN_TRIM(ENV)
+      IF( ENV(:J) .NE. '' ) THEN
+         ! Convert LBEXP to INTEGER:
+         READ( ENV,*) PP_LBEXP
+      ELSE
+         PP_LBEXP = 0   ! Default to 0
+      ENDIF
+
+
+! 1a. Rotated pole location, use default unless we are running
+!     rotated version of code (RTD switch):
+!
+      PP_BPLAT = 90.0
+      PP_BPLON = 0.0        
+!/RTD      PP_BPLAT = POLAT
+!/RTD      PP_BPLON = POLON
+
+!
+! 1b. Set grid code based on pole co-ordinates:
+!
+      IF( PP_BPLAT .NE. 90.0 .OR. PP_BPLON .NE. 0.0 ) THEN
+         PP_LBCODE = 101   ! Rotated pole lat-lon grid
+      ELSE
+         PP_LBCODE = 1     ! Standard pole lat-lon grid
+      ENDIF
+
+! 1c. Determine hemisphere code:
+!       1 = Global
+!       3 = Limited area without longitudinal wrap-around
+!       4 = Limited area with longitudinal wrap-around
+!
+      IF( (NX * SX) .GT. 359.999 ) THEN
+         ! Global longitudinal wrap:
+         IF( (NY * SY ) .GT. 179.999 ) THEN
+           PP_LBHEM = 1
+         ELSE
+           PP_LBHEM = 4
+         ENDIF
+      ELSE
+        PP_LBHEM = 3
+      ENDIF
+
+      WRITE(NDSO,3950) PP_LBPROJ, PP_LBEXP, PP_LBCODE, DATETIME_TZERO
+!/RTD      WRITE(NDSO,3951) POLAT, POLON
+!
+
+
+      ! Update static PP header infomration:
+      PPIHEAD(:) = 0
+      PPIHEAD(13) = 11           ! time type indicator
+      PPIHEAD(15) = NYOUT*NXOUT  ! length of data records in words
+      PPIHEAD(16) = PP_LBCODE    ! grid_code
+      PPIHEAD(17) = PP_LBHEM     ! hemisphere code  
+      PPIHEAD(22) = 2            ! header release number
+      PPIHEAD(26) = 129          ! vertical co-ordinate type (height)
+      PPIHEAD(28) = PP_LBEXP     ! PP Experiment code
+      PPIHEAD(31) = PP_LBPROJ    ! Projection
+      PPIHEAD(33) = 8888         ! Field file level code
+      PPIHEAD(39) = 1            ! data type (real)
+      PPIHEAD(45) = 4            ! internal model identifier
+      
+      PPRHEAD(56) = PP_BPLAT     ! polar latitude
+      PPRHEAD(57) = PP_BPLON     ! polar longitude
+      PPRHEAD(58) = 0.0          ! unused, set to zero
+
+      PPIHEAD(18) = NYOUT        ! number ouf output rows
+      PPIHEAD(19) = NXOUT        ! number ouf output cols
+      IF( L_FLIPZLAT ) THEN
+        ! Flipping the zeroth latitude:
+        PPRHEAD(59) = SYOUT+(DYOUT)*NYOUT 
+        PPRHEAD(60) = -DYOUT     ! bdy (inverted)
+      ELSE
+        PPRHEAD(59) = SYOUT-DYOUT! bzy (zeroth lat)
+        PPRHEAD(60) = DYOUT      ! bdy
+      ENDIF
+      PPRHEAD(61) = SXOUT - DXOUT! bzx  (zeroth lon)
+      PPRHEAD(62) = DXOUT        ! bdx
+      PPRHEAD(63) = UNDEF        ! mdi value
+      PPRHEAD(64) = 1.0          ! scaling factor
+!
+! ... Open output file
+!
+      J      = LEN_TRIM(FNMPRE)
+      OPEN (NDSDAT,FILE=FNMPRE(:J)//'out_grd.pp',STATUS='REPLACE',       &
+            FORM="UNFORMATTED", CONVERT="big_endian",                    &
+            ERR=803, IOSTAT=IERR)
+!
+! ... Output of output fields
+!
+      WRITE (NDSO,945)
+!
+      DO IFI=1, NOGRP
+      DO IFJ=1, NGRPP
+        IF ( FLREQ(IFI,IFJ) ) THEN
+          IF ( FLOGRD(IFI,IFJ) ) THEN
+            WRITE (NDSO,946) IDOUT(IFI,IFJ), ' '
+          ELSE
+            WRITE (NDSO,946) IDOUT(IFI,IFJ), '*** NOT AVAILABLE ***'
+            FLREQ(IFI,IFJ) = .FALSE.
+          END IF
+        END IF
+      END DO
+      END DO
+!
+!     TODO: These messages relate to standard WW3 partitioning. Will need
+!     TODO: updating for Met Office alternate partitioning.
+      IF ( FLOG(4) ) THEN
+        IF ( IPART .EQ. 0 ) THEN
+          WRITE (NDSO,948)
+        ELSE
+          WRITE (NDSO,949) IPART
+        END IF
+      END IF
+!
+!--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+! 5.  Time management.
+!
+      IOUT   = 0
+      WRITE (NDSO,970)
+!
+      DO
+        DTEST  = DSEC21 ( TIME , TOUT )
+        IF ( DTEST .GT. 0. ) THEN
+            CALL W3IOGO ( 'READ', NDSOG, IOTEST )
+              IF ( IOTEST .EQ. -1 ) THEN
+                WRITE (NDSO,944)
+                GOTO 888
+              END IF
+            CYCLE
+          END IF
+        IF ( DTEST .LT. 0. ) THEN
+            CALL TICK21 ( TOUT , DTREQ )
+            CYCLE
+          END IF
+!
+        IOUT   = IOUT + 1
+        CALL STME21 ( TOUT , IDTIME )
+        WRITE (NDSO,971) IDTIME
+!
+        CALL W3EXGO ( NX, NY, NSEA )
+!
+        CALL TICK21 ( TOUT , DTREQ )
+        IF ( IOUT .GE. NOUT ) EXIT
+      END DO
+!
+      WRITE (NDSO,972)
+!
+      GOTO 888
+!
+! Escape locations read errors :
+!
+  800 CONTINUE
+      WRITE (NDSE,1000) IERR
+      CALL EXTCDE ( 10 )
+!
+  801 CONTINUE
+      WRITE (NDSE,1001)
+      CALL EXTCDE ( 11 )
+!
+  802 CONTINUE
+      WRITE (NDSE,1002) IERR
+      CALL EXTCDE ( 12 )
+!
+  803 CONTINUE
+      WRITE (NDSE,1003) IERR
+      CALL EXTCDE ( 13 )
+!
+  888 CONTINUE
+      WRITE (NDSO,999)
+!
+!-- cleanup
+!
+!/SMC      DEALLOCATE(XIDX, YIDX, XSPAN, YSPAN, WTS, SMCIDX)
+!/SMC      DEALLOCATE(COV, MAPSMC)
+!
+! Formats
+!
+  900 FORMAT (/15X,'   *** WAVEWATCH III Field output postp. ***   '/ &
+               15X,'==============================================='/)
+  901 FORMAT ( '  Comment character is ''',A,''''/)
+!
+  920 FORMAT ( '  Grid name : ',A/)
+!
+  930 FORMAT ( '  Fields in file : '/                                 &
+               ' --------------------------')
+  931 FORMAT ( '      ',A)
+!
+  940 FORMAT (/'  Output time data : '/                               &
+               ' --------------------------------------------------'/ &
+               '      First time         : ',A)
+  941 FORMAT ( '      Interval           : ',A/                       &
+               '      Number of requests : ',I6)
+  942 FORMAT (/'  Output type :'/                                     &
+               ' --------------------------------------------------'/ &
+               '      ',A/)
+  943 FORMAT ( '      Data for ',A)
+  944 FORMAT (/'      End of file reached '/)
+!
+  945 FORMAT (/'  Requested output fields : '/                        &
+               ' --------------------------------------------------')
+  946 FORMAT ( '      ',A,2X,A)
+  948 FORMAT (/'         Partitioned field data for wind seas')
+  949 FORMAT (/'         Partitioned field data for swell field',I2)
+!
+ 1940 FORMAT ( '      X range and interval : ',3I5/                   &
+               '      Y range and interval : ',3I5)
+ 1941 FORMAT ( '      Data is normalized ')
+!
+ 2940 FORMAT ( '      X range : ',2I5/                                &
+               '      Y range : ',2I5)
+!
+ 3940 FORMAT ( '      X range          : ',2I5/                       &
+               '      Y range          : ',2I5)
+!
+ 3950 FORMAT ( '      Projection code  : ',I5/                        &
+               '      Experiment code  : ',I5/                        &
+               '      Grid code        : ',I5/                        &
+               '      Valid datetime   : ',I8,1X,I6.6 )
+!/RTD 3951 FORMAT ( '      Pole location    : ',2F9.3)
+!
+  950 FORMAT (//'  Output for ',A/                                    &
+               ' --------------------------------------------------')
+!
+  960 FORMAT (/'   Requested partitions : ' /                         &
+               ' -----------------------------------------------------')
+!
+  970 FORMAT (//'  Generating files '/                                &
+               ' --------------------------------------------------')
+  971 FORMAT ( '      Files for ',A)
+  972 FORMAT ( ' ')
+!
+  999 FORMAT (/'  End of program '/                                   &
+               ' ========================================='/          &
+               '         WAVEWATCH III Field output '/)
+!
+ 1000 FORMAT (/' *** WAVEWATCH III ERROR IN WW3_MOPP : '/             &
+               '     ERROR IN OPENING INPUT FILE'/                    &
+               '     IOSTAT =',I5/)
+!
+ 1001 FORMAT (/' *** WAVEWATCH III ERROR IN WW3_MOPP : '/             &
+               '     PREMATURE END OF INPUT FILE'/)
+!
+ 1002 FORMAT (/' *** WAVEWATCH III ERROR IN WW3_MOPP : '/             &
+               '     ERROR IN READING FROM INPUT FILE'/               &
+               '     IOSTAT =',I5/)
+ 1003 FORMAT (/' *** WAVEWATCH III ERROR IN WW3_MOPP : '/             &
+               '     ERROR IN OPENING OUTPUT FILE'/                   &
+               '     IOSTAT =',I5/)
+!/SMC 4100 FORMAT (//'  SMC grid output :' /                               &
+!/SMC               ' --------------------------------------------------')
+!/SMC 4110 FORMAT ( '   SMC to regular lat/lon grid using area averaging' / &
+!/SMC               '   Aligned output grid definition: ' /                &
+!/SMC               '      NX, NY           : ', 2I8 /                     &
+!/SMC               '      X0, Y0           : ', 2F8.3 /                   &
+!/SMC               '      DX, DY           : ', 2F8.5 )
+!/SMC 4120 FORMAT ( '   Flat seapoint dimensioned SMC output file' /       &
+!/SMC               '      Num seapoints    : ',I9 )
+!/
+!/ Internal subroutine W3EXGO ---------------------------------------- /
+!/
+      CONTAINS
+!/ ------------------------------------------------------------------- /
+      SUBROUTINE W3EXGO ( NX, NY, NSEA )
+!/
+!/                  +-----------------------------------+
+!/                  | WAVEWATCH III           NOAA/NCEP |
+!/                  |           H. L. Tolman            |
+!/                  |                        FORTRAN 90 |
+!/                  | Last update :         25-Dec-2012 |
+!/                  +-----------------------------------+
+!/
+!/    26-Sep-1997 : Final FORTRAN 77                    ( version 1.18 )
+!/    19-Jan-2000 : Upgrade to FORTRAN 90               ( version 2.00 )
+!/                  Massive changes to logistics
+!/    24-Jan-2001 : Flat grid version                   ( version 2.06 )
+!/    23-Apr-2002 : Clean-up                            ( version 2.19 )
+!/    29-Apr-2002 : Adding output fields 17-18.         ( version 2.20 )
+!/    16-Oct-2002 : Fix bound. error for stress output. ( version 3.00 )
+!/    16-Oct-2002 : Fix statistical output for UNDEF.   ( version 3.00 )
+!/    13-Nov-2002 : Add stress vector.                  ( version 3.00 )
+!/    24-Dec-2004 : Multiple grid version.              ( version 3.06 )
+!/    21-Jul-2005 : Adding output fields 19-21.         ( version 3.07 )
+!/    28-Jun-2006 : Adding file name preamble.          ( version 3.09 )
+!/    05-Jul-2006 : Consolidate stress arrays.          ( version 3.09 )
+!/    28-Mar-2007 : Adding partitioned output.          ( version 3.11 )
+!/                  Adding user slots for outputs.
+!/    31-Jul-2007 : Fix file extension errors.          ( version 3.12 )
+!/    25-Dec-2012 : New structure of output fields.     ( version 4.11 )
+!/    25-Jun-2013 : Add type 4 sea point text output.   ( version 4.11 )
+!/
+!  1. Purpose :
+!
+!     Perform actual grid output.
+!
+!  3. Parameters :
+!
+!     Parameter list
+!     ----------------------------------------------------------------
+!       NX/Y    Int.  I  Grid dimensions.
+!       NSEA    Int.  I  Number of sea points.
+!     ----------------------------------------------------------------
+!
+!     Internal parameters
+!     ----------------------------------------------------------------
+!       XA, XX, XY
+!               R.A.  Output fields
+!     ----------------------------------------------------------------
+!
+!  4. Subroutines used :
+!
+!      Name      Type  Module   Description
+!     ----------------------------------------------------------------
+!      STRACE    Subr. W3SERVMD Subroutine tracing.
+!      EXTCDE    Subr.   Id.    Abort program as graceful as possible.
+!      W3S2XY    Subr.   Id.    Convert from storage to spatial grid.
+!      PRTBLK    Subr. W3ARRYMD Print plot of array.
+!      OUTA2I    Subr.   Id.    Print array of INTEGERS.
+!     ----------------------------------------------------------------
+!
+!  5. Called by :
+!
+!     Main program in which it is contained.
+!
+!  6. Error messages :
+!
+!       None.
+!
+!  7. Remarks :
+!
+!     - Note that arrays CX and CY of the main program now contain
+!       the absolute current speed and direction respectively.
+!
+!  8. Structure :
+!
+!     See source code.
+!
+!  9. Switches :
+!
+!       !/S  Enable subroutine tracing.
+!       !/T  Enable test output.
+!
+! 10. Source code :
+!
+!/ ------------------------------------------------------------------- /
+      USE W3SERVMD, ONLY : W3S2XY, UV_TO_MAG_DIR
+      USE W3ARRYMD, ONLY : OUTA2I, PRTBLK
+!/
+!/ ------------------------------------------------------------------- /
+!/ Parameter list
+!/
+      INTEGER                 :: NX, NY, NSEA
+!/
+!/ ------------------------------------------------------------------- /
+!/ Local parameters
+!/
+      INTEGER                 :: NXMAX, NXTOT, NBLOK, IH, IM, IS,     &
+                                 MFILL, J, ISEA, IX, IY, IXB, IB,     &
+                                 IXA, NINGRD, JJ, IFI, IFJ
+      INTEGER                 :: MAP(NX+1,NY), MP2(NX+1,NY)!,          &
+      INTEGER                 :: I1, J1, INDEXIPART, NFIELD, ICOMP
+      INTEGER, SAVE           :: IPASS = 1
+!/S      INTEGER, SAVE           :: IENT   =   0
+      REAL                    :: FSC, CABS, UABS, FSCA, XMIN, XMAX,   &
+                                 XAVG, XSTD, YGBX, XGBX, AABS
+      REAL, ALLOCATABLE       :: XA(:,:,:), XX(:,:), XY(:,:), AUX1(:)
+      REAL                    :: DPTMAX(1)
+      DOUBLE PRECISION        :: XDS, XDSQ
+!/T      LOGICAL                 :: LTEMP(NGRPP)
+      CHARACTER               :: OLDTID*8, FNAME*16, ENAME*4,         &
+                                 FORMF*11, UNITS*10, FSCS*7
+      CHARACTER, SAVE         :: TIMEID*8 = '00000000'
+      CHARACTER, SAVE         :: FILEID*13 = 'WAVEWATCH III'
+
+      INTEGER                 :: PP_FCTIME
+      INTEGER, PARAMETER      :: MAX_COMP = 3  ! Max number of components
+
+      ! For WGDOS Compression:
+      INTEGER(KIND=4) :: ISC                     ! Packing accuracy
+      INTEGER(KIND=4) :: DATSZ                   ! Size of data arrays
+      INTEGER(KIND=4) :: SZCOMP                  ! Size of compressed data 
+      CHARACTER(64)   :: CMESSAGE                ! Error message from COEX
+      INTEGER         :: ISIZE                   ! Length of data to write out
+      REAL            :: TMPDAT(NSEA)            ! Temporary storage for dir
+      REAL(KIND=8),ALLOCATABLE :: DATACOMP(:)    ! Compressed data
+
+!/BT4   REAL, PARAMETER            :: LOG2=LOG(2.)
+!/
+!/ ------------------------------------------------------------------- /
+!/
+!/S      CALL STRACE (IENT, 'W3EXGO')
+!
+!/T      DO IFI=1, NOGRP 
+!/T        LTEMP  = FLREQ(IFI,:)
+!/T        WRITE (NDST,9000) IFI, LTEMP
+!/T        END DO
+!/T      WRITE (NDST,9001) IX1, IXN, IXS, IY1, IYN, IYS,          &
+!/T                        SCALE, NDSDAT
+!
+!--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+! 1.  Preparations
+!
+      ! CB: Allocate output storage. This is required with the introduction
+      ! of the SMC grid output as the regridded output grid dimensions could
+      ! conceivably be larger than the NX and NY values. Making these (large)
+      ! arrays allocatable also moves them to the heap and avoids stack
+      ! overflow issues that can occur on some architectures. Chris Bunney.
+!!      IF(SMCGRD) THEN
+!!!/SMC        ALLOCATE(XA(NXO,NYO,MAX_COMP), XX(NXO,NYO), XY(NXO,NYO))
+!!      ELSE
+        ALLOCATE(XA(NXOUT,NYOUT,MAX_COMP), XX(NXOUT,NYOUT), XY(NXOUT,NYOUT))
+!!      ENDIF
+      ALLOCATE(DATACOMP(NXOUT*NYOUT))
+      ALLOCATE(AUX1(NSEA))
+!
+      XA     = UNDEF
+      XX     = UNDEF
+      XY     = UNDEF
+!
+      MFILL  = -999
+!
+! 1.1 Update PP header with time:
+!
+      PPIHEAD(1) = INT( TIME(1)/10000 )                       ! validity year
+      PPIHEAD(2) = INT( (TIME(1) - PPIHEAD(1)*10000) / 100 )  ! validity month
+      PPIHEAD(3) = TIME(1) - PPIHEAD(1)*10000 - PPIHEAD(2)*100! validity day
+      PPIHEAD(4) = INT( TIME(2)/ 10000 )                      ! validity hour
+      PPIHEAD(5) = INT( ( TIME(2) - PPIHEAD(4)*10000 ) /100 ) ! validity min
+
+      PPIHEAD(7)  = INT( DATETIME_TZERO(1)/10000 )            ! data year
+      PPIHEAD(8)  = INT( (DATETIME_TZERO(1) -                           &
+                        PPIHEAD(7)*10000) / 100 )             ! data month
+      PPIHEAD(9)  = DATETIME_TZERO(1) -                                 &
+                        PPIHEAD(7)*10000 - PPIHEAD(8)*100     ! data day
+      PPIHEAD(10) = INT( DATETIME_TZERO(2)/ 10000 )           ! data hour
+      PPIHEAD(11) = INT( ( DATETIME_TZERO(2) -                          &
+                        PPIHEAD(10)*10000 ) /100 )            ! data min
+
+      PP_FCTIME = INT( DSEC21( DATETIME_TZERO, TIME ) / 3600 )
+      PPIHEAD(14) = PP_FCTIME    ! forecast period (hrs).....
+!
+! 1.2 Update and Write MAPSTA field (if requested):
+!
+!/SMC      ! Calculate new MAPSMC array:
+!/SMC      CALL MAPSTA_SMC()
+!/SMC
+      IF(MAPSTAOUT .EQ. 2 .OR. (MAPSTAOUT .EQ. 1 .AND. IPASS .EQ. 1)) THEN
+         PPIHEAD(23) = 395        ! Field code
+         PPIHEAD(32) = 74         ! FF Field type
+         PPIHEAD(42) = 6019       ! Stash code
+         PPIHEAD(15) = NXOUT * NYOUT  ! LBLREC 
+         PPIHEAD(30) = NXOUT * NYOUT  ! LBNREC 
+         PPIHEAD(21) = 0          ! Packing 
+         !PPIHEAD(39) = 2          ! Field type (2=Integer)
+         PPIHEAD(39) = 1          ! Field type (1=Real)
+         PPRHEAD(51) = 0          ! Packing acc.
+         PPRHEAD(51) = 1.0        ! Scaling
+
+         WRITE(NDSDAT) PPIHEAD
+         IF(SMCGRD) THEN
+!/SMC           !WRITE(NDSDAT) MAPSMC
+!/SMC           WRITE(NDSDAT) REAL(MAPSMC, KIND(4))
+         ELSE
+           !WRITE(NDSDAT) (MAPSTA(IY,:), IY=1,NY)
+           WRITE(NDSDAT) (REAL(MAPSTA(IY,:)), IY=1,NY)
+         ENDIF
+      ENDIF
+
+!--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+! 2.  Loop over output fields.
+!
+      I1=0
+      J1=0
+!
+      DO IFI=1, NOGRP
+      DO IFJ=1, NGRPP
+        IF ( FLREQ(IFI,IFJ) ) THEN
+!
+            NFIELD = 1         ! Number of components in field
+            INDEXIPART = 1    ! Partition counter
+            IPART=TABIPART(INDEXIPART)
+!
+!  Loop over IPART for partition variables
+!
+555         CONTINUE
+!
+            IF (I1.EQ.0) I1=IFI
+            IF (J1.EQ.0) J1=IFJ
+
+            FORMF  = '(1X,32I4)'
+!/T            WRITE (NDST,9020) IDOUT(IFI,IFJ)
+!
+! 2.a Set output arrays and parameters
+!
+            ! Depth
+            IF ( IFI .EQ. 1 .AND. IFJ .EQ. 1 ) THEN
+              CALL S2GRID(DW(1:NSEA), XA(:,:,1))
+
+            ! Surface current
+            ELSE IF ( IFI .EQ. 1 .AND. IFJ .EQ. 2 ) THEN
+              !! Note - CX and CY read in from .ww3 file are X-Y vectors
+!/RTD              ! Rotate x,y vector back to standard pole
+!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, CX(1:NSEA), CY(1:NSEA), AnglD)
+!
+              IF( .NOT. VECTOR ) THEN
+                CALL UV_TO_MAG_DIR(CX(1:NSEA), CY(1:NSEA), NSEA,       &
+                                   TOLERANCE=0.05, CONV='O')
+              ENDIF
+!
+              CALL S2GRID(CX(1:NSEA), XX)
+              CALL S2GRID(CY(1:NSEA), XY)
+              NFIELD=2
+!
+            ! Wind
+            ELSE IF ( IFI .EQ. 1 .AND. IFJ .EQ. 3 ) THEN
+              !! Note - UA and UD read in from .ww3 file are UX,UY
+!/RTD              ! Rotate x,y vector back to standard pole
+!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, UA(1:NSEA), UD(1:NSEA), AnglD)
+!             
+              IF( .NOT. VECTOR ) THEN
+                CALL UV_TO_MAG_DIR(UA(1:NSEA), UD(1:NSEA), NSEA,       &
+                                 TOLERANCE=1.0, CONV='N')
+              ENDIF
+!              
+              CALL S2GRID(UA(1:NSEA), XX)
+              CALL S2GRID(UD(1:NSEA), XY)
+              NFIELD=2
+!
+            ! Air-sea temperature difference
+            ELSE IF ( IFI .EQ. 1 .AND. IFJ .EQ. 4 ) THEN
+              CALL S2GRID(AS(1:NSEA), XA(:,:,1))
+!
+            ! Sea surface height above sea level
+            ELSE IF ( IFI .EQ. 1 .AND. IFJ .EQ. 5 ) THEN
+              CALL S2GRID(WLV, XA(:,:,1))
+!
+            ! Sea ice area fraction
+            ELSE IF ( IFI .EQ. 1 .AND. IFJ .EQ. 6 ) THEN
+              CALL S2GRID(ICE(1:NSEA), XA(:,:,1))
+
+            ! Icebergs_damping
+            ELSE IF ( IFI .EQ. 1 .AND. IFJ .EQ. 7 ) THEN
+              CALL S2GRID(BERG, XA(:,:,1))
+              WHERE ( XA(:,:,1).NE.UNDEF) XA(:,:,1) = XA(:,:,1)*0.1
+!
+!/BT4 ! Krumbein phi scale
+!/BT4 ELSE IF ( IFI .EQ. 1 .AND. IFJ .EQ. 8 ) THEN
+!/BT4              CALL S2GRID(SED_D50, XA(:,:,1))
+!/BT4              WHERE ( XA(:,:,1).NE.UNDEF) XA(:,:,1) = -LOG(XA(:,:,1)/0.001)/LOG2    
+!/BT4              NFIELD=1
+!
+!/IS2 ! Ice thickness
+!/IS2 ELSE IF (IFI .EQ. 1 .AND. IFJ .EQ. 9 ) THEN
+!/IS2              CALL S2GRID(ICEH(1:NSEA), XA(:,:,1))
+!/IS2              NFIELD=1
+!
+!/IS2 ! Maximum ice floe diameter
+!/IS2 ELSE IF (IFI .EQ. 1 .AND. IFJ .EQ. 10 ) THEN
+!/IS2              CALL S2GRID(ICEF(1:NSEA), XA(:,:,1))
+!/IS2              NFIELD=1
+
+            ! Significant wave height
+            ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 1 ) THEN
+              CALL S2GRID(HS, XA(:,:,1))
+
+            ! Mean wave length
+            ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 2 ) THEN
+              CALL S2GRID(WLM, XA(:,:,1))
+!
+            ! Mean period T02
+            ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 3 ) THEN
+              CALL S2GRID(T02, XA(:,:,1))
+!
+            ! Mean period T0m1
+            ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 4 ) THEN
+              CALL S2GRID(T0M1, XA(:,:,1))
+!
+            ! Mean period T01
+            ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 5 ) THEN
+              CALL S2GRID(T01, XA(:,:,1))
+!
+            ! Wave peak frequency
+            ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 6 ) THEN
+              CALL S2GRID(FP0, XA(:,:,1))
+!
+            ! Wave mean direction
+            ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 7 ) THEN
+!/RTD              ! Rotate direction back to standard pole
+!/RTD              IF ( FLAGUNR ) CALL W3THRTN(NSEA, THM, AnglD, .FALSE.)
+
+              CALL S2GRID(THM, XA(:,:,1), .TRUE.)
+!              IF( SMCGRD ) THEN
+!!/SMC                CALL W3S2XY_SMC( THM, XA, .TRUE. )
+!              ELSE
+!                 DO ISEA=1, NSEA
+!                   IF ( THM(ISEA) .NE. UNDEF )  THEN
+!                     THM(ISEA) = MOD ( 630. - RADE*THM(ISEA) , 360. )
+!                     END IF
+!                   END DO
+!                 CALL W3S2XY ( NSEA, NSEA, NX+1, NY, THM, MAPSF, XA )
+!              ENDIF
+!
+            ! Directional spread
+            ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 8 ) THEN
+              CALL S2GRID(THS, XA(:,:,1))
+!
+            ! Peak direction
+            ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 9 ) THEN
+!/RTD              ! Rotate direction back to standard pole
+!/RTD              IF ( FLAGUNR ) CALL W3THRTN(NSEA, THP0, AnglD, .FALSE.)
+              CALL S2GRID(THP0, XA(:,:,1), .TRUE.)
+!              IF( SMCGRD ) THEN
+!!/SMC                CALL W3S2XY_SMC( THP0, XA, .TRUE. )
+!              ELSE
+!                 DO ISEA=1, NSEA
+!                   IF ( THP0(ISEA) .NE. UNDEF ) THEN
+!                     THP0(ISEA) = MOD ( 630-RADE*THP0(ISEA) , 360. )
+!                     END IF
+!                   END DO
+!                 CALL W3S2XY ( NSEA, NSEA, NX+1, NY, THP0  , MAPSF, XA )
+!              ENDIF
+!
+            ! Infragravity wave height
+            ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 10 ) THEN
+              CALL S2GRID(HSIG, XA(:,:,1))
+!
+            ! Expected maximum sea surface elevation
+            ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 11 ) THEN
+              CALL S2GRID(STMAXE, XA(:,:,1))
+!
+            ! Standard deviation of maximum sea surface elevation
+            ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 12 ) THEN
+              CALL S2GRID(STMAXD, XA(:,:,1))
+!
+            ! Expected maximum wave height 
+            ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 13 ) THEN
+              CALL S2GRID(HMAXE, XA(:,:,1))
+!
+            ! Expected maximum wave height from crest
+            ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 14 ) THEN
+              CALL S2GRID(HCMAXE, XA(:,:,1))
+!
+            ! STD of maximum wave height
+            ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 15 ) THEN
+              CALL S2GRID(HMAXD, XA(:,:,1))
+!
+            ! STD of maximum wave height from crest
+            ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 16 ) THEN
+              CALL S2GRID(HCMAXD, XA(:,:,1))
+!
+            ! Dominant wave breaking probability
+            ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 17 ) THEN
+              CALL S2GRID(WBT, XA(:,:,1))
+!
+            ! Wave peak period (derived from peak freq field)
+            ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 18 ) THEN
+              DO I=1,NSEA
+                IF(FP0(I) .NE. UNDEF) THEN
+                  AUX1(I) = 1.0 / FP0(I)
+                ELSE
+                  AUX1(I) = UNDEF
+                ENDIF
+              ENDDO
+!
+              CALL S2GRID(AUX1, XA(:,:,1))
+!
+            ! Wave elevation spectrum
+            ! NOTE: NOT AVAILABLE FOR PP OUTPUT
+!CB            ELSE IF ( IFI .EQ. 3 .AND. IFJ .EQ. 1 ) THEN
+!CB              ! Information for spectral
+!CB              FLFRQ  = .TRUE.
+!CB              I1F=E3DF(2,1)
+!CB              I2F=E3DF(3,1)
+!CB              DO IK=I1F,I2F
+!CB                CALL S2GRID(EF(:,IK), XX)
+!CB                IF (NCVARTYPE.EQ.2) WHERE ( XX.GE.0.) XX = ALOG10(XX+1E-12)
+!CB                XK(:,:,IK)=XX
+!CB              END DO
+!CB!
+!CB            ! Mean wave direction frequency spectrum
+!CB            ELSE IF ( IFI .EQ. 3 .AND. IFJ .EQ. 2 ) THEN
+!CB              ! Information for spectral
+!CB              FLFRQ  = .TRUE.
+!CB              I1F=E3DF(2,2)
+!CB              I2F=E3DF(3,2)
+!CB              DO IK=I1F,I2F
+!CB!/RTD                ! Rotate direction back to standard pole
+!CB!/RTD                IF ( FLAGUNR ) CALL W3THRTN(NSEA, TH1M(:,IK), AnglD, .FALSE.)
+!CB                CALL S2GRID(TH1M(:,IK), XX)
+!CB                XK(:,:,IK)=XX
+!CB              END DO
+!CB!
+!CB            ! Spreading frequency spectrum
+!CB            ELSE IF ( IFI .EQ. 3 .AND. IFJ .EQ. 3 ) THEN
+!CB              ! Information for spectral
+!CB              FLFRQ  = .TRUE.
+!CB              I1F=E3DF(2,3)
+!CB              I2F=E3DF(3,3)
+!CB              DO IK=I1F,I2F
+!CB                CALL S2GRID(STH1M(:,IK), XX)
+!CB                XK(:,:,IK)=XX
+!CB              END DO
+!CB!
+!CB            ! Second mean wave direction frequency spectrum
+!CB            ELSE IF ( IFI .EQ. 3 .AND. IFJ .EQ. 4 ) THEN
+!CB              ! Information for spectral
+!CB              FLFRQ  = .TRUE.
+!CB              I1F=E3DF(2,4)
+!CB              I2F=E3DF(3,4)
+!CB              DO IK=I1F,I2F
+!CB!/RTD                ! Rotate direction back to standard pole
+!CB!/RTD                IF ( FLAGUNR ) CALL W3THRTN(NSEA, TH2M(:,IK), AnglD, .FALSE.)
+!CB                CALL S2GRID(TH2M(:,IK), XX)
+!CB                XK(:,:,IK)=XX
+!CB              END DO
+!CB!
+!CB            ! Second spreading frequency spectrum
+!CB            ELSE IF ( IFI .EQ. 3 .AND. IFJ .EQ. 5 ) THEN
+!CB              ! Information for spectral
+!CB              FLFRQ  = .TRUE.
+!CB              I1F=E3DF(2,5)
+!CB              I2F=E3DF(3,5)
+!CB              DO IK=I1F,I2F
+!CB                CALL S2GRID(STH2M(:,IK), XX)
+!CB                XK(:,:,IK)=XX
+!CB              END DO
+!CB!
+!CB            ! Wave numbers
+!CB            ELSE IF ( IFI .EQ. 3 .AND. IFJ .EQ. 6 ) THEN
+!CB              ! Information for spectral
+!CB              FLFRQ  = .TRUE.
+!CB              I1F=1
+!CB              I2F=NK
+!CB              DO IK=1,NK 
+!CB                CALL S2GRID(WN(IK,:), XX)
+!CB                XK(:,:,IK)=XX
+!CB              END DO
+!
+            ! Partition wave significant height
+            ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 1 ) THEN
+              CALL S2GRID(PHS(:,IPART), XA(:,:,1))
+!
+            ! Partition peak period
+            ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 2 ) THEN
+              CALL S2GRID(PTP(:,IPART), XA(:,:,1))
+
+            ! Partition peak wave length
+            ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 3 ) THEN
+              CALL S2GRID(PLP(:,IPART), XA(:,:,1))
+!
+            ! Partition wave mean direction
+            ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 4 ) THEN
+!/RTD                ! Rotate direction back to standard pole
+!/RTD                IF ( FLAGUNR ) CALL W3THRTN(NSEA, PDIR(:,IPART), AnglD, .FALSE.)
+              CALL S2GRID(PDIR(:,IPART), XA(:,:,1), .TRUE.)
+!              IF( SMCGRD ) THEN
+!!/SMC                CALL W3S2XY_SMC( PDIR(:,IPART), XA, .TRUE. )
+!              ELSE
+!                DO ISEA=1, NSEA
+!                  IF ( PDIR(ISEA,IPART) .NE. UNDEF ) THEN
+!                     PDIR(ISEA,IPART) = MOD ( 630-RADE*PDIR(ISEA,IPART) , 360. )
+!                  END IF
+!                END DO
+!                CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PDIR(:,IPART), MAPSF, XA )
+!              ENDIF
+!
+            ! Partition directional spread
+            ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 5 ) THEN
+              CALL S2GRID(PSI(:,IPART), XA(:,:,1))
+!
+            ! Partition wind sea fraction
+            ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 6 ) THEN
+              CALL S2GRID(PWS(:,IPART), XA(:,:,1))
+!
+            ! Partition peak direction
+            ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 7 ) THEN
+!/RTD                ! Rotate direction back to standard pole
+!/RTD                IF ( FLAGUNR ) CALL W3THRTN(NSEA, PTHP0(:,IPART), AnglD, .FALSE.)
+              CALL S2GRID(PTHP0(:,IPART), XA(:,:,1), .TRUE.)
+!              IF( SMCGRD ) THEN
+!!/SMC                CALL W3S2XY_SMC( PTHP0(:,IPART), XA, .TRUE. )
+!              ELSE
+!                DO ISEA=1, NSEA
+!                  IF ( PTHP0(ISEA,IPART) .NE. UNDEF ) THEN
+!                    PTHP0(ISEA,IPART) = MOD ( 630-RADE*PTHP0(ISEA,IPART) , 360. )
+!                    END IF
+!                  END DO
+!                CALL W3S2XY ( NSEA, NSEA, NX+1, NY, PTHP0(:,IPART), MAPSF, XA )
+!              END IF
+!
+            ! Partition peakedness
+            ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 8 ) THEN
+              CALL S2GRID(PQP(:,IPART), XA(:,:,1))
+!
+            ! Partition peak enhancement factor
+            ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 9 ) THEN
+              CALL S2GRID(PPE(:,IPART), XA(:,:,1))
+!
+            ! Partition frequency width
+            ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 10 ) THEN
+              CALL S2GRID(PGW(:,IPART), XA(:,:,1))
+!
+            ! Partition spectral width
+            ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 11 ) THEN
+              CALL S2GRID(PSW(:,IPART), XA(:,:,1))
+!
+            ! Partition mean period Tm10
+            ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 12 ) THEN
+              CALL S2GRID(PTM1(:,IPART), XA(:,:,1))
+!
+            ! Partition mean period T01
+            ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 13 ) THEN
+              CALL S2GRID(PT1(:,IPART), XA(:,:,1))
+!
+            ! Partition mean period T02
+            ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 14 ) THEN
+              CALL S2GRID(PT2(:,IPART), XA(:,:,1))
+!
+            ! Partition energy at peak frequency
+            ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 15 ) THEN
+              CALL S2GRID(PEP(:,IPART), XA(:,:,1))
+              NFIELD=1
+!
+            ! Partition wind sea fraction
+            ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 16 ) THEN
+              CALL S2GRID(PWST(:), XA(:,:,1))
+!
+            ! Number of wave partitions
+            ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 17 ) THEN
+              CALL S2GRID(PNR(:), XA(:,:,1))
+!
+            ! Friction velocity
+            ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 1 ) THEN
+              !! Note - UST and USTDIR read in from .ww3 file are X-Y vectors
+              DO ISEA=1, NSEA
+                UABS = SQRT(UST(ISEA)**2+USTDIR(ISEA)**2)
+                IF (UABS.GE.10.) THEN
+                  UST(ISEA)=UNDEF
+                  USTDIR(ISEA)=UNDEF
+                END IF
+              END DO
+!/RTD              ! Rotate x,y vector back to standard pole
+!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, UST(1:NSEA), USTDIR(1:NSEA), AnglD)
+              CALL S2GRID(UST(1:NSEA), XX)
+              CALL S2GRID(USTDIR(1:NSEA), XY)
+              !! Commented out unnecessary statements below for time being
+              !! UST,USTDIR are in north-east convention and XA,X2
+              !! are not actually written out below
+              !DO ISEA=1, NSEA
+              !  UABS   = SQRT(UST(ISEA)**2+USTDIR(ISEA)**2)
+              !  IF ( UST(ISEA) .EQ. UNDEF ) THEN
+              !      USTDIR(ISEA) = UNDEF
+              !      UABS         = UNDEF
+              !    ELSE IF ( UABS .GT. 0.05 ) THEN
+              !      USTDIR(ISEA) = MOD ( 630. -                     &
+              !        RADE*ATAN2(USTDIR(ISEA),UST(ISEA)) , 360. )
+              !    ELSE
+              !      USTDIR(ISEA) = UNDEF
+              !    END IF
+              !  UST(ISEA) = UABS
+              !  END DO
+              !CALL W3S2XY (NSEA,NSEA,NX+1,NY, UST   (1:NSEA) , MAPSF, XA )
+              !CALL W3S2XY (NSEA,NSEA,NX+1,NY, USTDIR(1:NSEA) , MAPSF, X2 )
+              NFIELD=2
+!
+            ! Charnock coefficient
+            ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 2 ) THEN
+              CALL S2GRID(CHARN(1:NSEA), XA(:,:,1))
+!
+            ! Wave energy flux
+            ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 3 ) THEN
+              CGE=CGE*0.001  ! from W / m to kW / m 
+              CALL S2GRID(CGE(1:NSEA), XA(:,:,1))
+!
+            ! Wind to wave energy flux
+            ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 4 ) THEN
+              CALL S2GRID(PHIAW(1:NSEA), XA(:,:,1))
+!
+            ! Wave supported wind stress
+            ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 5 ) THEN
+!/RTD              ! Rotate x,y vector back to standard pole
+!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, TAUWIX(1:NSEA), TAUWIY(1:NSEA), AnglD)
+              CALL S2GRID(TAUWIX(1:NSEA), XX)
+              CALL S2GRID(TAUWIY(1:NSEA), XY)
+              
+              !! Commented out unnecessary statements below for time being
+              !! TAUWIX, TAUWIY are in north-east convention and XA,X2
+              !! are not actually written out below
+              !DO ISEA=1, NSEA
+              !  CABS   = SQRT(TAUWIX(ISEA)**2+TAUWIY(ISEA)**2)
+              !  IF ( CABS .NE. UNDEF ) THEN
+              !      TAUWIY(ISEA) = MOD ( 630. -                         &
+              !            RADE*ATAN2(TAUWIY(ISEA),TAUWIX(ISEA)) , 360. )
+              !    ELSE
+              !      TAUWIY(ISEA) = UNDEF
+              !    END IF
+              !  TAUWIX(ISEA) = CABS
+              !  END DO
+              !CALL W3S2XY ( NSEA, NSEA, NX+1, NY, TAUWIX, MAPSF, XA )
+              !CALL W3S2XY ( NSEA, NSEA, NX+1, NY, TAUWIY, MAPSF, X2 )
+              NFIELD=2
+!
+            ! Wave to wind stress
+            ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 6 ) THEN
+!/RTD              ! Rotate x,y vector back to standard pole
+!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, TAUWNX(1:NSEA), TAUWNY(1:NSEA), AnglD)
+              CALL S2GRID(TAUWNX(1:NSEA), XX)
+              CALL S2GRID(TAUWNY(1:NSEA), XY)
+              NFIELD=2
+!
+            ! Whitecap coverage
+            ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 7 ) THEN
+              CALL S2GRID(WHITECAP(1:NSEA,1), XA(:,:,1))
+!
+            ! Whitecap foam thickness
+            ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 8 ) THEN
+              CALL S2GRID(WHITECAP(1:NSEA,2), XA(:,:,1))
+!
+            ! Significant breaking wave height
+            ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 9 ) THEN
+              CALL S2GRID(WHITECAP(1:NSEA,3), XA(:,:,1))
+!
+            ! Whitecap moment
+            ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 10 ) THEN
+              CALL S2GRID(WHITECAP(1:NSEA,4), XA(:,:,1))
+!
+            ! Wind sea mean period T0M1
+            ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 11 ) THEN
+              CALL S2GRID(TWS(1:NSEA), XA(:,:,1))
+!
+            ! Radiation stress
+            ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 1 ) THEN
+!/RTD         ! Radition stress components are always left on rotated pole
+!/RTD         ! at present - need to confirm how to de-rotate
+
+              CALL S2GRID(SXX(1:NSEA), XA(:,:,1))
+              CALL S2GRID(SYY(1:NSEA), XA(:,:,2))
+              CALL S2GRID(SXY(1:NSEA), XA(:,:,3))
+              NFIELD=3
+!
+            ! Wave to ocean stress
+            ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 2 ) THEN
+!/RTD              ! Rotate x,y vector back to standard pole
+!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, TAUOX(1:NSEA), TAUOY(1:NSEA), AnglD)
+              CALL S2GRID(TAUOX(1:NSEA), XX)
+              CALL S2GRID(TAUOY(1:NSEA), XY)
+              NFIELD=2
+!
+            ! Radiation pressure (Bernouilli Head)
+            ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 3 ) THEN
+              CALL S2GRID(BHD(1:NSEA), XA(:,:,1))
+!
+            ! Wave to ocean energy flux
+            ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 4 ) THEN
+              DO ISEA=1, NSEA
+                PHIOC(ISEA)=MIN(3000.,PHIOC(ISEA))
+              END DO
+              CALL S2GRID(PHIOC(1:NSEA), XA(:,:,1))
+!
+            ! Stokes transport
+            ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 5 ) THEN
+!/RTD              ! Rotate x,y vector back to standard pole
+!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, TUSX(1:NSEA), TUSY(1:NSEA), AnglD)
+              CALL S2GRID(TUSX(1:NSEA), XX)
+              CALL S2GRID(TUSY(1:NSEA), XY)
+! XA, X2 will not be output when NFIELD == 2
+! ( Like for .cur, .wnd, .ust, .taw, and .uss ) (CHA at FCOO 2019-06-13): 
+              !! Commented out unnecessary statements below for time being
+              !! (...) XA,X2 are not actually written out below
+              !DO ISEA=1, NSEA
+              !  CABS   = SQRT(TUSX(ISEA)**2+TUSY(ISEA)**2)
+              !  IF ( CABS .NE. UNDEF ) THEN
+              !      TUSY(ISEA) = MOD ( 630. -                         &
+              !            RADE*ATAN2(TUSY(ISEA),TUSX(ISEA)) , 360. )
+              !    ELSE
+              !      TUSY(ISEA) = UNDEF
+              !    END IF
+              !  TUSX(ISEA) = CABS
+              !  END DO
+              !IF( SMCGRD ) THEN
+!/SMC                !CALL W3S2XY_SMC( TUSX(:), XA )
+!/SMC                !CALL W3S2XY_SMC( TUSY(:), X2 ) ! TODO: CHRISB: TUSY is in degrees....W3S2XY_SMC expects radians...
+              !ELSE
+              !  CALL W3S2XY ( NSEA, NSEA, NX+1, NY,TUSX,MAPSF, XA )
+              !  CALL W3S2XY ( NSEA, NSEA, NX+1, NY,TUSY,MAPSF, X2 )
+              !ENDIF ! SMCGRD
+              NFIELD=2
+!
+            ! Surface stokes drift
+            ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 6 ) THEN
+              DO ISEA=1, NSEA
+                USSX(ISEA)=MAX(-0.9998,MIN(0.9998,USSX(ISEA)))
+                USSY(ISEA)=MAX(-0.9998,MIN(0.9998,USSY(ISEA)))
+              END DO
+!/RTD              ! Rotate x,y vector back to standard pole
+!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, USSX(1:NSEA), USSY(1:NSEA), AnglD)
+              CALL S2GRID(USSX(1:NSEA), XX)
+              CALL S2GRID(USSY(1:NSEA), XY)
+              !! Commented out unnecessary statements below for time being
+              !! TAUWIX, TAUWIY are in north-east convention and XA,X2
+              !! are not actually written out below
+              !DO ISEA=1, NSEA
+              !  CABS   = SQRT(USSX(ISEA)**2+USSY(ISEA)**2)
+              !  IF ( CABS .NE. UNDEF ) THEN
+              !      USSY(ISEA) = MOD ( 630. -                         &
+              !            RADE*ATAN2(USSY(ISEA),USSX(ISEA)) , 360. )
+              !    ELSE
+              !      USSY(ISEA) = UNDEF
+              !    END IF
+              !  USSX(ISEA) = CABS
+              !  END DO
+              !CALL W3S2XY ( NSEA, NSEA, NX+1, NY,USSX,MAPSF, XA )
+              !CALL W3S2XY ( NSEA, NSEA, NX+1, NY,USSY,MAPSF, X2 )
+              NFIELD=2
+!
+            ! Power spectral density of equivalent surface pressure
+            ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 7 ) THEN
+              NFIELD=2
+              CALL S2GRID(PRMS(1:NSEA), XX)
+              CALL S2GRID(TPMS(1:NSEA), XY)
+!
+!CB            ! Spectral variance of surface stokes drift
+!CB            ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 8 ) THEN
+!CB              ! Information for spectral distribution of surface Stokes drift (2nd file)
+!CB              FLFRQ=.TRUE.
+!CB              NFIELD=2
+!CB              I1F=US3DF(2)
+!CB              I2F=US3DF(3)
+!CB              DO IK= I1F,I2F
+!CB!/RTD                ! Rotate x,y vector back to standard pole
+!CB!/RTD                IF ( FLAGUNR ) CALL W3XYRTN(NSEA, US3D(:,IK), US3D(:,NK+IK), AnglD)
+!CB                CALL S2GRID(US3D(:,IK), XX)
+!CB                CALL S2GRID(US3D(:,NK+IK), XY)
+!CB                XXK(:,:,IK)=XX
+!CB                XYK(:,:,IK)=XY
+!CB              END DO
+!CB!
+!CB            ! Base10 logarithm of power spectral density of equivalent surface pressure
+!CB            ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ.  9 ) THEN
+!CB                ! Information for spectral microseismic generation data (2nd file)
+!CB                FLFRQ=.TRUE.
+!CB                I1F=P2MSF(2)
+!CB                I2F=P2MSF(3)
+!CB                DO IK=I1F,I2F
+!CB                  CALL S2GRID(P2SMS(:,IK), XX)
+!CB
+!CB                  IF (NCVARTYPE.EQ.2) THEN 
+!CB                     WHERE ( XX.GE.0.) XX = ALOG10(XX*(DWAT*GRAV)**2+1E-12)
+!CB                  ELSE 
+!CB                     WHERE ( XX.GE.0.) XX = XX*(DWAT*GRAV)**2
+!CB                  END IF
+!CB                
+!CB                  XK(:,:,IK)=XX
+!CB                END DO
+!
+            ! Wave to sea ice stress
+            ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 10 ) THEN
+!/RTD              ! Rotate x,y vector back to standard pole
+!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, TAUICE(1:NSEA,1), TAUICE(1:NSEA,2), AnglD)
+              CALL S2GRID(TAUICE(1:NSEA,1), XX)
+              CALL S2GRID(TAUICE(1:NSEA,2), XY)
+              NFIELD=2
+!
+            ! Wave to sea ice energy flux
+            ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 11 ) THEN
+              DO ISEA=1, NSEA
+                PHIOC(ISEA)=MIN(3000.,PHIOC(ISEA))
+              END DO
+              CALL S2GRID(PHICE(1:NSEA), XA(:,:,1))
+!
+!CB           ! Partitioned surface stokes drift
+!CB           ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 12 ) THEN
+!CB              ! Information for spectral distribution of surface Stokes drift (2nd file)
+!CB              FLFRQ=.TRUE.
+!CB              IF (USSPF(1)==1) THEN
+!CB                CUSTOMFRQ=.TRUE.
+!CB              ENDIF
+!CB              NFIELD=2
+!CB              I1F=1
+!CB              I2F=USSPF(2)
+!CB              DO IK= I1F,I2F
+!CB!/RTD                ! Rotate x,y vector back to standard pole
+!CB!/RTD                IF ( FLAGUNR ) CALL W3XYRTN(NSEA, USSP(:,IK), USSP(:,NK+IK), AnglD)
+!CB                CALL S2GRID(USSP(:,IK), XX)
+!CB                CALL S2GRID(USSP(:,NK+IK), XY)
+!CB                XXK(:,:,IK) = XX
+!CB                XYK(:,:,IK) = XY
+!CB              END DO
+!CB!
+            ! RMS of bottom displacement amplitude
+            ELSE IF ( IFI .EQ. 7 .AND. IFJ .EQ. 1 ) THEN
+              ! NB: ABA and ABD are the X and Y components of the bottom displacement
+!/RTD              ! Rotate x,y vector back to standard pole
+!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, ABA(1:NSEA), ABD(1:NSEA), AnglD)
+              CALL S2GRID(ABA(1:NSEA), XX)
+              CALL S2GRID(ABD(1:NSEA), XY)
+              NFIELD=2
+!
+            ! RMS of bottom velocity amplitude
+            ELSE IF ( IFI .EQ. 7 .AND. IFJ .EQ. 2 ) THEN
+              ! NB: UBA and UBD are the X and Y components of the bottom velocity
+!/RTD              ! Rotate x,y vector back to standard pole
+!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, UBA(1:NSEA), UBD(1:NSEA), AnglD)
+              CALL S2GRID(UBA(1:NSEA), XX)
+              CALL S2GRID(UBD(1:NSEA), XY)
+              NFIELD=2
+!
+            ! Bottom roughness
+            ELSE IF ( IFI .EQ. 7 .AND. IFJ .EQ. 3 ) THEN
+!/RTD              ! Rotate x,y vector back to standard pole
+!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, BEDFORMS(1:NSEA,2), &
+!/RTD                                           BEDFORMS(1:NSEA,3), AnglD)
+              CALL S2GRID(BEDFORMS(1:NSEA,1), XA(:,:,1))
+              CALL S2GRID(BEDFORMS(1:NSEA,2), XA(:,:,2))
+              CALL S2GRID(BEDFORMS(1:NSEA,3), XA(:,:,3))
+              NFIELD=3
+!
+            ! Wave dissipation in bottom boundary layer
+            ELSE IF ( IFI .EQ. 7 .AND. IFJ .EQ. 4 ) THEN
+              CALL S2GRID(PHIBBL(1:NSEA), XA(:,:,1))
+!
+            ! Wave to bottom boundary layer stress
+            ELSE IF ( IFI .EQ. 7 .AND. IFJ .EQ. 5 ) THEN
+!/RTD              ! Rotate x,y vector back to standard pole
+!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, TAUBBL(1:NSEA,1), &
+!/RTD                                           TAUBBL(1:NSEA,2), AnglD)
+              CALL S2GRID(TAUBBL(1:NSEA,1), XX)
+              CALL S2GRID(TAUBBL(1:NSEA,2), XY)
+              NFIELD=2
+!
+            ! Mean square slope
+            ELSE IF ( IFI .EQ. 8 .AND. IFJ .EQ. 1 ) THEN
+!/RTD              ! Rotate x,y vector back to standard pole
+!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, MSSX, MSSY, AnglD)
+              CALL S2GRID(MSSX, XX)
+              CALL S2GRID(MSSY, XY)
+              NFIELD=2
+!
+            ! Phillips constant
+            ELSE IF ( IFI .EQ. 8 .AND. IFJ .EQ. 2 ) THEN
+!/RTD              ! Rotate x,y vector back to standard pole
+!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, MSCX, MSCY, AnglD)
+              CALL S2GRID(MSCX, XX)
+              CALL S2GRID(MSCY, XY)
+              NFIELD=2
+!
+            ! u direction for mss
+            ELSE IF ( IFI .EQ. 8 .AND. IFJ .EQ. 3 ) THEN
+!/RTD                ! Rotate direction back to standard pole
+!/RTD                IF ( FLAGUNR ) CALL W3THRTN(NSEA, MSSD, AnglD, .FALSE.)
+              DO ISEA=1, NSEA
+                IF ( MSSD(ISEA) .NE. UNDEF )  THEN
+                  MSSD(ISEA) = MOD ( 630. - RADE*MSSD(ISEA) , 180. )
+                END IF
+              END DO
+              CALL S2GRID(MSSD, XA(:,:,1))
+!
+            ! x direction for msc
+            ELSE IF ( IFI .EQ. 8 .AND. IFJ .EQ. 4 ) THEN
+!/RTD                ! Rotate direction back to standard pole
+!/RTD                IF ( FLAGUNR ) CALL W3THRTN(NSEA, MSCD, AnglD, .FALSE.)
+              DO ISEA=1, NSEA
+                IF ( MSCD(ISEA) .NE. UNDEF )  THEN
+                  MSCD(ISEA) = MOD ( 630. - RADE*MSCD(ISEA) , 180. )
+                END IF
+              END DO
+              CALL S2GRID(MSCD, XA(:,:,1))
+!
+             ! Peakedness
+             ELSE IF ( IFI .EQ. 8 .AND. IFJ .EQ. 5 ) THEN
+              CALL S2GRID(QP, XA(:,:,1))
+!
+            ! Dynamic time step
+            ELSE IF ( IFI .EQ. 9 .AND. IFJ .EQ. 1 ) THEN
+              DO ISEA=1, NSEA
+                IF ( DTDYN(ISEA) .NE. UNDEF ) THEN
+                  DTDYN(ISEA) = DTDYN(ISEA) / 60.
+                END IF
+              END DO
+              CALL S2GRID(DTDYN, XA(:,:,1))
+!
+            ! Cut off frequency
+            ELSE IF ( IFI .EQ. 9 .AND. IFJ .EQ. 2 ) THEN
+              CALL S2GRID(FCUT, XA(:,:,1))
+!
+            ! Maximum CFL for spatial advection
+            ELSE IF ( IFI .EQ. 9 .AND. IFJ .EQ. 3 ) THEN
+              CALL S2GRID(CFLXYMAX, XA(:,:,1))
+!
+            ! Maximum CFL for direction advection
+            ELSE IF ( IFI .EQ. 9 .AND. IFJ .EQ. 4 ) THEN
+              CALL S2GRID(CFLTHMAX, XA(:,:,1))
+!
+            ! Maximum CFL for frequency advection
+            ELSE IF ( IFI .EQ. 9 .AND. IFJ .EQ. 5 ) THEN
+              CALL S2GRID(CFLKMAX, XA(:,:,1))
+!
+            ! User defined...
+            ELSE IF ( IFI .EQ. 10 ) THEN
+              !CB WRITE (ENAME,'(A2,I2.2)') '.u', IFJ
+!
+            ELSE
+              WRITE (NDSE,999)
+              CALL EXTCDE ( 1 )
+!
+            END IF
+!
+! 2.b Make map (don't do this for SMC grid as a different map is used)
+!
+            IF( .NOT. SMCGRD ) THEN
+              DO IX=1, NX
+                DO IY=1, NY
+                  IF ( MAPSTA(IY,IX) .EQ. 0 ) THEN
+                      XA(IX,IY,:) = UNDEF
+                  END IF
+                END DO
+              END DO
+            ENDIF ! NOT SMCGRD
+!
+! 2.c Perform output to PP file
+!
+!
+            ! Loop over components to write.
+            DO ICOMP=1, NFIELD
+               ! Set pp header values, depending on output field:
+               CALL PP_LOOKUP(PPIHEAD, PPRHEAD, IFI, IFJ, ICOMP, IPART)
+
+               ! Pack data (if requested) and write field to file:
+               IF(PPIHEAD(21) .EQ. 0) THEN
+                 ! No packing
+                 PPIHEAD(15) = NXOUT * NYOUT
+                 PPIHEAD(30) = NXOUT * NYOUT  ! For PP files, this can be zero
+                 PPIHEAD(21) = 0
+                 PPIHEAD(39) = 1
+                 PPRHEAD(51) = 0
+
+                 ! Write header and data:
+                 WRITE(NDSDAT) PPIHEAD
+                 WRITE(NDSDAT) XA(:,:,ICOMP)
+
+               ELSE IF(PPIHEAD(21) .EQ. 1) THEN
+                 ! Try WGDOS packing
+                 DATSZ = NXOUT * NYOUT
+                 ISC = INT(PPRHEAD(51))
+                 CALL CMPS_ALL(XA(:,:,ICOMP), DATACOMP, DATSZ, NXOUT, NYOUT,  &
+                          SZCOMP, ISC, UNDEF, IERR, CMESSAGE)
+
+                 IF( IERR .NE. 0 ) THEN 
+                    WRITE(NDSE, *) " ERROR IN COEX: ", IERR, CMESSAGE
+                    CALL EXTCDE(2)
+                 ENDIF
+
+                 ! Align output data to 2048 byte disk sector
+                 ISIZE = SZCOMP + (2048-MOD(SZCOMP,2048_8))
+
+                 ! Update header with compression info:
+                 PPIHEAD(15) = ISIZE    ! NOTE: Size of unaligned packed data
+                 PPIHEAD(30) = NXOUT * NYOUT  ! For PP files, this can be zero
+                 PPIHEAD(21) = 1
+                 PPIHEAD(39) = 1
+
+                 ! Write header and data:
+                 WRITE(NDSDAT) PPIHEAD
+                 WRITE(NDSDAT) DATACOMP(1:ISIZE / 2)
+               ENDIF
+
+            ENDDO ! I=1,NFIELD
+!
+!  Loop over IPART for partition variables
+!
+!  ChrisBunney: Don't loop IPART for last two entries in section 4
+!  (16: total wind sea fraction, 17: number of parts) as these fields
+!  do not have partitions.
+!
+            IF (IFI .EQ. 4 .AND. IFJ .LE. NOGE(IFI) - 2) THEN
+560           CONTINUE
+              IF (INDEXIPART.LT.NBIPART) THEN
+                INDEXIPART=INDEXIPART+1
+                IF (TABIPART(INDEXIPART).EQ.-1) GOTO 560      
+
+                IPART=TABIPART(INDEXIPART)   
+                GOTO 555
+              END IF
+            ELSE
+              INDEXIPART=1
+            END IF
+!
+! ... End of fields loop
+!
+          END IF
+        END DO
+      END DO
+!
+      IPASS = IPASS + 1
+!
+! CB: Clean up
+      DEALLOCATE(XA, XX, XY, AUX1)
+      DEALLOCATE(DATACOMP)
+!
+      RETURN
+!
+! Error escape locations
+!
+  800 CONTINUE
+      WRITE (NDSE,1000) IERR
+      CALL EXTCDE (2)
+!
+! Formats
+!
+  113 FORMAT ((10ES11.3))
+  980 FORMAT (1X,A13,I9.8,I7.6,I9,I3,ES10.2,1X,A4,1X,A10,1X,A30)
+
+  940 FORMAT (1X,I8,3I3.2,2X,4E12.4)
+  949 FORMAT (1X,A13,I9.8,I7.6,2(2F8.2,I8),                      &
+                    1X,A4,F8.4,1X,A10,2I2,1X,A11,I4)
+  950 FORMAT (1X,A13,I9.8,I7.6,2(2F8.2,I4),                      &
+              1X,A4,1X,A7,1X,A10,2I2,1X,A11,I4)
+  951 FORMAT (1X,2F10.5,2I8)
+  960 FORMAT (1X,A13,I9.8,I7.6,2(2E11.3,I4),                     &
+              1X,A4,1X,A7,1X,A10,2I2,1X,A11,I4)
+  961 FORMAT (1X,2E12.4,2I8)
+!
+  999 FORMAT (/' *** WAVEWATCH III ERROR IN W3EXGO :'/                &
+               '     PLEASE UPDATE FIELDS !!! '/)
+!
+ 1000 FORMAT (/' *** WAVEWATCH III ERROR IN W3EXGO : '/               &
+               '     ERROR IN OPENING OUTPUT FILE'/                   &
+               '     IOSTAT =',I5/)
+!
+!/T 9000 FORMAT (' TEST W3EXGO : FLAGS :',I3,2X,20L2)
+!/T 9001 FORMAT (' TEST W3EXGO : ITPYE :',I4/                         &
+!/T              '             IX1/N/S :',3I4/                        &
+!/T              '             IY1/N/S :',3I4/                        &
+!/T              '              NDSDAT :',I4)
+!
+!/T 9012 FORMAT (' TEST W3EXGO : BLOK PARS    : ',3I4)
+!/T 9014 FORMAT ('           BASE NAME : ',A)
+!
+!/T 9020 FORMAT (' TEST W3EXGO : OUTPUT FIELD : ',A)
+!/
+!/ End of W3EXGO ----------------------------------------------------- /
+!/
+      END SUBROUTINE W3EXGO
+!/
+!
+!/ End of WW3_MOPP ----------------------------------------------------- /
+!/
+      SUBROUTINE W3S2XY2( NSEA, MSEA, MX, MY, S, MAPSF, XY )
+!/
+!/                  +-----------------------------------+
+!/                  | WAVEWATCH III            NOAA/NMC |
+!/                  |           H. L. Tolman            |
+!/                  |    Chris Bunney, UK Met Office    |
+!/                  |                        FORTRAN 90 |
+!/                  | Last update :         23-Nov-1999 |
+!/                  +-----------------------------------+
+!/
+!/    11-Dec-1996 : Final FORTRAN 77                    ( version 1.18 )
+!/    23-Nov-1999 : Upgrade to FORTRAN 90               ( version 2.00 )
+!/
+!  1. Purpose :
+!
+!     Convert a data array on the storage grid to a data array on the
+!     full spatial grid. Land and ice points in the full grid are
+!     not touched. Output array of conventional type XY(IX,IY).
+!
+!     As W3S3XY in W3SERV, but fills in UNDEF values with zeros.
+!
+!  3. Parameters :
+!
+!     Parameter list
+!     ----------------------------------------------------------------
+!       NSEA    Int.   I    Number of sea points.
+!       MSEA, MX, MY
+!               Int.   I    Array dimensions.
+!       S       R.A.   I    Data on storage grid.
+!       MAPSF   I.A.   I    Storage map for IX and IY, resp.
+!       XY      R.A.   O    Data on XY grid.
+!     ----------------------------------------------------------------
+!
+!  4. Subroutines used :
+!
+!     None.
+!
+!  5. Called by :
+!
+!     Any WAVEWATCH III routine.
+!
+!  9. Switches :
+!
+!     None.
+!
+! 10. Source code :
+!
+!/ ------------------------------------------------------------------- /
+      USE W3ODATMD, ONLY: UNDEF
+
+      IMPLICIT NONE
+!/
+!/ ------------------------------------------------------------------- /
+!/ Parameter list
+!/
+      INTEGER, INTENT(IN)       :: MSEA, NSEA, MX, MY, MAPSF(MSEA,2)
+      REAL, INTENT(IN)          :: S(MSEA)
+      REAL(KIND=4), INTENT(OUT) :: XY(MX,MY)
+!/
+!/ ------------------------------------------------------------------- /
+!/ Local parameters
+!/
+      INTEGER                 :: ISEA, IX, IY
+!/
+!/ ------------------------------------------------------------------- /
+!/
+      DO 100, ISEA=1, NSEA
+        IX     = MAPSF(ISEA,1)
+        IY     = MAPSF(ISEA,2)
+        IF(L_FLIPZLAT) THEN
+           ! Flip zeroth lat, if required:
+           IY = MY - IY + 1
+        ENDIF
+        IF(S(ISEA) .EQ. UNDEF) THEN 
+           XY(IX,IY) = 0.0
+        ELSE
+           XY(IX,IY) = S(ISEA)
+        ENDIF
+
+  100   CONTINUE
+!/
+!/ End of W3S2XY2 ----------------------------------------------------- /
+!/
+      END SUBROUTINE W3S2XY2
+!
+      SUBROUTINE INTARR(INSTR, INARR, NMAX, N)
+!/
+!/    08-Oct-2014 : Initial version (Chris Bunney)       ( version 3.14 )
+!/
+!  1. Purpose :
+!
+!     Extract an array of integers (of unknown length) from a
+!     string. Integer values are delimited by spaces. Leading,
+!     tailing and multiple spaces are handled.
+!
+!
+!  3. Parameters :
+!
+!     Parameter list
+!     ----------------------------------------------------------------
+!       INSTR   Str    I    String containg values to extract
+!       INARR   I.A.   O    Integer array to populate
+!       NMAX    Int.   I    Maximum number of integers to extract
+!       N       Int.   I    Actual number of integers extracted
+!     ----------------------------------------------------------------
+!
+! 10. Source code :
+!
+!/ ------------------------------------------------------------------- /
+
+      ! Subroutine arguments:
+      CHARACTER(LEN=*), INTENT(IN)   :: INSTR
+      INTEGER, INTENT(IN)            :: NMAX
+      INTEGER, INTENT(OUT)           :: INARR(NMAX)
+      INTEGER, INTENT(OUT)           :: N
+
+      ! Locals:
+      INTEGER                        :: I, J, K
+
+      I = 1
+      K = len_trim(INSTR)
+      N = 0
+
+      DO WHILE(I .LE. K)
+         ! remove leading spaces
+         DO
+           IF(INSTR(I:I) .NE. ' ') EXIT
+           I = I + 1
+         ENDDO
+
+         ! find next space:
+         J = INDEX(INSTR(I:), ' ')
+         IF(J .EQ. 0) THEN
+             ! last entry (no trailing spaces)
+             J = K - I + 1
+         ENDIF
+
+         ! read number:
+         N = N + 1
+         READ(INSTR(I:I+J-1), *, ERR=200) INARR(N)
+         IF(N .EQ. NMAX) EXIT
+
+         ! Move to start of next token:
+         I = I + J
+
+      ENDDO
+
+      RETURN
+
+  200 WRITE(NDSE, 900)
+      CALL EXTCDE(10)
+
+  900 FORMAT (/' *** WAVEWATCH III ERROR IN WW3_MOPP : '/             &
+               '     ERROR READING PARTITION NUMBERS ' / )
+
+      END SUBROUTINE INTARR
+!/
+!/ End of INTARR ------------------------------------------------------- /
+!/
+
+!/ ------------------------------------------------------------------- /
+      SUBROUTINE S2GRID(S, X, FLDIRN)
+!/
+!/                  +-----------------------------------+
+!/                  |           C . Bunney              |
+!/                  |                        FORTRAN 90 |
+!/                  | Last update :         03-Nov-2020 |
+!/                  +-----------------------------------+
+!/
+!/    03-Nov-2020 : Creation                            ( version 7.XX )
+!/
+!  1. Purpose :
+!
+!     Exapand the seapoint array to full grid with handling of
+!     SMC regridding. The FLDIRN flag should be set to true for
+!     directional fields. In this case, they will be decomposed
+!     into U/V components for SMC grid interpolation and converted
+!     to oceanograhic convention.
+!
+!  2. Parameters :
+!
+!     Parameter list
+!     ----------------------------------------------------------------
+!       S       Real. I  Sea point array
+!       X       Real. O  Gridded array
+!       FLDIRN  Bool. I  Directional field flag
+!     ----------------------------------------------------------------
+!
+!/ ------------------------------------------------------------------- /
+      USE W3SERVMD, ONLY : W3S2XY
+ 
+      IMPLICIT NONE
+
+      REAL, INTENT(INOUT)  :: S(:)
+      REAL, INTENT(OUT) :: X(:,:)
+      LOGICAL, OPTIONAL, INTENT(IN) :: FLDIRN
+
+      LOGICAL :: FLDR
+      INTEGER :: ISEA
+
+      FLDR = .FALSE.
+      IF(PRESENT(FLDIRN)) FLDR = FLDIRN
+
+!/SMC     IF( SMCGRD ) THEN
+!/SMC        CALL W3S2XY_SMC( S, X, FLDR )
+!/SMC     ELSE ! IF(SMCGRD)
+      IF(FLDR) THEN
+        DO ISEA=1, NSEA
+          IF (S(ISEA) .NE. UNDEF )  THEN
+            S(ISEA) = MOD ( 630. - RADE * S(ISEA) , 360. )
+          END IF
+        END DO
+      ENDIF
+      CALL W3S2XY ( NSEA, NSEA, NX+1, NY, S, MAPSF, X )
+!/SMC     ENDIF
+
+      END SUBROUTINE S2GRID
+
+      END PROGRAM WW3_MOPP
+
