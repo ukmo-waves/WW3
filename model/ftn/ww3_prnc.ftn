@@ -1800,96 +1800,44 @@
 !/O3           IF ( IAPROC .EQ. NAPOUT )  WRITE (NDSO,976) ' '
             IF (( IFLD.LE.2 ).AND.( .NOT. FLBERG )) THEN
 !
-                DO IY=1,NY
-                  DO IX=1,NX
-                    CALL POINT_INTERP(XC(IX21(IX,IY),IY21(IX,IY)),     &
-                               XC(IX22(IX,IY),IY21(IX,IY)),            &
-                               XC(IX21(IX,IY),IY22(IX,IY)),            &
-                               XC(IX22(IX,IY),IY22(IX,IY)),            &
-                               XC(IX,IY), FILLVALUE, RD11(IX,IY),      &
-                               RD21(IX,IY), RD12(IX,IY), RD22(IX,IY),  &
-                               FA(IX,IY))
-                    END DO
-                  END DO
+                CALL INTERP(MXM, MYM, XC, IX21, IX22, IY21, IY22,      &
+                               RD11, RD12, RD21, RD22, FILLVALUE, FA) 
 !
                 IF (NFCOMP.EQ.2) THEN
 !/O3             IF ( IAPROC .EQ. NAPOUT )    WRITE (NDSO,976) ' (2) '
-                    DO IY=1,NY
-                      DO IX=1,NX
-                        CALL POINT_INTERP(YC(JX21(IX,IY),JY21(IX,IY)), &
-                               YC(JX22(IX,IY),JY21(IX,IY)),            &
-                               YC(JX21(IX,IY),JY22(IX,IY)),            &
-                               YC(JX22(IX,IY),JY22(IX,IY)),            &
-                               YC(IX,IY), FILLVALUE, XD11(IX,IY),      &
-                               XD21(IX,IY), XD12(IX,IY), XD22(IX,IY),  &
-                               FA(IX,IY))
-                        END DO
-                      END DO
-                  END IF
+                    CALL INTERP(YC, JX21, JX22, JY21, JY22, XD11, XD12,&
+                                             XD21, XD22, FILLVALUE, FA) 
+                END IF
 !
 ! ... Two-component fields
 !
               ELSE  !so if IFLD.GT.2
 !
+                CALL INTERP(MXM, MYM, XC, IX21, IX22, IY21, IY22,      &
+                               RD11, RD12, RD21, RD22, FILLVALUE, FX) 
+
+                CALL INTERP(MXM, MYM, YC, IX21, IX22, IY21, IY22,      &
+                               RD11, RD12, RD21, RD22, FILLVALUE, FY) 
+
+                CALL INTERP(MXM, MYM, AC, IX21, IX22, IY21, IY22,      &
+                               RD11, RD12, RD21, RD22, FILLVALUE, FA) 
+
+                CALL INTERP(MXM, MYM, SQRT(XC**2+YC**2), IX21, IX22,   &
+                               IY21, IY22, RD11, RD12, RD21, RD22,     &
+                               FILLVALUE, A2) 
+
+                CALL INTERP(MXM, MYM, XC**2+YC**2, IX21, IX22,         &
+                               IY21, IY22, RD11, RD12, RD21, RD22,     &
+                               FILLVALUE, A3) 
+
                 DO IY=1,NY
                   DO IX=1,NX
-                    CALL POINT_INTERP(XC(IX21(IX,IY),IY21(IX,IY)),     &
-                                      XC(IX22(IX,IY),IY21(IX,IY)),     &
-                                      XC(IX21(IX,IY),IY22(IX,IY)),     &
-                                      XC(IX22(IX,IY),IY22(IX,IY)),     &
-                                      XC(IX,IY), FILLVALUE,            &
-                                      RD11(IX,IY), RD21(IX,IY),        &
-                                      RD12(IX,IY), RD22(IX,IY),        &
-                                      FX(IX,IY))
-
-                    CALL POINT_INTERP(YC(IX21(IX,IY),IY21(IX,IY)),     &
-                                      YC(IX22(IX,IY),IY21(IX,IY)),     &
-                                      YC(IX21(IX,IY),IY22(IX,IY)),     &
-                                      YC(IX22(IX,IY),IY22(IX,IY)),     &
-                                      YC(IX,IY), FILLVALUE,            &
-                                      RD11(IX,IY), RD21(IX,IY),        &
-                                      RD12(IX,IY), RD22(IX,IY),        &
-                                      FY(IX,IY))
-
                     A1(IX,IY) = MAX ( 1.E-10 ,                        &
                                   SQRT( FX(IX,IY)**2 + FY(IX,IY)**2 ) )
 
-                    CALL POINT_INTERP(AC(IX21(IX,IY),IY21(IX,IY)),     &
-                                      AC(IX22(IX,IY),IY21(IX,IY)),     &
-                                      AC(IX21(IX,IY),IY22(IX,IY)),     &
-                                      AC(IX22(IX,IY),IY22(IX,IY)),     &
-                                      AC(IX,IY), FILLVALUE,            &
-                                      RD11(IX,IY), RD21(IX,IY),        &
-                                      RD12(IX,IY), RD22(IX,IY),        &
-                                      FA(IX,IY))
-
-                    CALL POINT_INTERP(SQRT(XC(IX21(IX,IY),IY21(IX,IY))**2   &
-                                         + YC(IX21(IX,IY),IY21(IX,IY))**2), &
-                                      SQRT(XC(IX22(IX,IY),IY21(IX,IY))**2   &
-                                         + YC(IX22(IX,IY),IY21(IX,IY))**2), &
-                                      SQRT(XC(IX21(IX,IY),IY22(IX,IY))**2   &
-                                         + YC(IX21(IX,IY),IY22(IX,IY))**2), &
-                                      SQRT(XC(IX22(IX,IY),IY22(IX,IY))**2   &
-                                         + YC(IX22(IX,IY),IY22(IX,IY))**2), &
-                                      SQRT(XC(IX,IY)**2 + YC(IX,IY)**2),    &
-                                      FILLVALUE, RD11(IX,IY), RD21(IX,IY),  &
-                                      RD12(IX,IY), RD22(IX,IY), A2(IX,IY))
-
-                    CALL POINT_INTERP(XC(IX21(IX,IY),IY21(IX,IY))**2   &
-                                    + YC(IX21(IX,IY),IY21(IX,IY))**2,  &
-                                      XC(IX22(IX,IY),IY21(IX,IY))**2   &
-                                    + YC(IX22(IX,IY),IY21(IX,IY))**2,  &
-                                      XC(IX21(IX,IY),IY22(IX,IY))**2   &
-                                    + YC(IX21(IX,IY),IY22(IX,IY))**2,  &
-                                      XC(IX22(IX,IY),IY22(IX,IY))**2   &
-                                    + YC(IX22(IX,IY),IY22(IX,IY))**2,  &
-                                      XC(IX,IY)**2 + YC(IX,IY)**2,    &
-                                      FILLVALUE, RD11(IX,IY), RD21(IX,IY),  &
-                                      RD12(IX,IY), RD22(IX,IY), A3(IX,IY))
                     A3(IX,IY) = SQRT( A3(IX,IY) )
-
-                    END DO
                   END DO
+                END DO
 !
 ! ... Winds, correct for velocity or energy conservation
 !
@@ -2262,8 +2210,8 @@
 
 !==============================================================================
 
-      SUBROUTINE POINT_INTERP(XC11, XC12, XC21, XC22, XC, FILLVALUE, &
-                                         RD11, RD12, RD21, RD22, FA) 
+      SUBROUTINE INTERP(MXM, MYM, XC, IX21, IX22, IY21, IY22,       &
+                               RD11, RD12, RD21, RD22, FILLVALUE, FA) 
 !/
 !/                  +-----------------------------------+
 !/                  | WAVEWATCH III           NOAA/NCEP |
@@ -2276,7 +2224,7 @@
 !/
 !  1. Purpose :
 !
-!     Interpolate one point from a field read from file to the wave grid
+!     Interpolate from a field read from file to the wave grid
 !
 !  2. Method :
 !
@@ -2294,9 +2242,15 @@
 !
 !     Parameter list
 !     ----------------------------------------------------------------
-!       XCxx    R      I   Values used in the interpolation
+!       MxM     I      I   Dimensions of the XC variable
+!       XC      R.A.   I   Field to be interpolated, as read from the
+!                          input netcdf 
+!       IXxx    I.A.   I   List of x-index to convert from the original
+!                          field to the model grid
+!       IYxx    I.A.   I   List of y-index to convert from the original
+!                          field to the model grid
+!       RDxx    R.A.   I   Interpolation factors
 !       FILLVALUE   R  I   Fill value identifying non valid input
-!       RDxx    R      I   Interpolation factors
 !       FA      F      O   Result of the interpolation
 !     ----------------------------------------------------------------
 !
@@ -2326,50 +2280,62 @@
 ! 10. Source code :
 !
 !/ ------------------------------------------------------------------- /
+      USE W3GDATMD, ONLY: NX, NY
 
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
 !/ Parameter list
 !/
-      REAL, INTENT(IN)     :: XC11, XC12, XC21, XC22, XC
-      REAL, INTENT(IN)     :: RD11, RD12, RD21, RD22, FILLVALUE
-      REAL, INTENT(OUT)    :: FA
+      INTEGER,                     INTENT(IN)  :: MXM, MYM
+      REAL,    DIMENSION(MXM,MYM), INTENT(IN)  :: XC
+      INTEGER, DIMENSION(NX,NY),   INTENT(IN)  :: IX21, IX22, IY21, IY22
+      REAL,    DIMENSION(NX,NY),   INTENT(IN)  :: RD11, RD12, RD21, RD22
+      REAL,                        INTENT(IN)  :: FILLVALUE
+      REAL,    DIMENSION(NX,NY),   INTENT(OUT) :: FA
 !/
 !/ ------------------------------------------------------------------- /
-      REAL                 :: FACTOR
+!/    Local variables
+!/
+      INTEGER      :: IX, IY
+      REAL         :: FACTOR
 !/ ------------------------------------------------------------------- /
 
-      FACTOR = 0.0
-      FA = 0.0
-      IF(XC11.NE.FILLVALUE) THEN
-        FACTOR = FACTOR + RD11
-        FA = RD11 * XC11
-      ENDIF
-      IF(XC21.NE.FILLVALUE) THEN
-        FACTOR = FACTOR + RD21
-        FA = FA + RD21 * XC21
-      ENDIF
-      IF(XC12.NE.FILLVALUE) THEN
-        FACTOR = FACTOR + RD12
-        FA = FA + RD12 * XC12
-      ENDIF
-      IF(XC22.NE.FILLVALUE) THEN
-        FACTOR = FACTOR + RD22
-        FA = FA + RD22 * XC22 
-      ENDIF
+      DO IY=1,NY
+        DO IX=1,NX
+          FACTOR = 0.0
+          FA(IX,IY) = 0.0
 
-      IF(FACTOR.GT.0.0) THEN
-        FA = FA / FACTOR
-      ELSE
-        IF(XC.EQ.FILLVALUE) THEN
-          FA = 0.0
-        ELSE
-          FA = XC
-        ENDIF
-      END IF
+          IF(XC(IX21(IX,IY),IY21(IX,IY)).NE.FILLVALUE) THEN
+            FACTOR = FACTOR + RD11(IX,IY)
+            FA(IX,IY) = RD11(IX,IY) * XC(IX21(IX,IY),IY21(IX,IY))
+          ENDIF
+          IF(XC(IX22(IX,IY),IY21(IX,IY)).NE.FILLVALUE) THEN
+            FACTOR = FACTOR + RD21(IX,IY)
+            FA(IX,IY) = FA(IX,IY) + RD21(IX,IY) * XC(IX22(IX,IY),IY21(IX,IY))
+          ENDIF
+          IF(XC(IX21(IX,IY),IY22(IX,IY)).NE.FILLVALUE) THEN
+            FACTOR = FACTOR + RD12(IX,IY)
+            FA(IX,IY) = FA(IX,IY) + RD12(IX,IY) * XC(IX21(IX,IY),IY22(IX,IY))
+          ENDIF
+          IF(XC(IX22(IX,IY),IY22(IX,IY)).NE.FILLVALUE) THEN
+            FACTOR = FACTOR + RD22(IX,IY)
+            FA(IX,IY) = FA(IX,IY) + RD22(IX,IY) * XC(IX22(IX,IY),IY22(IX,IY))
+          ENDIF
 
-      END SUBROUTINE POINT_INTERP
+          IF(FACTOR.GT.0.0) THEN
+            FA(IX,IY) = FA(IX,IY) / FACTOR
+          ELSE
+            IF(XC(IX,IY).EQ.FILLVALUE) THEN
+              FA(IX,IY) = 0.0
+            ELSE
+              FA(IX,IY) = XC(IX,IY)
+            ENDIF
+          END IF
+        END DO
+      END DO
+
+      END SUBROUTINE INTERP
 
 !==============================================================================
 
