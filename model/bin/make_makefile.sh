@@ -1110,7 +1110,8 @@
                prop=
              source="$pdlibcode $pdlibyow $db $bt $setupcode $tr $trx $stx $nlx $btx $is $uostmd"
                  IO='w3iogrmd w3iogomd'
-                aux="constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd pplookmd $smco" ;;
+                aux="constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd"
+                aux="$aux pplookmd $smco w3nmlmoppmd" ;;
     esac
 
     # if esmf is included in program name, then
@@ -1405,6 +1406,7 @@
 ## Met Office specific modules
 #
          'PPLOOKMD'     ) modtest=pplookmd.o ;;
+         'W3NMLMOPPMD'  ) modtest=w3nmlmoppmd.o ;;
          *              ) modfound=no ;; 
       esac
 

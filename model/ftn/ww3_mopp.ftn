@@ -6,13 +6,14 @@
 !/                  |        Chris Bunney, UKMO         |
 !/                  |           H. L. Tolman            |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         12-Jan-2016 |
+!/                  | Last update :         25-Feb-2021 |
 !/                  +-----------------------------------+
 !/
 !/    12-Jan-2016 : Met Office PP format gridded output ( version 4.18 )
 !/                  post-processor, based on ww3_ounf code.
 !/                        (Chris Bunney, UK Met Office)
 !/    14-Oct-2016 : Extend to use further part. params  ( version 4.18 )
+!/    25-Feb-2021 : Updated for WW3 version 7.          ( version 7.12 )
 !/
 !/    Copyright 2009-2012 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -88,7 +89,7 @@
 !/S      USE W3SERVMD, ONLY : STRACE
       USE W3TIMEMD
       USE W3IOGRMD, ONLY: W3IOGR
-      USE W3IOGOMD, ONLY: W3IOGO, W3READFLGRD
+      USE W3IOGOMD, ONLY: W3IOGO, W3READFLGRD, W3FLGRDFLAG
 !/
       USE W3GDATMD
       USE W3WDATMD, ONLY: TIME, WLV, ICE, BERG, UST, USTDIR
@@ -108,9 +109,11 @@
                           STMAXE, STMAXD, HMAXE, HCMAXE, HMAXD, HCMAXD,&
                           P2SMS, EF, US3D, TH1M, STH1M, TH2M, STH2M,   &
                           WN, USSP, WBT
-      USE W3ODATMD, ONLY: NDSO, NDSE, NDST, NOGRP, NGRPP, IDOUT,      &
-                          UNDEF, FLOGRD, FNMPRE, NOSWLL, NOGE
-
+      USE W3ODATMD, ONLY: NDSO, NDSE, SCREEN, NDST, NOGRP, NGRPP,      &
+                          IDOUT, UNDEF, FLOGRD, FNMPRE, NOSWLL, NOGE
+!
+      USE W3NMLMOPPMD
+!
 !/SMC      USE W3SMCOMD ! For SMC regridding
       USE PPLOOKMD ! For PP header lookup
 !
@@ -119,6 +122,10 @@
 !/ ------------------------------------------------------------------- /
 !/ Local parameters
 !/
+      TYPE(NML_FIELD_T)       :: NML_FIELD
+      TYPE(NML_FILE_T)        :: NML_FILE
+      TYPE(NML_SMC_T)         :: NML_SMC
+!
       INTEGER                 :: NDSI, NDSM, NDSOG, NDSDAT, NDSDT,    &
                                  NDSTRC, NTRACE, IERR, I, J, IFI, IFJ,&
                                  TOUT(2), TDUM(2), IOTEST, NOUT,      &
@@ -136,7 +143,8 @@
       CHARACTER               :: COMSTR*1, IDTIME*23, IDDDAY*11,      &
                                  TABNME*9, DESC*40
       LOGICAL                 :: FLREQ(NOGRP,NGRPP), FLOG(NOGRP),     &
-                                 SCALE, LTEMP(NGRPP), FMAP, FMAP2
+                                 SCALE, LTEMP(NGRPP), FMAP, FMAP2,    &
+                                 FLGNML
       LOGICAL                 :: SMCGRD = .FALSE.
 !/SMC
 !/SMC! SMC grid specific variables:
@@ -208,59 +216,148 @@
       DO IFI=1, NOGRP
         DO IFJ=1, NGRPP
           IF ( FLOGRD(IFI,IFJ) ) WRITE (NDSO,931) IDOUT(IFI,IFJ)
-          END DO
         END DO
+      END DO
 !
 !--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! 4.  Read requests from input file.
 !     Output times
 !
-      CALL NEXTLN ( COMSTR , NDSI , NDSE )
-      READ (NDSI,*,END=801,ERR=802) TOUT, DTREQ, NOUT
-      DTREQ  = MAX ( 0. , DTREQ )
-      IF ( DTREQ.EQ.0. ) NOUT = 1
-      NOUT   = MAX ( 1 , NOUT )
-!
-      CALL STME21 ( TOUT , IDTIME )
-      WRITE (NDSO,940) IDTIME
-!
-      TDUM = 0
-      CALL TICK21 ( TDUM , DTREQ )
-      CALL STME21 ( TDUM , IDTIME )
-      IF ( DTREQ .GE. 86400. ) THEN
-          WRITE (IDDDAY,'(I10,1X)') INT(DTREQ/86400.)
-        ELSE
-          IDDDAY = '           '
-        END IF
-      IDTIME(1:11) = IDDDAY
-      IDTIME(21:23) = '   '
-      WRITE (NDSO,941) IDTIME, NOUT
-!
-! ... Output fields
-!
-      CALL W3READFLGRD ( NDSI, NDSO, 9, NDSE, COMSTR, FLOG,      &
-                         FLREQ, 1, 1, IERR )
-      IF (IERR.NE.0) GOTO 800 
-!
-! ... MAPSTA, MAPSTA_EACH
-!
-      CALL NEXTLN ( COMSTR , NDSI , NDSE )
-      READ (NDSI,*,END=801,ERR=802) FMAP, FMAP2
-      IF( FMAP ) THEN
-        IF( FMAP2 ) THEN
-          MAPSTAOUT = 2
-        ELSE
-          MAPSTAOUT = 1
-        ENDIF
-      ELSE
-        MAPSTAOUT = 0
-      ENDIF
-!
-! ... Required partitions:
-!
-      CALL NEXTLN ( COMSTR , NDSI , NDSE )
-      READ (NDSI,('(A)'),END=801,ERR=802) STRINGIPART
 
+!
+! process ww3_ounf namelist
+!
+      INQUIRE(FILE=TRIM(FNMPRE)//"ww3_mopp.nml", EXIST=FLGNML) 
+      IF (FLGNML) THEN
+        ! Read namelist
+        CALL W3NMLMOPP (NDSI, TRIM(FNMPRE)//'ww3_mopp.nml', NML_FIELD, &
+                        NML_FILE, NML_SMC, IERR)
+
+! 4.1 Time setup
+        READ(NML_FIELD%TIMESTRIDE, *)  DTREQ
+        READ(NML_FIELD%TIMECOUNT, *)   NOUT
+        READ(NML_FIELD%TIMESTART, *)   TOUT(1), TOUT(2)
+        READ(NML_FIELD%TIMEREF, *)     DATETIME_TZERO
+
+! 4.2 Output fields
+        CALL W3FLGRDFLAG ( NDSO, SCREEN, NDSE, NML_FIELD%LIST, FLOG,   &
+                           FLREQ, 1, 1, IERR )
+        IF (IERR.NE.0) GOTO 800 
+
+        MAPSTAOUT = NML_FIELD%MAPSTAOUT
+        STRINGIPART = NML_FIELD%PARTITION
+
+! 4.3 Output type
+        !FILEPREFIX = NML_FILE%PREFIX
+
+! 4.4 PP specifics
+        PP_LBEXP = NML_FIELD%PP_LBEXP
+        PP_LBPROJ = NML_FIELD%PP_LBPROJ
+
+        IF(SMCGRD) THEN
+!/SMC          SXO = NML_SMC%SXO
+!/SMC          SYO = NML_SMC%SYO
+!/SMC          EXO = NML_SMC%EXO
+!/SMC          EYO = NML_SMC%EYO
+!/SMC          CELFAC = NML_SMC%CELFAC
+!/SMC          NOVAL = NML_SMC%NOVAL
+        ENDIF ! SMCGRD
+      ELSE ! FLGNML
+!
+! process old ww3_ounf.inp format
+!
+        CALL NEXTLN ( COMSTR , NDSI , NDSE )
+        READ (NDSI,*,END=801,ERR=802) TOUT, DTREQ, NOUT
+        DTREQ  = MAX ( 0. , DTREQ )
+        IF ( DTREQ.EQ.0. ) NOUT = 1
+        NOUT   = MAX ( 1 , NOUT )
+  !
+        CALL STME21 ( TOUT , IDTIME )
+        WRITE (NDSO,940) IDTIME
+  !
+        TDUM = 0
+        CALL TICK21 ( TDUM , DTREQ )
+        CALL STME21 ( TDUM , IDTIME )
+        IF ( DTREQ .GE. 86400. ) THEN
+            WRITE (IDDDAY,'(I10,1X)') INT(DTREQ/86400.)
+          ELSE
+            IDDDAY = '           '
+          END IF
+        IDTIME(1:11) = IDDDAY
+        IDTIME(21:23) = '   '
+        WRITE (NDSO,941) IDTIME, NOUT
+  !
+  ! ... Output fields
+  !
+        CALL W3READFLGRD ( NDSI, NDSO, 9, NDSE, COMSTR, FLOG,      &
+                           FLREQ, 1, 1, IERR )
+        IF (IERR.NE.0) GOTO 800 
+  !
+  ! ... MAPSTA, MAPSTA_EACH
+  !
+        CALL NEXTLN ( COMSTR , NDSI , NDSE )
+        READ (NDSI,*,END=801,ERR=802) FMAP, FMAP2
+        IF( FMAP ) THEN
+          IF( FMAP2 ) THEN
+            MAPSTAOUT = 2
+          ELSE
+            MAPSTAOUT = 1
+          ENDIF
+        ELSE
+          MAPSTAOUT = 0
+        ENDIF
+  !
+  ! ... Required partitions:
+  !
+        CALL NEXTLN ( COMSTR , NDSI , NDSE )
+        READ (NDSI,('(A)'),END=801,ERR=802) STRINGIPART
+  
+  !
+        WRITE (NDSO,942) 'Met Office PP file'
+  ! ... Field IX,IY range, or grid definition for SMC grid
+  !
+        IF( SMCGRD ) THEN
+!/SMC        WRITE(NDSO, 4100)
+!/SMC        CALL NEXTLN ( COMSTR , NDSI , NDSE )
+!/SMC        READ (NDSI,*,END=801,ERR=802) SXO, SYO, EXO, EYO, CELFAC
+        ENDIF
+!
+! ... Read envronment variables for:
+!         WW3_DATETIME_TZERO  - The datetimte of T+0 for the forecast
+!         WW3_PP_LBPROJ       - The PP projection code for the config
+!         WW3_PP_LBEXP        - The PP experiment code for the config
+!
+       ! Get TZERO_DATETIME from env var, if set:
+        CALL GETENV("WW3_DATETIME_TZERO", ENV)
+        ENV = TRIM(ENV)
+        IF(ENV .NE. '') THEN
+           READ(ENV,'(I8,1X,I6)') DATETIME_TZERO
+        ELSE
+           ! Default T0 to first time in file:
+           DATETIME_TZERO = TOUT
+        ENDIF
+   
+        ! Get PP projection code:
+        CALL GETENV( "WW3_PP_LBPROJ", ENV )
+        J = LEN_TRIM(ENV)
+        IF( ENV(:J) .NE. '' ) THEN
+           ! Convert LBPROJ to INTEGER:
+           READ( ENV,*) PP_LBPROJ
+        ELSE
+           PP_LBPROJ = 801   ! Default to 801
+        ENDIF
+   
+        ! Get PP experiment code:
+        CALL GETENV( "WW3_PP_LBEXP", ENV )
+        J = LEN_TRIM(ENV)
+        IF( ENV(:J) .NE. '' ) THEN
+           ! Convert LBEXP to INTEGER:
+           READ( ENV,*) PP_LBEXP
+        ELSE
+           PP_LBEXP = 0   ! Default to 0
+        ENDIF
+      ENDIF ! FLGNNL
+!
       ! Extract partition numbers from string:
       ALLOCATE(TABIPART(10)) ! Max of 10 partitions!
       CALL INTARR(STRINGIPART, TABIPART, 10, NBIPART)
@@ -276,29 +373,15 @@
             NBIPART = NBIPART - 1
             CYCLE
          ENDIF
-
-!         IF( TABIPART(I) .EQ. 0 ) THEN
-!            DESC = 'Classic wind-sea    (wave age cut-off)'
-!         ELSE IF( TABIPART(I) .EQ. 1 ) THEN
-!            DESC = 'Classic total swell (wave age cut-off)'
-!         ELSE
-!            WRITE(DESC, '("Wave system no. ", I2)') TABIPART(I) - 1
-!         ENDIF
+  
          WRITE(DESC, '("Wave partition no. ", I2)') TABIPART(I)
-
+  
          I = I + 1
-
+  
          WRITE(NDSO,'(6X,A40)') DESC
       ENDDO
-!
-      WRITE (NDSO,942) 'Met Office PP file'
-! ... Field IX,IY range, or grid definition for SMC grid
-!
+!  
       IF( SMCGRD ) THEN
-!/SMC      WRITE(NDSO, 4100)
-!/SMC      CALL NEXTLN ( COMSTR , NDSI , NDSE )
-!/SMC      READ (NDSI,*,END=801,ERR=802) SXO, SYO, EXO, EYO, XCELFAC, YCELFAC
-!/SMC
 !/SMC      ! For PP files, SMC output type is always 2 (re-gridded)
 !/SMC      SMCTYPE = 2
 !/SMC
@@ -332,42 +415,6 @@
         DXOUT = SX
         DYOUT = SY
       ENDIF
-!
-! ... Read envronment variables for:
-!         WW3_DATETIME_TZERO  - The datetimte of T+0 for the forecast
-!         WW3_PP_LBPROJ       - The PP projection code for the config
-!         WW3_PP_LBEXP        - The PP experiment code for the config
-!
-     ! Get TZERO_DATETIME from env var, if set:
-      CALL GETENV("WW3_DATETIME_TZERO", ENV)
-      ENV = TRIM(ENV)
-      IF(ENV .NE. '') THEN
-         READ(ENV,'(I8,1X,I6)') DATETIME_TZERO
-      ELSE
-         ! Default T0 to first time in file:
-         DATETIME_TZERO = TOUT
-      ENDIF
- 
-      ! Get PP projection code:
-      CALL GETENV( "WW3_PP_LBPROJ", ENV )
-      J = LEN_TRIM(ENV)
-      IF( ENV(:J) .NE. '' ) THEN
-         ! Convert LBPROJ to INTEGER:
-         READ( ENV,*) PP_LBPROJ
-      ELSE
-         PP_LBPROJ = 801   ! Default to 801
-      ENDIF
- 
-      ! Get PP experiment code:
-      CALL GETENV( "WW3_PP_LBEXP", ENV )
-      J = LEN_TRIM(ENV)
-      IF( ENV(:J) .NE. '' ) THEN
-         ! Convert LBEXP to INTEGER:
-         READ( ENV,*) PP_LBEXP
-      ELSE
-         PP_LBEXP = 0   ! Default to 0
-      ENDIF
-
 
 ! 1a. Rotated pole location, use default unless we are running
 !     rotated version of code (RTD switch):
@@ -626,9 +673,10 @@
 !/
 !/                  +-----------------------------------+
 !/                  | WAVEWATCH III           NOAA/NCEP |
+!/                  |           Chris Bunney
 !/                  |           H. L. Tolman            |
 !/                  |                        FORTRAN 90 |
-!/                  | Last update :         25-Dec-2012 |
+!/                  | Last update :         25-Feb-2021 |
 !/                  +-----------------------------------+
 !/
 !/    26-Sep-1997 : Final FORTRAN 77                    ( version 1.18 )
@@ -649,6 +697,7 @@
 !/    31-Jul-2007 : Fix file extension errors.          ( version 3.12 )
 !/    25-Dec-2012 : New structure of output fields.     ( version 4.11 )
 !/    25-Jun-2013 : Add type 4 sea point text output.   ( version 4.11 )
+!/    25-Feb-2021 : Updated for WW3 version 7.          ( version 7.12 )
 !/
 !  1. Purpose :
 !
@@ -664,8 +713,8 @@
 !
 !     Internal parameters
 !     ----------------------------------------------------------------
-!       XA, XX, XY
-!               R.A.  Output fields
+!       XA      R.A.  Output fields
+!      AUX1     R.A.  Auxiliary array for conversions
 !     ----------------------------------------------------------------
 !
 !  4. Subroutines used :
@@ -675,8 +724,6 @@
 !      STRACE    Subr. W3SERVMD Subroutine tracing.
 !      EXTCDE    Subr.   Id.    Abort program as graceful as possible.
 !      W3S2XY    Subr.   Id.    Convert from storage to spatial grid.
-!      PRTBLK    Subr. W3ARRYMD Print plot of array.
-!      OUTA2I    Subr.   Id.    Print array of INTEGERS.
 !     ----------------------------------------------------------------
 !
 !  5. Called by :
@@ -704,7 +751,7 @@
 ! 10. Source code :
 !
 !/ ------------------------------------------------------------------- /
-      USE W3SERVMD, ONLY : W3S2XY, UV_TO_MAG_DIR
+      USE W3SERVMD, ONLY : W3S2XY, UV_TO_MAG_DIR, W3XYRTN, W3THRTN
       USE W3ARRYMD, ONLY : OUTA2I, PRTBLK
 !/
 !/ ------------------------------------------------------------------- /
@@ -724,7 +771,7 @@
 !/S      INTEGER, SAVE           :: IENT   =   0
       REAL                    :: FSC, CABS, UABS, FSCA, XMIN, XMAX,   &
                                  XAVG, XSTD, YGBX, XGBX, AABS
-      REAL, ALLOCATABLE       :: XA(:,:,:), XX(:,:), XY(:,:), AUX1(:)
+      REAL, ALLOCATABLE       :: XA(:,:,:), AUX1(:)
       REAL                    :: DPTMAX(1)
       DOUBLE PRECISION        :: XDS, XDSQ
 !/T      LOGICAL                 :: LTEMP(NGRPP)
@@ -766,17 +813,11 @@
       ! conceivably be larger than the NX and NY values. Making these (large)
       ! arrays allocatable also moves them to the heap and avoids stack
       ! overflow issues that can occur on some architectures. Chris Bunney.
-!!      IF(SMCGRD) THEN
-!!!/SMC        ALLOCATE(XA(NXO,NYO,MAX_COMP), XX(NXO,NYO), XY(NXO,NYO))
-!!      ELSE
-        ALLOCATE(XA(NXOUT,NYOUT,MAX_COMP), XX(NXOUT,NYOUT), XY(NXOUT,NYOUT))
-!!      ENDIF
+      ALLOCATE(XA(NXOUT,NYOUT,MAX_COMP))
       ALLOCATE(DATACOMP(NXOUT*NYOUT))
       ALLOCATE(AUX1(NSEA))
 !
       XA     = UNDEF
-      XX     = UNDEF
-      XY     = UNDEF
 !
       MFILL  = -999
 !
@@ -868,8 +909,8 @@
                                    TOLERANCE=0.05, CONV='O')
               ENDIF
 !
-              CALL S2GRID(CX(1:NSEA), XX)
-              CALL S2GRID(CY(1:NSEA), XY)
+              CALL S2GRID(CX(1:NSEA), XA(:,:,1))
+              CALL S2GRID(CY(1:NSEA), XA(:,:,2))
               NFIELD=2
 !
             ! Wind
@@ -883,8 +924,8 @@
                                  TOLERANCE=1.0, CONV='N')
               ENDIF
 !              
-              CALL S2GRID(UA(1:NSEA), XX)
-              CALL S2GRID(UD(1:NSEA), XY)
+              CALL S2GRID(UA(1:NSEA), XA(:,:,1))
+              CALL S2GRID(UD(1:NSEA), XA(:,:,2))
               NFIELD=2
 !
             ! Air-sea temperature difference
@@ -1202,8 +1243,8 @@
               END DO
 !/RTD              ! Rotate x,y vector back to standard pole
 !/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, UST(1:NSEA), USTDIR(1:NSEA), AnglD)
-              CALL S2GRID(UST(1:NSEA), XX)
-              CALL S2GRID(USTDIR(1:NSEA), XY)
+              CALL S2GRID(UST(1:NSEA), XA(:,:,1))
+              CALL S2GRID(USTDIR(1:NSEA), XA(:,:,2))
               !! Commented out unnecessary statements below for time being
               !! UST,USTDIR are in north-east convention and XA,X2
               !! are not actually written out below
@@ -1241,8 +1282,8 @@
             ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 5 ) THEN
 !/RTD              ! Rotate x,y vector back to standard pole
 !/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, TAUWIX(1:NSEA), TAUWIY(1:NSEA), AnglD)
-              CALL S2GRID(TAUWIX(1:NSEA), XX)
-              CALL S2GRID(TAUWIY(1:NSEA), XY)
+              CALL S2GRID(TAUWIX(1:NSEA), XA(:,:,1))
+              CALL S2GRID(TAUWIY(1:NSEA), XA(:,:,2))
               
               !! Commented out unnecessary statements below for time being
               !! TAUWIX, TAUWIY are in north-east convention and XA,X2
@@ -1265,8 +1306,8 @@
             ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 6 ) THEN
 !/RTD              ! Rotate x,y vector back to standard pole
 !/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, TAUWNX(1:NSEA), TAUWNY(1:NSEA), AnglD)
-              CALL S2GRID(TAUWNX(1:NSEA), XX)
-              CALL S2GRID(TAUWNY(1:NSEA), XY)
+              CALL S2GRID(TAUWNX(1:NSEA), XA(:,:,1))
+              CALL S2GRID(TAUWNY(1:NSEA), XA(:,:,2))
               NFIELD=2
 !
             ! Whitecap coverage
@@ -1303,8 +1344,8 @@
             ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 2 ) THEN
 !/RTD              ! Rotate x,y vector back to standard pole
 !/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, TAUOX(1:NSEA), TAUOY(1:NSEA), AnglD)
-              CALL S2GRID(TAUOX(1:NSEA), XX)
-              CALL S2GRID(TAUOY(1:NSEA), XY)
+              CALL S2GRID(TAUOX(1:NSEA), XA(:,:,1))
+              CALL S2GRID(TAUOY(1:NSEA), XA(:,:,2))
               NFIELD=2
 !
             ! Radiation pressure (Bernouilli Head)
@@ -1322,8 +1363,8 @@
             ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 5 ) THEN
 !/RTD              ! Rotate x,y vector back to standard pole
 !/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, TUSX(1:NSEA), TUSY(1:NSEA), AnglD)
-              CALL S2GRID(TUSX(1:NSEA), XX)
-              CALL S2GRID(TUSY(1:NSEA), XY)
+              CALL S2GRID(TUSX(1:NSEA), XA(:,:,1))
+              CALL S2GRID(TUSY(1:NSEA), XA(:,:,2))
 ! XA, X2 will not be output when NFIELD == 2
 ! ( Like for .cur, .wnd, .ust, .taw, and .uss ) (CHA at FCOO 2019-06-13): 
               !! Commented out unnecessary statements below for time being
@@ -1355,8 +1396,8 @@
               END DO
 !/RTD              ! Rotate x,y vector back to standard pole
 !/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, USSX(1:NSEA), USSY(1:NSEA), AnglD)
-              CALL S2GRID(USSX(1:NSEA), XX)
-              CALL S2GRID(USSY(1:NSEA), XY)
+              CALL S2GRID(USSX(1:NSEA), XA(:,:,1))
+              CALL S2GRID(USSY(1:NSEA), XA(:,:,2))
               !! Commented out unnecessary statements below for time being
               !! TAUWIX, TAUWIY are in north-east convention and XA,X2
               !! are not actually written out below
@@ -1377,8 +1418,8 @@
             ! Power spectral density of equivalent surface pressure
             ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 7 ) THEN
               NFIELD=2
-              CALL S2GRID(PRMS(1:NSEA), XX)
-              CALL S2GRID(TPMS(1:NSEA), XY)
+              CALL S2GRID(PRMS(1:NSEA), XA(:,:,1))
+              CALL S2GRID(TPMS(1:NSEA), XA(:,:,2))
 !
 !CB            ! Spectral variance of surface stokes drift
 !CB            ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 8 ) THEN
@@ -1418,8 +1459,8 @@
             ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 10 ) THEN
 !/RTD              ! Rotate x,y vector back to standard pole
 !/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, TAUICE(1:NSEA,1), TAUICE(1:NSEA,2), AnglD)
-              CALL S2GRID(TAUICE(1:NSEA,1), XX)
-              CALL S2GRID(TAUICE(1:NSEA,2), XY)
+              CALL S2GRID(TAUICE(1:NSEA,1), XA(:,:,1))
+              CALL S2GRID(TAUICE(1:NSEA,2), XA(:,:,2))
               NFIELD=2
 !
             ! Wave to sea ice energy flux
@@ -1453,8 +1494,8 @@
               ! NB: ABA and ABD are the X and Y components of the bottom displacement
 !/RTD              ! Rotate x,y vector back to standard pole
 !/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, ABA(1:NSEA), ABD(1:NSEA), AnglD)
-              CALL S2GRID(ABA(1:NSEA), XX)
-              CALL S2GRID(ABD(1:NSEA), XY)
+              CALL S2GRID(ABA(1:NSEA), XA(:,:,1))
+              CALL S2GRID(ABD(1:NSEA), XA(:,:,2))
               NFIELD=2
 !
             ! RMS of bottom velocity amplitude
@@ -1462,8 +1503,8 @@
               ! NB: UBA and UBD are the X and Y components of the bottom velocity
 !/RTD              ! Rotate x,y vector back to standard pole
 !/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, UBA(1:NSEA), UBD(1:NSEA), AnglD)
-              CALL S2GRID(UBA(1:NSEA), XX)
-              CALL S2GRID(UBD(1:NSEA), XY)
+              CALL S2GRID(UBA(1:NSEA), XA(:,:,1))
+              CALL S2GRID(UBD(1:NSEA), XA(:,:,2))
               NFIELD=2
 !
             ! Bottom roughness
@@ -1485,24 +1526,24 @@
 !/RTD              ! Rotate x,y vector back to standard pole
 !/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, TAUBBL(1:NSEA,1), &
 !/RTD                                           TAUBBL(1:NSEA,2), AnglD)
-              CALL S2GRID(TAUBBL(1:NSEA,1), XX)
-              CALL S2GRID(TAUBBL(1:NSEA,2), XY)
+              CALL S2GRID(TAUBBL(1:NSEA,1), XA(:,:,1))
+              CALL S2GRID(TAUBBL(1:NSEA,2), XA(:,:,2))
               NFIELD=2
 !
             ! Mean square slope
             ELSE IF ( IFI .EQ. 8 .AND. IFJ .EQ. 1 ) THEN
 !/RTD              ! Rotate x,y vector back to standard pole
 !/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, MSSX, MSSY, AnglD)
-              CALL S2GRID(MSSX, XX)
-              CALL S2GRID(MSSY, XY)
+              CALL S2GRID(MSSX, XA(:,:,1))
+              CALL S2GRID(MSSY, XA(:,:,2))
               NFIELD=2
 !
             ! Phillips constant
             ELSE IF ( IFI .EQ. 8 .AND. IFJ .EQ. 2 ) THEN
 !/RTD              ! Rotate x,y vector back to standard pole
 !/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, MSCX, MSCY, AnglD)
-              CALL S2GRID(MSCX, XX)
-              CALL S2GRID(MSCY, XY)
+              CALL S2GRID(MSCX, XA(:,:,1))
+              CALL S2GRID(MSCY, XA(:,:,2))
               NFIELD=2
 !
             ! u direction for mss
@@ -1655,7 +1696,7 @@
       IPASS = IPASS + 1
 !
 ! CB: Clean up
-      DEALLOCATE(XA, XX, XY, AUX1)
+      DEALLOCATE(XA, AUX1)
       DEALLOCATE(DATACOMP)
 !
       RETURN
