@@ -1801,12 +1801,12 @@
             IF (( IFLD.LE.2 ).AND.( .NOT. FLBERG )) THEN
 !
                 CALL INTERP(MXM, MYM, XC, IX21, IX22, IY21, IY22,      &
-                               RD11, RD12, RD21, RD22, FILLVALUE, FA) 
+                               RD11, RD12, RD21, RD22, FILLVALUE, FA)
 !
                 IF (NFCOMP.EQ.2) THEN
 !/O3             IF ( IAPROC .EQ. NAPOUT )    WRITE (NDSO,976) ' (2) '
                     CALL INTERP(YC, JX21, JX22, JY21, JY22, XD11, XD12,&
-                                             XD21, XD22, FILLVALUE, FA) 
+                                             XD21, XD22, FILLVALUE, FA)
                 END IF
 !
 ! ... Two-component fields
@@ -1814,21 +1814,21 @@
               ELSE  !so if IFLD.GT.2
 !
                 CALL INTERP(MXM, MYM, XC, IX21, IX22, IY21, IY22,      &
-                               RD11, RD12, RD21, RD22, FILLVALUE, FX) 
+                               RD11, RD12, RD21, RD22, FILLVALUE, FX)
 
                 CALL INTERP(MXM, MYM, YC, IX21, IX22, IY21, IY22,      &
-                               RD11, RD12, RD21, RD22, FILLVALUE, FY) 
+                               RD11, RD12, RD21, RD22, FILLVALUE, FY)
 
                 CALL INTERP(MXM, MYM, AC, IX21, IX22, IY21, IY22,      &
-                               RD11, RD12, RD21, RD22, FILLVALUE, FA) 
+                               RD11, RD12, RD21, RD22, FILLVALUE, FA)
 
                 CALL INTERP(MXM, MYM, SQRT(XC**2+YC**2), IX21, IX22,   &
                                IY21, IY22, RD11, RD12, RD21, RD22,     &
-                               FILLVALUE, A2) 
+                               SQRT(2.0)*FILLVALUE, A2)
 
                 CALL INTERP(MXM, MYM, XC**2+YC**2, IX21, IX22,         &
                                IY21, IY22, RD11, RD12, RD21, RD22,     &
-                               FILLVALUE, A3) 
+                               2.0*FILLVALUE*FILLVALUE, A3)
 
                 DO IY=1,NY
                   DO IX=1,NX
@@ -2211,7 +2211,7 @@
 !==============================================================================
 
       SUBROUTINE INTERP(MXM, MYM, XC, IX21, IX22, IY21, IY22,       &
-                               RD11, RD12, RD21, RD22, FILLVALUE, FA) 
+                               RD11, RD12, RD21, RD22, FILLVALUE, FA)
 !/
 !/                  +-----------------------------------+
 !/                  | WAVEWATCH III           NOAA/NCEP |
