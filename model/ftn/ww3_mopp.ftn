@@ -1975,7 +1975,7 @@
           END IF
         END DO
       ENDIF
-      CALL W3S2XY ( NSEA, NSEA, NX+1, NY, S, MAPSF, X )
+      CALL W3S2XY2 ( NSEA, NSEA, NXOUT, NYOUT, S, MAPSF, X )
 !/SMC     ENDIF
 
       END SUBROUTINE S2GRID
