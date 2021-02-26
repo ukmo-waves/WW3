@@ -79,7 +79,7 @@
 ! 10. Source code :
 !
 !/ ------------------------------------------------------------------- /
-      USE CONSTANTS
+      USE CONSTANTS, ONLY: UNDEF, RADE
 !/
 !     USE W3GDATMD, ONLY: W3NMOD, W3SETG
       USE W3WDATMD, ONLY: W3NDAT, W3SETW
@@ -110,11 +110,12 @@
                           P2SMS, EF, US3D, TH1M, STH1M, TH2M, STH2M,   &
                           WN, USSP, WBT
       USE W3ODATMD, ONLY: NDSO, NDSE, SCREEN, NDST, NOGRP, NGRPP,      &
-                          IDOUT, UNDEF, FLOGRD, FNMPRE, NOSWLL, NOGE
+                          IDOUT, FLOGRD, FNMPRE, NOSWLL, NOGE
 !
       USE W3NMLMOPPMD
-!
+!/SMC!
 !/SMC      USE W3SMCOMD ! For SMC regridding
+!
       USE PPLOOKMD ! For PP header lookup
 !
       IMPLICIT NONE
@@ -129,7 +130,6 @@
       INTEGER                 :: NDSI, NDSM, NDSOG, NDSDAT, NDSDT,    &
                                  NDSTRC, NTRACE, IERR, I, J, IFI, IFJ,&
                                  TOUT(2), TDUM(2), IOTEST, NOUT,      &
-                                 IX1, IXN, IXS, IY1, IYN, IYS,        &
                                  IOUT, IPART, MAPSTAOUT
 !
       INTEGER, ALLOCATABLE    :: TABIPART(:)
@@ -141,9 +141,9 @@
 !/S      INTEGER, SAVE           :: IENT = 0
       REAL                    :: DTREQ, DTEST
       CHARACTER               :: COMSTR*1, IDTIME*23, IDDDAY*11,      &
-                                 TABNME*9, DESC*40
+                                 DESC*40
       LOGICAL                 :: FLREQ(NOGRP,NGRPP), FLOG(NOGRP),     &
-                                 SCALE, LTEMP(NGRPP), FMAP, FMAP2,    &
+                                 LTEMP(NGRPP), FMAP, FMAP2,    &
                                  FLGNML
       LOGICAL                 :: SMCGRD = .FALSE.
 !/SMC
@@ -160,6 +160,7 @@
       REAL                    :: PP_BPLAT, PP_BPLON
       LOGICAL                 :: L_FLIPZLAT = .FALSE.
       LOGICAL                 :: VECTOR = .FALSE.
+      REAL, PARAMETER         :: PP_MDI = -32768.0
 
 !/
 !/ ------------------------------------------------------------------- /
@@ -189,12 +190,6 @@
 !
       WRITE (NDSO,900)
 !
-      J      = LEN_TRIM(FNMPRE)
-      OPEN (NDSI,FILE=FNMPRE(:J)//'ww3_mopp.inp',STATUS='OLD',       &
-            ERR=800,IOSTAT=IERR)
-      READ (NDSI,'(A)',END=801,ERR=802) COMSTR
-      IF (COMSTR.EQ.' ') COMSTR = '$'
-      WRITE (NDSO,901) COMSTR
 !
 !--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! 2.  Read model definition file.
@@ -229,6 +224,8 @@
 !
       INQUIRE(FILE=TRIM(FNMPRE)//"ww3_mopp.nml", EXIST=FLGNML) 
       IF (FLGNML) THEN
+        COMSTR = "$"
+
         ! Read namelist
         CALL W3NMLMOPP (NDSI, TRIM(FNMPRE)//'ww3_mopp.nml', NML_FIELD, &
                         NML_FILE, NML_SMC, IERR)
@@ -239,6 +236,10 @@
         READ(NML_FIELD%TIMESTART, *)   TOUT(1), TOUT(2)
         READ(NML_FIELD%TIMEREF, *)     DATETIME_TZERO
 
+        DTREQ  = MAX ( 0. , DTREQ )
+        IF ( DTREQ.EQ.0. ) NOUT = 1
+        NOUT   = MAX ( 1 , NOUT )
+!
 ! 4.2 Output fields
         CALL W3FLGRDFLAG ( NDSO, SCREEN, NDSE, NML_FIELD%LIST, FLOG,   &
                            FLREQ, 1, 1, IERR )
@@ -266,26 +267,32 @@
 !
 ! process old ww3_ounf.inp format
 !
+        J      = LEN_TRIM(FNMPRE)
+        OPEN (NDSI,FILE=FNMPRE(:J)//'ww3_mopp.inp',STATUS='OLD',       &
+              ERR=800,IOSTAT=IERR)
+        READ (NDSI,'(A)',END=801,ERR=802) COMSTR
+        IF (COMSTR.EQ.' ') COMSTR = '$'
+
         CALL NEXTLN ( COMSTR , NDSI , NDSE )
         READ (NDSI,*,END=801,ERR=802) TOUT, DTREQ, NOUT
         DTREQ  = MAX ( 0. , DTREQ )
         IF ( DTREQ.EQ.0. ) NOUT = 1
         NOUT   = MAX ( 1 , NOUT )
   !
-        CALL STME21 ( TOUT , IDTIME )
-        WRITE (NDSO,940) IDTIME
+! CB        CALL STME21 ( TOUT , IDTIME )
+! CB        WRITE (NDSO,940) IDTIME
   !
         TDUM = 0
-        CALL TICK21 ( TDUM , DTREQ )
-        CALL STME21 ( TDUM , IDTIME )
-        IF ( DTREQ .GE. 86400. ) THEN
-            WRITE (IDDDAY,'(I10,1X)') INT(DTREQ/86400.)
-          ELSE
-            IDDDAY = '           '
-          END IF
-        IDTIME(1:11) = IDDDAY
-        IDTIME(21:23) = '   '
-        WRITE (NDSO,941) IDTIME, NOUT
+!CB        CALL TICK21 ( TDUM , DTREQ )
+!CB        CALL STME21 ( TDUM , IDTIME )
+!CB        IF ( DTREQ .GE. 86400. ) THEN
+!CB            WRITE (IDDDAY,'(I10,1X)') INT(DTREQ/86400.)
+!CB          ELSE
+!CB            IDDDAY = '           '
+!CB          END IF
+!CB        IDTIME(1:11) = IDDDAY
+!CB        IDTIME(21:23) = '   '
+!CB        WRITE (NDSO,941) IDTIME, NOUT
   !
   ! ... Output fields
   !
@@ -313,13 +320,13 @@
         READ (NDSI,('(A)'),END=801,ERR=802) STRINGIPART
   
   !
-        WRITE (NDSO,942) 'Met Office PP file'
   ! ... Field IX,IY range, or grid definition for SMC grid
   !
         IF( SMCGRD ) THEN
-!/SMC        WRITE(NDSO, 4100)
+!CB !/SMC        WRITE(NDSO, 4100)
 !/SMC        CALL NEXTLN ( COMSTR , NDSI , NDSE )
 !/SMC        READ (NDSI,*,END=801,ERR=802) SXO, SYO, EXO, EYO, CELFAC
+!/SMC        NOVAL = UNDEF
         ENDIF
 !
 ! ... Read envronment variables for:
@@ -358,6 +365,29 @@
         ENDIF
       ENDIF ! FLGNNL
 !
+      CLOSE(NDSI)
+
+! Write inp/nml settings to screen:
+
+      WRITE (NDSO,901) COMSTR
+!
+      CALL STME21 ( TOUT , IDTIME )
+      WRITE (NDSO,940) IDTIME
+!
+      TDUM = 0
+      CALL TICK21 ( TDUM , DTREQ )
+      CALL STME21 ( TDUM , IDTIME )
+      IF ( DTREQ .GE. 86400. ) THEN
+        WRITE (IDDDAY,'(I10,1X)') INT(DTREQ/86400.)
+      ELSE
+        IDDDAY = '           '
+      END IF
+      IDTIME(1:11) = IDDDAY
+      IDTIME(21:23) = '   '
+      WRITE (NDSO,941) IDTIME, NOUT
+
+      WRITE (NDSO,942) 'Met Office PP file'
+
       ! Extract partition numbers from string:
       ALLOCATE(TABIPART(10)) ! Max of 10 partitions!
       CALL INTARR(STRINGIPART, TABIPART, 10, NBIPART)
@@ -382,6 +412,8 @@
       ENDDO
 !  
       IF( SMCGRD ) THEN
+!/SMC      WRITE(NDSO, 4100)
+!
 !/SMC      ! For PP files, SMC output type is always 2 (re-gridded)
 !/SMC      SMCTYPE = 2
 !/SMC
@@ -389,16 +421,11 @@
 !/SMC      ALLOCATE(XIDX(NSEA), YIDX(NSEA), XSPAN(NSEA),                   &
 !/SMC               YSPAN(NSEA), WTS(NSEA), SMCIDX(NSEA))
 !/SMC      CALL SMC_INTERP()
+!/SMC
 !/SMC      WRITE(NDSO, 4110) NXO, NYO, SXO, SYO, DXO, DYO
 !/SMC
 !/SMC      ! Allocate space for coverage array and new MAPSTA array
 !/SMC      ALLOCATE(COV(NXO,NYO), MAPSMC(NXO,NYO))
-!/SMC
-!/SMC      ! CB: IXN and IXY are calculated by SMC_INTERP for SMC GRID
-!/SMC      IX1 = 1
-!/SMC      IXN = NXO
-!/SMC      IY1 = 1
-!/SMC      IYN = NYO
 !/SMC
 !/SMC      ! Set output grid definition to calculated SMC grid
 !/SMC      NXOUT = NXO
@@ -484,7 +511,7 @@
       ENDIF
       PPRHEAD(61) = SXOUT - DXOUT! bzx  (zeroth lon)
       PPRHEAD(62) = DXOUT        ! bdx
-      PPRHEAD(63) = UNDEF        ! mdi value
+      PPRHEAD(63) = PP_MDI       ! mdi value
       PPRHEAD(64) = 1.0          ! scaling factor
 !
 ! ... Open output file
@@ -514,11 +541,13 @@
 !     TODO: These messages relate to standard WW3 partitioning. Will need
 !     TODO: updating for Met Office alternate partitioning.
       IF ( FLOG(4) ) THEN
-        IF ( IPART .EQ. 0 ) THEN
-          WRITE (NDSO,948)
-        ELSE
-          WRITE (NDSO,949) IPART
-        END IF
+        DO IPART=1, NBIPART
+          IF ( TABIPART(IPART) .EQ. 0 ) THEN
+            WRITE (NDSO,948)
+          ELSE
+            WRITE (NDSO,949) TABIPART(IPART)
+          END IF
+        ENDDO
       END IF
 !
 !--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -608,8 +637,8 @@
   945 FORMAT (/'  Requested output fields : '/                        &
                ' --------------------------------------------------')
   946 FORMAT ( '      ',A,2X,A)
-  948 FORMAT (/'         Partitioned field data for wind seas')
-  949 FORMAT (/'         Partitioned field data for swell field',I2)
+  948 FORMAT ( '         Partitioned field data for wind seas')
+  949 FORMAT ( '         Partitioned field data for swell field',I2)
 !
  1940 FORMAT ( '      X range and interval : ',3I5/                   &
                '      Y range and interval : ',3I5)
@@ -763,7 +792,7 @@
 !/ Local parameters
 !/
       INTEGER                 :: NXMAX, NXTOT, NBLOK, IH, IM, IS,     &
-                                 MFILL, J, ISEA, IX, IY, IXB, IB,     &
+                                 J, ISEA, IX, IY, IXB, IB,            &
                                  IXA, NINGRD, JJ, IFI, IFJ
       INTEGER                 :: MAP(NX+1,NY), MP2(NX+1,NY)!,          &
       INTEGER                 :: I1, J1, INDEXIPART, NFIELD, ICOMP
@@ -798,13 +827,6 @@
 !/
 !/S      CALL STRACE (IENT, 'W3EXGO')
 !
-!/T      DO IFI=1, NOGRP 
-!/T        LTEMP  = FLREQ(IFI,:)
-!/T        WRITE (NDST,9000) IFI, LTEMP
-!/T        END DO
-!/T      WRITE (NDST,9001) IX1, IXN, IXS, IY1, IYN, IYS,          &
-!/T                        SCALE, NDSDAT
-!
 !--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! 1.  Preparations
 !
@@ -818,8 +840,6 @@
       ALLOCATE(AUX1(NSEA))
 !
       XA     = UNDEF
-!
-      MFILL  = -999
 !
 ! 1.1 Update PP header with time:
 !
@@ -1627,6 +1647,11 @@
                ! Set pp header values, depending on output field:
                CALL PP_LOOKUP(PPIHEAD, PPRHEAD, IFI, IFJ, ICOMP, IPART)
 
+!               ! Convert UNDEF to PP MDI
+               IF(UNDEF .NE. PP_MDI) THEN
+                 WHERE(XA(:,:,ICOMP) .EQ. UNDEF) XA(:,:,ICOMP) = PP_MDI
+               ENDIF
+
                ! Pack data (if requested) and write field to file:
                IF(PPIHEAD(21) .EQ. 0) THEN
                  ! No packing
@@ -1645,7 +1670,7 @@
                  DATSZ = NXOUT * NYOUT
                  ISC = INT(PPRHEAD(51))
                  CALL CMPS_ALL(XA(:,:,ICOMP), DATACOMP, DATSZ, NXOUT, NYOUT,  &
-                          SZCOMP, ISC, UNDEF, IERR, CMESSAGE)
+                          SZCOMP, ISC, PP_MDI, IERR, CMESSAGE)
 
                  IF( IERR .NE. 0 ) THEN 
                     WRITE(NDSE, *) " ERROR IN COEX: ", IERR, CMESSAGE
@@ -1729,15 +1754,6 @@
                '     ERROR IN OPENING OUTPUT FILE'/                   &
                '     IOSTAT =',I5/)
 !
-!/T 9000 FORMAT (' TEST W3EXGO : FLAGS :',I3,2X,20L2)
-!/T 9001 FORMAT (' TEST W3EXGO : ITPYE :',I4/                         &
-!/T              '             IX1/N/S :',3I4/                        &
-!/T              '             IY1/N/S :',3I4/                        &
-!/T              '              NDSDAT :',I4)
-!
-!/T 9012 FORMAT (' TEST W3EXGO : BLOK PARS    : ',3I4)
-!/T 9014 FORMAT ('           BASE NAME : ',A)
-!
 !/T 9020 FORMAT (' TEST W3EXGO : OUTPUT FIELD : ',A)
 !/
 !/ End of W3EXGO ----------------------------------------------------- /
@@ -1813,7 +1829,7 @@
 !/
 !/ ------------------------------------------------------------------- /
 !/
-      DO 100, ISEA=1, NSEA
+      DO ISEA=1, NSEA
         IX     = MAPSF(ISEA,1)
         IY     = MAPSF(ISEA,2)
         IF(L_FLIPZLAT) THEN
@@ -1825,8 +1841,7 @@
         ELSE
            XY(IX,IY) = S(ISEA)
         ENDIF
-
-  100   CONTINUE
+      ENDDO
 !/
 !/ End of W3S2XY2 ----------------------------------------------------- /
 !/
