@@ -1104,7 +1104,7 @@
 #
 ## --- Met Office specific programs:
 #
-     ww3_mopp) IDstring='Gridded Met Office PP output'
+       ww3_mopp) IDstring='Gridded Met Office PP output'
                core=
                data="w3parall wmmdatmd $memcode w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd"
                prop=
@@ -1112,6 +1112,22 @@
                  IO='w3iogrmd w3iogomd'
                 aux="constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd"
                 aux="$aux pplookmd $smco w3nmlmoppmd" ;;
+
+   ww3_spec2ibm) IDstring='Spectral IBM/GPCS conversion'
+               core=
+               data='w3triamd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
+               prop=
+             source="$stx $nlx $btx"
+                 IO='w3iogrmd w3iopomd'
+                aux='constants w3servmd w3timemd w3arrymd w3dispmd w3cspcmd w3gsrumd' ;;
+
+     ww3_smcint) IDstring='SMC gridded interpolation'
+               core='w3initmd'
+               data='w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
+               prop=
+             source="w3triamd $stx $nlx $btx"
+                 IO='w3iogrmd w3iogomd w3iorsmd w3iopomd'
+                aux="constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd $pr $smco" ;;
     esac
 
     # if esmf is included in program name, then

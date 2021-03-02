@@ -246,7 +246,7 @@
         ! Convert intepolated spectra to IBM numbers:
         CALL IEG2IBM(3, NSPEC2*NOPTS, SPC2_IBM, 0, SPC2, 1, 32, 32)
 
-        ! Convert axiliary data to IBM numbers:
+        ! Convert auxiliary data to IBM numbers:
         CALL IEG2IBM(3, NOPTS, DPO2, 0, DPO, 1, 32, 32)
         CALL IEG2IBM(3, NOPTS, WAO2, 0, WAO, 1, 32, 32)
         CALL IEG2IBM(3, NOPTS, WDO2, 0, WDO, 1, 32, 32)
