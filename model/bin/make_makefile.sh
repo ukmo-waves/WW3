@@ -1120,7 +1120,7 @@
              source="$stx $nlx $btx"
                  IO='w3iogrmd w3iopomd'
                 aux='constants w3servmd w3timemd w3arrymd w3dispmd w3cspcmd w3gsrumd'
-                aux="$aux w3parall" ;;
+                aux="$aux w3parall w3nmlspec2ibmmd" ;;
 
      ww3_smcint) IDstring='SMC gridded interpolation'
                core='w3initmd'

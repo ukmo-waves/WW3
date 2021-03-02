@@ -96,6 +96,8 @@
 ! 
       USE W3CSPCMD, ONLY: W3CSPC
 !
+      USE W3NMLSPEC2IBMMD
+!
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -116,6 +118,10 @@
       INTEGER                 :: NKO, NTHO, NSPEC2
       REAL                    :: FR1O, TH1O
 !
+      LOGICAL                 :: FLGNML
+      TYPE(NML_SPEC_T)        :: NML_SPEC
+      TYPE(NML_FILE_T)        :: NML_FILE
+!      
       CHARACTER(LEN=10), PARAMETER :: VEROPT = 'METOSPC1.1'
       CHARACTER(LEN=31), PARAMETER ::                                   &
                            IDSTR = 'WAVEWATCH III POINT OUTPUT FILE'
@@ -186,8 +192,23 @@
       WRITE (NDSO, 940)
       WRITE (NDSO, 942) NK, NTH, FR1, TH(1)
 
-      CALL NEXTLN ( COMSTR , NDSI , NDSE )
-      READ (NDSI,*,END=801,ERR=802) NKO, NTHO, FR1O, TH1O
+
+      INQUIRE(FILE=TRIM(FNMPRE)//"ww3_spec2ibm.nml", EXIST=FLGNML) 
+      IF (FLGNML) THEN
+        ! Read .nml file
+        CALL W3NMLSPEC2IBM (NDSI, TRIM(FNMPRE)//'ww3_spec2ibm.nml',        &
+                        NML_SPEC, NML_FILE, IERR)
+
+        NKO = NML_SPEC%NK
+        NTHO = NML_SPEC%NTH
+        FR1O = NML_SPEC%FR1
+        TH1O = NML_SPEC%TH1
+      ELSE ! FLGNML
+        ! Read .inp file
+        CALL NEXTLN ( COMSTR , NDSI , NDSE )
+        READ (NDSI,*,END=801,ERR=802) NKO, NTHO, FR1O, TH1O
+      ENDIF ! FLGNML
+
       IF(NKO .LT. 0) NKO = NK
       IF(NTHO .LT. 0) NTHO = NTH
       IF(FR1O .LT. 0) FR1O = FR1
