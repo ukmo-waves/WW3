@@ -86,6 +86,8 @@
 !/RTD      USE W3SERVMD, ONLY: W3LLTOEQ
       USE W3SMCOMD ! For SMC regridding
 !
+      USE W3NMLSMCINTMD
+!
       IMPLICIT NONE
 !/
 !/ ------------------------------------------------------------------- /
@@ -103,12 +105,17 @@
       DOUBLE PRECISION        :: SXOUT, SYOUT, DXOUT, DYOUT
       INTEGER                 :: NXOUT, NYOUT
 
-      INTEGER :: ISEA, N
-      REAL, ALLOCATABLE :: mlon(:), mlat(:), olon(:,:), olat(:,:)
-!/RTD     REAL, ALLOCATABLE :: tmplon(:,:), tmplat(:,:), ang(:,:)
+      INTEGER                 :: ISEA, N
+      REAL, ALLOCATABLE       :: mlon(:), mlat(:), olon(:,:), olat(:,:)
+!/RTD     REAL, ALLOCATABLE        :: tmplon(:,:), tmplat(:,:), ang(:,:)
                            
-      DOUBLE PRECISION :: lat,lon
-      REAL             :: PLONO, PLATO ! Not used yet - output pole
+      DOUBLE PRECISION        :: lat,lon
+      REAL                    :: PLONO, PLATO ! Not used yet - output pole
+!
+      LOGICAL                 :: FLGNML
+      TYPE(NML_GRID_T)        :: NML_GRID
+      TYPE(NML_FILE_T)        :: NML_FILE
+
 !
 !/ ------------------------------------------------------------------- /
 !/
@@ -140,16 +147,32 @@
 !
       WRITE (NDSO,900)
 !
-      J      = LEN_TRIM(FNMPRE)
-      OPEN (NDSI,FILE=FNMPRE(:J)//'ww3_smcint.inp',STATUS='OLD',        &
-            ERR=800,IOSTAT=IERR)
-      READ (NDSI,'(A)',END=801,ERR=802) COMSTR
-      IF (COMSTR.EQ.' ') COMSTR = '$'
-      WRITE (NDSO,901) COMSTR
+      INQUIRE(FILE=TRIM(FNMPRE)//"ww3_smcint.nml", EXIST=FLGNML) 
+      IF (FLGNML) THEN
+        ! Read .nml file
+        CALL W3NMLSMCINT (NDSI, TRIM(FNMPRE)//'ww3_smcint.nml',        &
+                        NML_GRID, NML_FILE, IERR)
+
+        NXO = NML_GRID%NXO
+        NYO = NML_GRID%NYO
+        SXO = NML_GRID%SXO
+        SYO = NML_GRID%SYO
+        DXO = NML_GRID%DXO
+        DYO = NML_GRID%DYO
+
+      ELSE ! FLGNML
+        J      = LEN_TRIM(FNMPRE)
+        OPEN (NDSI,FILE=FNMPRE(:J)//'ww3_smcint.inp',STATUS='OLD',        &
+              ERR=800,IOSTAT=IERR)
+        READ (NDSI,'(A)',END=801,ERR=802) COMSTR
+        IF (COMSTR.EQ.' ') COMSTR = '$'
+        WRITE (NDSO,901) COMSTR
 !
-      CALL NEXTLN ( COMSTR , NDSI , NDSE )
-      READ (NDSI,*,END=801,ERR=802) NXO, NYO
-      READ (NDSI,*,END=801,ERR=802) SXO, SYO, DXO, DYO
+        CALL NEXTLN ( COMSTR , NDSI , NDSE )
+        READ (NDSI,*,END=801,ERR=802) NXO, NYO
+        READ (NDSI,*,END=801,ERR=802) SXO, SYO, DXO, DYO
+      ENDIF ! FLGNML
+
       WRITE(NDSO, 4130) NXO, NYO, SXO, SYO, DXO, DYO
 
 !
@@ -244,7 +267,7 @@
       WRITE(NDSDAT) NXO, NYO, SXO, SYO, DXO, DYO, PLONO, PLATO
 
       ! Nearest neighbour indicies and distances
-      WRITE(NDSDAT) (((NNIDX(I,J), xdist(i,j), ydist(i,j)),i=1,NXO),j=1,NYO)
+      WRITE(NDSDAT) ((NNIDX(I,J), xdist(i,j), ydist(i,j), i=1,NXO), j=1,NYO)
       close(NDSDAT)
 
       ! All done 

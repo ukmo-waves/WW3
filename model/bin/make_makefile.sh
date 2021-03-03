@@ -1128,7 +1128,8 @@
                prop=
              source="w3triamd $stx $nlx $btx"
                  IO='w3iogrmd w3iogomd w3iorsmd w3iopomd'
-                aux="constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd $pr $smco" ;;
+                aux="constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd $smco"
+                aux="$aux w3parall w3nmlsmcintmd" ;;
     esac
 
     # if esmf is included in program name, then
