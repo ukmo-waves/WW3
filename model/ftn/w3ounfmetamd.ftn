@@ -189,7 +189,7 @@
       TYPE META_T
         REAL :: FSC, VMIN, VMAX = UNSETR
         CHARACTER(LEN=24)  :: UNITS = UNSETC
-        CHARACTER(LEN=20)  :: ENAME = UNSETC
+        CHARACTER(LEN=50)  :: ENAME = UNSETC
         CHARACTER(LEN=80)  :: VARNM = UNSETC, VARNL = UNSETC
         CHARACTER(LEN=120) :: VARNS = UNSETC ,VARNG = UNSETC, VARND = UNSETC
         CHARACTER(LEN=512) :: VARNC = UNSETC
@@ -275,7 +275,9 @@
 
       VECTOR = .TRUE.
       IF(PRESENT(VEC)) VECTOR = VEC
-!/RTD      FLRTD = .TRUE.
+!/RTD ! Is the grid really rotated?
+!/RTD      IF ( POLAT < 90. ) FLRTD = .True.
+!/RTD !
 
       ! 1. Allocate nested GROUP, FIELD structure:
       ALLOCATE(GROUP(NOGRP))
