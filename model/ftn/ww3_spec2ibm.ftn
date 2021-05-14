@@ -147,13 +147,6 @@
       NDSOP  = 20
       NDSTAB = 30
 
-! 1.1 Open input file
-      J      = LEN_TRIM(FNMPRE)
-      OPEN (NDSI,FILE=FNMPRE(:J)//'ww3_spec2ibm.inp',STATUS='OLD',      &
-            ERR=800,IOSTAT=IERR)
-      READ (NDSI,'(A)',END=801,ERR=802) COMSTR
-      IF (COMSTR.EQ.' ') COMSTR = '$'
-      WRITE (NDSO,901) COMSTR
 !
 !--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! 2.  Read model definition file.
@@ -205,6 +198,12 @@
         TH1O = NML_SPEC%TH1
       ELSE ! FLGNML
         ! Read .inp file
+        J = LEN_TRIM(FNMPRE)
+        OPEN (NDSI,FILE=FNMPRE(:J)//'ww3_spec2ibm.inp',STATUS='OLD',       &
+              ERR=800,IOSTAT=IERR)
+        READ (NDSI,'(A)',END=801,ERR=802) COMSTR
+        IF (COMSTR.EQ.' ') COMSTR = '$'
+        WRITE (NDSO,901) COMSTR
         CALL NEXTLN ( COMSTR , NDSI , NDSE )
         READ (NDSI,*,END=801,ERR=802) NKO, NTHO, FR1O, TH1O
       ENDIF ! FLGNML
