@@ -2060,6 +2060,9 @@
 ! handles in the vectors IRQGO and IRQGO2 respectively.
 ! NRQMAX is calculated as the sum of all fields described before (Hs)
 !    + 2 or 3 component fields (CUR) + 3 component fields + extra fields
+! For group 1 fields except ICEF, all processors contain information on all
+! grid points because they are input fields, and therefore this MPI
+! communication is not necessary and they do not contribute to NRQMAX.
 !
 !/MPI          ! Calculation of NRQMAX splitted by output groups and field type
 !/MPI          !       scalar                2-comp   3-comp
