@@ -76,6 +76,7 @@
 !       YCOFF   Real  Offset for input scalar field
 !       FX,FY   R.A.  Output fields.
 !       ACC     Real  Required interpolation accuracy.
+!       XTEMP   R.A.  Temporal array
 !     ----------------------------------------------------------------
 !
 !  4. Subroutines used :
@@ -254,7 +255,8 @@
                                  XD12(:,:), XD22(:,:),                &
                                  FX(:,:), FY(:,:), FA(:,:),           &
                                  A1(:,:), A2(:,:), A3(:,:)
-      REAL, ALLOCATABLE       :: XC(:,:), YC(:,:), AC(:,:), DATA(:,:)
+      REAL, ALLOCATABLE       :: XC(:,:), YC(:,:), AC(:,:),           &
+                                 DATA(:,:), XTEMP(:,:)
 !
       REAL, POINTER           :: ALA(:,:), ALO(:,:)
 !
@@ -1303,13 +1305,14 @@
           MXM = MAX ( NXJ(1), NXJ(2) )
           MYM = MAX ( NYJ(1), NYJ(2) )
           IF (ITYPE.EQ.1.AND.GTYPE.EQ.UNGTYPE) THEN 
-            ALLOCATE ( XC(MXM,1), YC(MXM,1), AC(MXM,1) )
+            ALLOCATE ( XC(MXM,1), YC(MXM,1), AC(MXM,1), XTEMP(MXM,1) )
           ELSE
-            ALLOCATE ( XC(MXM,MYM), YC(MXM,MYM), AC(MXM,MYM) )
+            ALLOCATE ( XC(MXM,MYM), YC(MXM,MYM), AC(MXM,MYM), XTEMP(MXM,MYM) )
           END IF
           XC = 0.
           YC = 0.
           AC = 0.
+          XTEMP = 0.
         END IF
 !
 !--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1840,13 +1843,19 @@
                 CALL INTERP(MXM, MYM, AC, IX21, IX22, IY21, IY22,      &
                                RD11, RD12, RD21, RD22, FILLVALUE, FA)
 
-                CALL INTERP(MXM, MYM, SQRT(XC**2+YC**2), IX21, IX22,   &
-                               IY21, IY22, RD11, RD12, RD21, RD22,     &
-                               SQRT(2.0)*FILLVALUE, A2)
+                WHERE ( XC.NE.FILLVALUE .AND. YC.NE.FILLVALUE)
+                  XTEMP = SQRT(XC*XC + YC*YC)
+                ELSEWHERE
+                  XTEMP = FILLVALUE
+                ENDWHERE
+                CALL INTERP(MXM, MYM, XTEMP, IX21, IX22, IY21, IY22,   &
+                               RD11, RD12, RD21, RD22, FILLVALUE, A2)
 
-                CALL INTERP(MXM, MYM, XC**2+YC**2, IX21, IX22,         &
-                               IY21, IY22, RD11, RD12, RD21, RD22,     &
-                               2.0*FILLVALUE*FILLVALUE, A3)
+                WHERE ( XTEMP.NE.FILLVALUE )
+                  XTEMP =  XTEMP*XTEMP
+                ENDWHERE
+                CALL INTERP(MXM, MYM, XTEMP, IX21, IX22, IY21, IY22,   &
+                               RD11, RD12, RD21, RD22, FILLVALUE, A3)
 
                 DO IY=1,NY
                   DO IX=1,NX
@@ -1990,7 +1999,7 @@
 !
       END DO ! NTI
 !
-      DEALLOCATE(XC,YC,AC)  
+      DEALLOCATE(XC,YC,AC,XTEMP)  
       IF (ASSOCIATED(ALA)) DEALLOCATE(ALA,ALO)
 !
 !     End loop over input fields
