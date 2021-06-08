@@ -1844,18 +1844,18 @@
                                RD11, RD12, RD21, RD22, FILLVALUE, FA)
 
                 WHERE ( XC.NE.FILLVALUE .AND. YC.NE.FILLVALUE)
-                  XTEMP = SQRT(XC*XC + YC*YC)
+                  XTEMP = XC*XC + YC*YC
                 ELSEWHERE
                   XTEMP = FILLVALUE
                 ENDWHERE
                 CALL INTERP(MXM, MYM, XTEMP, IX21, IX22, IY21, IY22,   &
-                               RD11, RD12, RD21, RD22, FILLVALUE, A2)
+                               RD11, RD12, RD21, RD22, FILLVALUE, A3)
 
                 WHERE ( XTEMP.NE.FILLVALUE )
-                  XTEMP =  XTEMP*XTEMP
+                  XTEMP =  SQRT(XTEMP)
                 ENDWHERE
                 CALL INTERP(MXM, MYM, XTEMP, IX21, IX22, IY21, IY22,   &
-                               RD11, RD12, RD21, RD22, FILLVALUE, A3)
+                               RD11, RD12, RD21, RD22, FILLVALUE, A2)
 
                 DO IY=1,NY
                   DO IX=1,NX
