@@ -2054,7 +2054,7 @@
             IF(ERR /= NF90_NOERR) RETURN
 
           CASE DEFAULT
-            WRITE(NDSE, 1000) P%TYPE
+            WRITE(NDSE,1000) P%TYPE
             CALL EXTCDE(10)
         END SELECT
 
