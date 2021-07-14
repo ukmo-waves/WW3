@@ -146,6 +146,7 @@
                                  LTEMP(NGRPP), FMAP, FMAP2,    &
                                  FLGNML
       LOGICAL                 :: SMCGRD = .FALSE.
+      LOGICAL                 :: FLRTD = .FALSE.
 !/SMC
 !/SMC! SMC grid specific variables:
       REAL                    :: SXOUT, SYOUT, DXOUT, DYOUT
@@ -196,7 +197,9 @@
 !
       CALL W3IOGR ( 'READ', NDSM )
       WRITE (NDSO,920) GNAME
-
+!/RTD!
+!/RTD      ! Is pole really rotated?
+!/RTD      IF(POLAT < 90.0) FLRTD = .TRUE.
 !
 ! 2a. Read PP Lookup file (ppheader.txt)
 !
@@ -448,8 +451,10 @@
 !
       PP_BPLAT = 90.0
       PP_BPLON = 0.0        
-!/RTD      PP_BPLAT = POLAT
-!/RTD      PP_BPLON = POLON
+!/RTD      IF(FLRTD) THEN
+!/RTD        PP_BPLAT = POLAT
+!/RTD        PP_BPLON = POLON
+!/RTD      ENDIF
 
 !
 ! 1b. Set grid code based on pole co-ordinates:
@@ -477,10 +482,10 @@
       ENDIF
 
       WRITE(NDSO,3950) PP_LBPROJ, PP_LBEXP, PP_LBCODE, DATETIME_TZERO
-!/RTD      WRITE(NDSO,3951) POLAT, POLON
+!/RTD      IF(FLRTD) THEN
+!/RTD        WRITE(NDSO,3951) POLAT, POLON
+!/RTD      ENDIF
 !
-
-
       ! Update static PP header infomration:
       PPIHEAD(:) = 0
       PPIHEAD(13) = 11           ! time type indicator
@@ -921,8 +926,10 @@
             ! Surface current
             ELSE IF ( IFI .EQ. 1 .AND. IFJ .EQ. 2 ) THEN
               !! Note - CX and CY read in from .ww3 file are X-Y vectors
-!/RTD              ! Rotate x,y vector back to standard pole
-!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, CX(1:NSEA), CY(1:NSEA), AnglD)
+!/RTD              IF(FLRTD) THEN
+!/RTD                ! Rotate x,y vector back to standard pole
+!/RTD                IF ( FLAGUNR ) CALL W3XYRTN(NSEA, CX(1:NSEA), CY(1:NSEA), AnglD)
+!/RTD              ENDIF
 !
               IF( .NOT. VECTOR ) THEN
                 CALL UV_TO_MAG_DIR(CX(1:NSEA), CY(1:NSEA), NSEA,       &
@@ -936,8 +943,10 @@
             ! Wind
             ELSE IF ( IFI .EQ. 1 .AND. IFJ .EQ. 3 ) THEN
               !! Note - UA and UD read in from .ww3 file are UX,UY
-!/RTD              ! Rotate x,y vector back to standard pole
-!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, UA(1:NSEA), UD(1:NSEA), AnglD)
+!/RTD              IF(FLRTD) THEN
+!/RTD                ! Rotate x,y vector back to standard pole
+!/RTD                IF ( FLAGUNR ) CALL W3XYRTN(NSEA, UA(1:NSEA), UD(1:NSEA), AnglD)
+!/RTD              ENDIF
 !             
               IF( .NOT. VECTOR ) THEN
                 CALL UV_TO_MAG_DIR(UA(1:NSEA), UD(1:NSEA), NSEA,       &
@@ -1007,8 +1016,10 @@
 !
             ! Wave mean direction
             ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 7 ) THEN
-!/RTD              ! Rotate direction back to standard pole
-!/RTD              IF ( FLAGUNR ) CALL W3THRTN(NSEA, THM, AnglD, .FALSE.)
+!/RTD              IF(FLRTD) THEN
+!/RTD                ! Rotate direction back to standard pole
+!/RTD                IF ( FLAGUNR ) CALL W3THRTN(NSEA, THM, AnglD, .FALSE.)
+!/RTD              ENDIF
 
               CALL S2GRID(THM, XA(:,:,1), .TRUE.)
 !              IF( SMCGRD ) THEN
@@ -1028,8 +1039,10 @@
 !
             ! Peak direction
             ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 9 ) THEN
-!/RTD              ! Rotate direction back to standard pole
-!/RTD              IF ( FLAGUNR ) CALL W3THRTN(NSEA, THP0, AnglD, .FALSE.)
+!/RTD              IF(FLRTD) THEN
+!/RTD                ! Rotate direction back to standard pole
+!/RTD                IF ( FLAGUNR ) CALL W3THRTN(NSEA, THP0, AnglD, .FALSE.)
+!/RTD              ENDIF
               CALL S2GRID(THP0, XA(:,:,1), .TRUE.)
 !              IF( SMCGRD ) THEN
 !!/SMC                CALL W3S2XY_SMC( THP0, XA, .TRUE. )
@@ -1106,8 +1119,10 @@
 !CB              I1F=E3DF(2,2)
 !CB              I2F=E3DF(3,2)
 !CB              DO IK=I1F,I2F
+!CB!/RTD              IF(FLRTD) THEN
 !CB!/RTD                ! Rotate direction back to standard pole
 !CB!/RTD                IF ( FLAGUNR ) CALL W3THRTN(NSEA, TH1M(:,IK), AnglD, .FALSE.)
+!CB!/RTD              ENDIF
 !CB                CALL S2GRID(TH1M(:,IK), XX)
 !CB                XK(:,:,IK)=XX
 !CB              END DO
@@ -1130,8 +1145,10 @@
 !CB              I1F=E3DF(2,4)
 !CB              I2F=E3DF(3,4)
 !CB              DO IK=I1F,I2F
+!CB!/RTD              IF(FLRTD) THEN
 !CB!/RTD                ! Rotate direction back to standard pole
 !CB!/RTD                IF ( FLAGUNR ) CALL W3THRTN(NSEA, TH2M(:,IK), AnglD, .FALSE.)
+!CB!/RTD              ENDIF
 !CB                CALL S2GRID(TH2M(:,IK), XX)
 !CB                XK(:,:,IK)=XX
 !CB              END DO
@@ -1172,8 +1189,10 @@
 !
             ! Partition wave mean direction
             ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 4 ) THEN
+!/RTD              IF(FLRTD) THEN
 !/RTD                ! Rotate direction back to standard pole
 !/RTD                IF ( FLAGUNR ) CALL W3THRTN(NSEA, PDIR(:,IPART), AnglD, .FALSE.)
+!/RTD              ENDIF
               CALL S2GRID(PDIR(:,IPART), XA(:,:,1), .TRUE.)
 !              IF( SMCGRD ) THEN
 !!/SMC                CALL W3S2XY_SMC( PDIR(:,IPART), XA, .TRUE. )
@@ -1196,8 +1215,10 @@
 !
             ! Partition peak direction
             ELSE IF ( IFI .EQ. 4 .AND. IFJ .EQ. 7 ) THEN
+!/RTD              IF(FLRTD) THEN
 !/RTD                ! Rotate direction back to standard pole
 !/RTD                IF ( FLAGUNR ) CALL W3THRTN(NSEA, PTHP0(:,IPART), AnglD, .FALSE.)
+!/RTD              ENDIF
               CALL S2GRID(PTHP0(:,IPART), XA(:,:,1), .TRUE.)
 !              IF( SMCGRD ) THEN
 !!/SMC                CALL W3S2XY_SMC( PTHP0(:,IPART), XA, .TRUE. )
@@ -1261,8 +1282,10 @@
                   USTDIR(ISEA)=UNDEF
                 END IF
               END DO
-!/RTD              ! Rotate x,y vector back to standard pole
-!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, UST(1:NSEA), USTDIR(1:NSEA), AnglD)
+!/RTD              IF(FLRTD) THEN
+!/RTD                ! Rotate x,y vector back to standard pole
+!/RTD                IF ( FLAGUNR ) CALL W3XYRTN(NSEA, UST(1:NSEA), USTDIR(1:NSEA), AnglD)
+!/RTD              ENDIF
               CALL S2GRID(UST(1:NSEA), XA(:,:,1))
               CALL S2GRID(USTDIR(1:NSEA), XA(:,:,2))
               !! Commented out unnecessary statements below for time being
@@ -1300,8 +1323,10 @@
 !
             ! Wave supported wind stress
             ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 5 ) THEN
-!/RTD              ! Rotate x,y vector back to standard pole
-!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, TAUWIX(1:NSEA), TAUWIY(1:NSEA), AnglD)
+!/RTD              IF(FLRTD) THEN
+!/RTD                ! Rotate x,y vector back to standard pole
+!/RTD                IF ( FLAGUNR ) CALL W3XYRTN(NSEA, TAUWIX(1:NSEA), TAUWIY(1:NSEA), AnglD)
+!/RTD              ENDIF
               CALL S2GRID(TAUWIX(1:NSEA), XA(:,:,1))
               CALL S2GRID(TAUWIY(1:NSEA), XA(:,:,2))
               
@@ -1324,8 +1349,10 @@
 !
             ! Wave to wind stress
             ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 6 ) THEN
-!/RTD              ! Rotate x,y vector back to standard pole
-!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, TAUWNX(1:NSEA), TAUWNY(1:NSEA), AnglD)
+!/RTD              IF(FLRTD) THEN
+!/RTD                ! Rotate x,y vector back to standard pole
+!/RTD                IF ( FLAGUNR ) CALL W3XYRTN(NSEA, TAUWNX(1:NSEA), TAUWNY(1:NSEA), AnglD)
+!/RTD              ENDIF
               CALL S2GRID(TAUWNX(1:NSEA), XA(:,:,1))
               CALL S2GRID(TAUWNY(1:NSEA), XA(:,:,2))
               NFIELD=2
@@ -1362,8 +1389,10 @@
 !
             ! Wave to ocean stress
             ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 2 ) THEN
-!/RTD              ! Rotate x,y vector back to standard pole
-!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, TAUOX(1:NSEA), TAUOY(1:NSEA), AnglD)
+!/RTD              IF(FLRTD) THEN
+!/RTD                ! Rotate x,y vector back to standard pole
+!/RTD                IF ( FLAGUNR ) CALL W3XYRTN(NSEA, TAUOX(1:NSEA), TAUOY(1:NSEA), AnglD)
+!/RTD              ENDIF
               CALL S2GRID(TAUOX(1:NSEA), XA(:,:,1))
               CALL S2GRID(TAUOY(1:NSEA), XA(:,:,2))
               NFIELD=2
@@ -1381,8 +1410,10 @@
 !
             ! Stokes transport
             ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 5 ) THEN
-!/RTD              ! Rotate x,y vector back to standard pole
-!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, TUSX(1:NSEA), TUSY(1:NSEA), AnglD)
+!/RTD              IF(FLRTD) THEN
+!/RTD                ! Rotate x,y vector back to standard pole
+!/RTD                IF ( FLAGUNR ) CALL W3XYRTN(NSEA, TUSX(1:NSEA), TUSY(1:NSEA), AnglD)
+!/RTD              ENDIF
               CALL S2GRID(TUSX(1:NSEA), XA(:,:,1))
               CALL S2GRID(TUSY(1:NSEA), XA(:,:,2))
 ! XA, X2 will not be output when NFIELD == 2
@@ -1414,8 +1445,10 @@
                 USSX(ISEA)=MAX(-0.9998,MIN(0.9998,USSX(ISEA)))
                 USSY(ISEA)=MAX(-0.9998,MIN(0.9998,USSY(ISEA)))
               END DO
-!/RTD              ! Rotate x,y vector back to standard pole
-!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, USSX(1:NSEA), USSY(1:NSEA), AnglD)
+!/RTD              IF(FLRTD) THEN
+!/RTD                ! Rotate x,y vector back to standard pole
+!/RTD                IF ( FLAGUNR ) CALL W3XYRTN(NSEA, USSX(1:NSEA), USSY(1:NSEA), AnglD)
+!/RTD              ENDIF
               CALL S2GRID(USSX(1:NSEA), XA(:,:,1))
               CALL S2GRID(USSY(1:NSEA), XA(:,:,2))
               !! Commented out unnecessary statements below for time being
@@ -1449,8 +1482,10 @@
 !CB              I1F=US3DF(2)
 !CB              I2F=US3DF(3)
 !CB              DO IK= I1F,I2F
+!CB!/RTD              IF(FLRTD) THEN
 !CB!/RTD                ! Rotate x,y vector back to standard pole
 !CB!/RTD                IF ( FLAGUNR ) CALL W3XYRTN(NSEA, US3D(:,IK), US3D(:,NK+IK), AnglD)
+!CB!/RTD              ENDIF
 !CB                CALL S2GRID(US3D(:,IK), XX)
 !CB                CALL S2GRID(US3D(:,NK+IK), XY)
 !CB                XXK(:,:,IK)=XX
@@ -1477,8 +1512,10 @@
 !
             ! Wave to sea ice stress
             ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 10 ) THEN
-!/RTD              ! Rotate x,y vector back to standard pole
-!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, TAUICE(1:NSEA,1), TAUICE(1:NSEA,2), AnglD)
+!/RTD              IF(FLRTD) THEN
+!/RTD                ! Rotate x,y vector back to standard pole
+!/RTD                IF ( FLAGUNR ) CALL W3XYRTN(NSEA, TAUICE(1:NSEA,1), TAUICE(1:NSEA,2), AnglD)
+!/RTD              ENDIF
               CALL S2GRID(TAUICE(1:NSEA,1), XA(:,:,1))
               CALL S2GRID(TAUICE(1:NSEA,2), XA(:,:,2))
               NFIELD=2
@@ -1501,8 +1538,10 @@
 !CB              I1F=1
 !CB              I2F=USSPF(2)
 !CB              DO IK= I1F,I2F
+!CB!/RTD              IF(FLRTD) THEN
 !CB!/RTD                ! Rotate x,y vector back to standard pole
 !CB!/RTD                IF ( FLAGUNR ) CALL W3XYRTN(NSEA, USSP(:,IK), USSP(:,NK+IK), AnglD)
+!CB!/RTD              ENDIF
 !CB                CALL S2GRID(USSP(:,IK), XX)
 !CB                CALL S2GRID(USSP(:,NK+IK), XY)
 !CB                XXK(:,:,IK) = XX
@@ -1512,8 +1551,10 @@
             ! RMS of bottom displacement amplitude
             ELSE IF ( IFI .EQ. 7 .AND. IFJ .EQ. 1 ) THEN
               ! NB: ABA and ABD are the X and Y components of the bottom displacement
-!/RTD              ! Rotate x,y vector back to standard pole
-!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, ABA(1:NSEA), ABD(1:NSEA), AnglD)
+!/RTD              IF(FLRTD) THEN
+!/RTD                ! Rotate x,y vector back to standard pole
+!/RTD                IF ( FLAGUNR ) CALL W3XYRTN(NSEA, ABA(1:NSEA), ABD(1:NSEA), AnglD)
+!/RTD              ENDIF
               CALL S2GRID(ABA(1:NSEA), XA(:,:,1))
               CALL S2GRID(ABD(1:NSEA), XA(:,:,2))
               NFIELD=2
@@ -1521,17 +1562,21 @@
             ! RMS of bottom velocity amplitude
             ELSE IF ( IFI .EQ. 7 .AND. IFJ .EQ. 2 ) THEN
               ! NB: UBA and UBD are the X and Y components of the bottom velocity
-!/RTD              ! Rotate x,y vector back to standard pole
-!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, UBA(1:NSEA), UBD(1:NSEA), AnglD)
+!/RTD              IF(FLRTD) THEN
+!/RTD                ! Rotate x,y vector back to standard pole
+!/RTD                IF ( FLAGUNR ) CALL W3XYRTN(NSEA, UBA(1:NSEA), UBD(1:NSEA), AnglD)
+!/RTD              ENDIF
               CALL S2GRID(UBA(1:NSEA), XA(:,:,1))
               CALL S2GRID(UBD(1:NSEA), XA(:,:,2))
               NFIELD=2
 !
             ! Bottom roughness
             ELSE IF ( IFI .EQ. 7 .AND. IFJ .EQ. 3 ) THEN
-!/RTD              ! Rotate x,y vector back to standard pole
-!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, BEDFORMS(1:NSEA,2), &
+!/RTD              IF(FLRTD) THEN
+!/RTD                ! Rotate x,y vector back to standard pole
+!/RTD                IF ( FLAGUNR ) CALL W3XYRTN(NSEA, BEDFORMS(1:NSEA,2), &
 !/RTD                                           BEDFORMS(1:NSEA,3), AnglD)
+!/RTD              ENDIF
               CALL S2GRID(BEDFORMS(1:NSEA,1), XA(:,:,1))
               CALL S2GRID(BEDFORMS(1:NSEA,2), XA(:,:,2))
               CALL S2GRID(BEDFORMS(1:NSEA,3), XA(:,:,3))
@@ -1543,33 +1588,41 @@
 !
             ! Wave to bottom boundary layer stress
             ELSE IF ( IFI .EQ. 7 .AND. IFJ .EQ. 5 ) THEN
-!/RTD              ! Rotate x,y vector back to standard pole
-!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, TAUBBL(1:NSEA,1), &
+!/RTD              IF(FLRTD) THEN
+!/RTD                ! Rotate x,y vector back to standard pole
+!/RTD                IF ( FLAGUNR ) CALL W3XYRTN(NSEA, TAUBBL(1:NSEA,1), &
 !/RTD                                           TAUBBL(1:NSEA,2), AnglD)
+!/RTD              ENDIF
               CALL S2GRID(TAUBBL(1:NSEA,1), XA(:,:,1))
               CALL S2GRID(TAUBBL(1:NSEA,2), XA(:,:,2))
               NFIELD=2
 !
             ! Mean square slope
             ELSE IF ( IFI .EQ. 8 .AND. IFJ .EQ. 1 ) THEN
-!/RTD              ! Rotate x,y vector back to standard pole
-!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, MSSX, MSSY, AnglD)
+!/RTD              IF(FLRTD) THEN
+!/RTD                ! Rotate x,y vector back to standard pole
+!/RTD                IF ( FLAGUNR ) CALL W3XYRTN(NSEA, MSSX, MSSY, AnglD)
+!/RTD              ENDIF
               CALL S2GRID(MSSX, XA(:,:,1))
               CALL S2GRID(MSSY, XA(:,:,2))
               NFIELD=2
 !
             ! Phillips constant
             ELSE IF ( IFI .EQ. 8 .AND. IFJ .EQ. 2 ) THEN
-!/RTD              ! Rotate x,y vector back to standard pole
-!/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, MSCX, MSCY, AnglD)
+!/RTD              IF(FLRTD) THEN
+!/RTD                ! Rotate x,y vector back to standard pole
+!/RTD                IF ( FLAGUNR ) CALL W3XYRTN(NSEA, MSCX, MSCY, AnglD)
+!/RTD              ENDIF
               CALL S2GRID(MSCX, XA(:,:,1))
               CALL S2GRID(MSCY, XA(:,:,2))
               NFIELD=2
 !
             ! u direction for mss
             ELSE IF ( IFI .EQ. 8 .AND. IFJ .EQ. 3 ) THEN
+!/RTD              IF(FLRTD) THEN
 !/RTD                ! Rotate direction back to standard pole
 !/RTD                IF ( FLAGUNR ) CALL W3THRTN(NSEA, MSSD, AnglD, .FALSE.)
+!/RTD              ENDIF
               DO ISEA=1, NSEA
                 IF ( MSSD(ISEA) .NE. UNDEF )  THEN
                   MSSD(ISEA) = MOD ( 630. - RADE*MSSD(ISEA) , 180. )
@@ -1579,8 +1632,10 @@
 !
             ! x direction for msc
             ELSE IF ( IFI .EQ. 8 .AND. IFJ .EQ. 4 ) THEN
+!/RTD              IF(FLRTD) THEN
 !/RTD                ! Rotate direction back to standard pole
 !/RTD                IF ( FLAGUNR ) CALL W3THRTN(NSEA, MSCD, AnglD, .FALSE.)
+!/RTD              ENDIF
               DO ISEA=1, NSEA
                 IF ( MSCD(ISEA) .NE. UNDEF )  THEN
                   MSCD(ISEA) = MOD ( 630. - RADE*MSCD(ISEA) , 180. )
