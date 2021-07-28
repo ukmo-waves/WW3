@@ -933,7 +933,7 @@
 !
               IF( .NOT. VECTOR ) THEN
                 CALL UV_TO_MAG_DIR(CX(1:NSEA), CY(1:NSEA), NSEA,       &
-                                   TOLERANCE=0.05, CONV='O')
+                                   TOLERANCE=0.05, CONV='N')
               ENDIF
 !
               CALL S2GRID(CX(1:NSEA), XA(:,:,1))
