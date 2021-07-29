@@ -418,7 +418,7 @@
 !/SMC      WRITE(NDSO, 4100)
 !
 !/SMC      ! For PP files, SMC output type is always 2 (re-gridded)
-!/SMC      SMCTYPE = 2
+!/SMC      SMCOTYPE = 2
 !/SMC
 !/SMC      ! Calculate regridding weights:
 !/SMC      ALLOCATE(XIDX(NSEA), YIDX(NSEA), XSPAN(NSEA),                   &
