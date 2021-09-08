@@ -3278,6 +3278,8 @@
       INTEGER                           :: DEFLATE=1
 !
       CHARACTER                         :: ATTNAME*120,ATTVAL*120
+!
+      COORDS_ATTR = ''
 !      
 ! Creation in netCDF3 or netCDF4
 !
