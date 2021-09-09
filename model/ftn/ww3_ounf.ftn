@@ -3354,7 +3354,7 @@
 !/SMC              IRET = NF90_DEF_VAR(NCID, 'latitude', NF90_FLOAT, DIMID(2), VARID(2))
 !/SMC              CALL CHECK_ERR(IRET)
 !/SMC
-!/SMC              ! Latitude and longitude are auxililary variables in type 1 sepoint
+!/SMC              ! Latitude and longitude are auxililary variables in type 1 sea point
 !/SMC              ! SMC file; add to "coordinates" attribute:
 !/SMC              COORDS_ATTR = TRIM(COORDS_ATTR) // " latitude longitude"
 !/SMC
