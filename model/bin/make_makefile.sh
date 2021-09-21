@@ -158,9 +158,9 @@
 #
 ## --- Met Office specific programs:
 #
-       ww3_mopp) IDstring='Gridded Met Office PP output'
-   ww3_spec2ibm) IDstring='Spectral IBM/GPCS conversion'
-     ww3_smcint) IDstring='SMC gridded interpolation'
+       ww3_mopp) IDstring='Gridded Met Office PP output' ;;
+   ww3_spec2ibm) IDstring='Spectral IBM/GPCS conversion' ;;
+     ww3_smcint) IDstring='SMC gridded interpolation' ;;
     esac
 
 
