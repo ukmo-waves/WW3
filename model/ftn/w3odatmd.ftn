@@ -48,6 +48,7 @@
 !/                  internal fields. (C. Bunney, UKMO)
 !/    22-Mar-2021 : Add extra coupling variables        ( version 7.13 )
 !/    07-Jun-2021 : S_{nl} GKE NL5 (Q. Liu)             ( version 7.13 )
+!/    19-Jul-2021 : Momentum and air density support    ( version 7.xx )
 !/
 !/    Copyright 2009-2012 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -176,6 +177,9 @@
 !      WAO       R.A.  Public   Interpolated wind speeds.
 !      WDO       R.A.  Public   Interpolated wind directions.
 !      ASO       R.A.  Public   Interpolated air-sea temp. diff.
+!      TAUAO     R.A.  Public   Interpolated atm. stresses.
+!      TAUDO     R.A.  Public   Interpolated atm. stres directions.
+!      DAIRO     R.A.  Public   Interpolated rho atmosphere.
 !      CAO       R.A.  Public   Interpolated current speeds.
 !      CDO       R.A.  Public   Interpolated current directions.
 !      SPCO      R.A.  Public   Output spectra.
@@ -349,6 +353,7 @@
 !/MPI        INTEGER, POINTER      :: IRQPO1(:), IRQPO2(:)
         REAL, POINTER         :: PTLOC(:,:), PTIFAC(:,:),             &
                                  DPO(:), WAO(:), WDO(:), ASO(:),      &
+!/FLX5                                TAUAO(:), TAUDO(:), DAIRO(:),         &
                                  CAO(:), CDO(:), ICEO(:), ICEHO(:),   &
                                  ICEFO(:), SPCO(:,:)
         REAL, POINTER         :: ZET_SETO(:)  ! For the wave setup.
@@ -458,6 +463,7 @@
 !/MPI      INTEGER, POINTER        :: IRQPO1(:), IRQPO2(:)
       REAL, POINTER           :: PTLOC(:,:), PTIFAC(:,:),             &
                                  DPO(:), WAO(:), WDO(:), ASO(:),      &
+!/FLX5                                TAUAO(:), TAUDO(:), DAIRO(:),         &
                                  CAO(:), CDO(:), ICEO(:), ICEHO(:),   &
                                  ICEFO(:), SPCO(:,:)
       REAL, POINTER           :: ZET_SETO(:)
@@ -992,6 +998,9 @@
                  OUTPTS(IMOD)%OUT2%ZET_SETO(NPT)   ,                  &
                  OUTPTS(IMOD)%OUT2%WDO(NPT)        ,                  &
                  OUTPTS(IMOD)%OUT2%ASO(NPT)        ,                  &
+!/FLX5                 OUTPTS(IMOD)%OUT2%TAUAO(NPT)      ,                  &
+!/FLX5                 OUTPTS(IMOD)%OUT2%TAUDO(NPT)      ,                  &
+!/FLX5                 OUTPTS(IMOD)%OUT2%DAIRO(NPT)      ,                  &
                  OUTPTS(IMOD)%OUT2%CAO(NPT)        ,                  &
                  OUTPTS(IMOD)%OUT2%CDO(NPT)        ,                  &
                  OUTPTS(IMOD)%OUT2%ICEO(NPT)       ,                  &
@@ -1568,6 +1577,9 @@
           ZET_SETO => OUTPTS(IMOD)%OUT2%ZET_SETO
           WDO    => OUTPTS(IMOD)%OUT2%WDO
           ASO    => OUTPTS(IMOD)%OUT2%ASO
+!/FLX5          TAUAO  => OUTPTS(IMOD)%OUT2%TAUAO
+!/FLX5          TAUDO  => OUTPTS(IMOD)%OUT2%TAUDO
+!/FLX5          DAIRO  => OUTPTS(IMOD)%OUT2%DAIRO
           CAO    => OUTPTS(IMOD)%OUT2%CAO
           CDO    => OUTPTS(IMOD)%OUT2%CDO
           ICEO   => OUTPTS(IMOD)%OUT2%ICEO         

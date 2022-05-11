@@ -1164,7 +1164,7 @@
               !! Note - TAUA and TAUADIR read in from .ww3 file are TAUAX,TAUAY
 !/RTD              ! Rotate x,y vector back to standard pole
 !/RTD              IF ( FLAGUNR ) CALL W3XYRTN(NSEA, TAUA(1:NSEA), TAUADIR(1:NSEA), AnglD)
-              
+!              
               IF( SMCGRD ) THEN
 !/SMC                 CALL W3S2XY_SMC( TAUA   (1:NSEA), XX )
 !/SMC                 CALL W3S2XY_SMC( TAUADIR(1:NSEA), XY )
@@ -1204,7 +1204,7 @@
             ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 1 ) THEN
               IF (NCVARTYPEI.EQ.3) NCVARTYPE=2
               CALL S2GRID(HS, X1)
-
+!
             ! Mean wave length
             ELSE IF ( IFI .EQ. 2 .AND. IFJ .EQ. 2 ) THEN
               CALL S2GRID(WLM, X1)
