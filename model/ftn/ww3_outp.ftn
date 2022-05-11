@@ -1558,7 +1558,7 @@
 !/ST2                USTAR  = 1.
 !/ST3                USTAR  = 0.
 !/ST3                USTD   = 0.
-!/ST3                TAUWX  = 0.!/ST3                TAUWY  = 0.
+!/ST3                TAUWX  = 0.
 !/ST3                TAUWY  = 0.
 !/ST4                ZWND   = ZZWND
 !/ST4                USTAR  = 0.
