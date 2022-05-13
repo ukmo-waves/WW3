@@ -1161,7 +1161,9 @@
 !
             ! Atmospheric momentum
             ELSE IF ( IFI .EQ. 1 .AND. IFJ .EQ. 8 ) THEN
-!              
+              !! Note - TAUA and TAUADIR read in from .ww3 file are TAUAX,TAUAY
+!/RTD              ! Rotate x,y vector back to standard pole
+              
               IF( SMCGRD ) THEN
 !/SMC                 CALL W3S2XY_SMC( TAUA   (1:NSEA), XX )
 !/SMC                 CALL W3S2XY_SMC( TAUADIR(1:NSEA), XY )
