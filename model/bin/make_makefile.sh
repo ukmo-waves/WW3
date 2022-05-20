@@ -351,6 +351,7 @@
          'W3FLX2MD'     ) modtest=w3flx2md.o ;;
          'W3FLX3MD'     ) modtest=w3flx3md.o ;;
          'W3FLX4MD'     ) modtest=w3flx4md.o ;;
+         'W3FLX5MD'     ) modtest=w3flx5md.o ;;
          'W3SLN1MD'     ) modtest=w3sln1md.o ;;
          'W3SRC0MD'     ) modtest=w3src0md.o ;;
          'W3SRC1MD'     ) modtest=w3src1md.o ;;

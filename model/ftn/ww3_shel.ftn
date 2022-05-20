@@ -2261,7 +2261,7 @@
                              NDST, NDSEN, NX, NY, NX, NY, TIME0, TIMEN, &
                              TR0, XXX, XXX, RH0, TRN, XXX, XXX, RHN,    &
                              IERR, FLAGSC(J)                            &
-!/OASASCM                             , COUPL_COMM                               &
+!/OASACM                              , COUPL_COMM                               &
                              )
                 IF ( IERR .LT. 0 ) FLLSTR = .TRUE.
               END IF

@@ -84,6 +84,7 @@
 !/                  defunct OMPX switches.
 !/    22-Mar-2021 : Update TAUA, RHOA                   ( version 7.13 )
 !/    06-May-2021 : Use ARCTC and SMCTYPE options. JGLi ( version 7.13 )
+!/    19-Jul-2021 : Momentum and air density support    ( version 7.14 )
 !/
 !/    Copyright 2009-2014 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -2074,7 +2075,9 @@
                             VSioDummy, VDioDummy, SHAVETOTioDummy,      &
                             ALPHA(1:NK,JSEA), WN(1:NK,ISEA),            &
                             CG(1:NK,ISEA), DW(ISEA), U10(ISEA),         &
-                            U10D(ISEA), AS(ISEA), UST(ISEA),            &
+                            U10D(ISEA),                                 &
+!/FLX5                           TAUA(ISEA), TAUADIR(ISEA),                   &                         
+                            AS(ISEA), UST(ISEA),                        &
                             USTDIR(ISEA), CX(ISEA), CY(ISEA),           &
                             ICE(ISEA), ICEH(ISEA), ICEF(ISEA),          &
                             ICEDMAX(ISEA),                              &
