@@ -705,7 +705,7 @@
 ! 1.g Air density time
 !
       IF ( FLRHOA ) THEN
-          DTTST1 = DSEC21 ( TR0 , TUN )
+          DTTST1 = DSEC21 ( TR0 , TRN )
           DTTST2 = DSEC21 ( TR0 , TIME )
           DTTST3 = DSEC21 ( TEND , TRN )
 !/T          WRITE (NDST,9018) DTTST1, DTTST2, DTTST3
