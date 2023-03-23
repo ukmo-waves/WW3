@@ -601,6 +601,9 @@ CONTAINS
     REAL                    :: BACANGL
 #endif
     integer :: memunit
+#ifdef W3_GPU
+!$ACC DECLARE CREATE(TAUWX, TAUWY, FIELD)
+#endif
     !/ ------------------------------------------------------------------- /
     ! 0.  Initializations
     !
@@ -684,6 +687,9 @@ CONTAINS
       ALLOCATE ( FIELD(1-NY:NY*(NX+2)) )
     ENDIF
     !
+#ifdef W3_GPU
+!$ACC ENTER DATA COPYIN(FIELD)
+#endif
     LOCAL   = IAPROC .LE. NAPROC
     UGDTUPDATE = .FALSE.
     IF (FLAGLL) THEN
@@ -1903,7 +1909,13 @@ CONTAINS
                     IX = 1
 #ifdef W3_SMC
                     !!Li   Propagation on SMC grid uses UNO2 scheme.
+#ifdef W3_GPU
+                    CALL W3PSMC (ISPEC,DTG,FIELD,FCNt,AFCN,BCNt,UCFL,VCFL,CQ,   &
+                                 CQA,ULCFLX,VLCFLY,FUMD,FUDIFX,FVMD,FVDIFY,CXTOT,&
+                                 CYTOT, AUN, AVN)
+#else
                     CALL W3PSMC ( ISPEC, DTG, FIELD )
+#endif
 #endif
                     !
                   ELSE IF (GTYPE .EQ. UNGTYPE) THEN

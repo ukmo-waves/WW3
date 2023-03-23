@@ -1480,6 +1480,81 @@ CONTAINS
 #endif
     !
     ! 8.  Final MPI set up ----------------------------------------------- /
+#ifdef W3_GPU
+!/LS From INSNL1
+!$ACC ENTER DATA COPYIN(DAL1, DAL2, DAL3, NSPECX, NSPECY, NFR         )&
+!$ACC            COPYIN(NFRHGH, NFRCHG, AWG1, AWG2, AWG3, AWG4, AWG5  )&
+!$ACC            COPYIN(AWG6, AWG7, AWG8, SWG1, SWG2, SWG3, SWG4      )&
+!$ACC            COPYIN(SWG5, SWG6, SWG7, SWG8                        )&
+!$ACC            COPYIN(ICE(:), RHOAIR(:), ASF(:), BERG(:), FPIS(:)   )&
+!$ACC            COPYIN(ICEH(:), ICEF(:), VA(:,:), ICEDMAX(:), UST(:) )&
+!$ACC            COPYIN(MAPAXY(:), MAPY2(:), MAPX2(:), INFLAGS2(:)    )&
+!$ACC            COPYIN(ATRNY(:,:), ATRNX(:,:), USTDIR(:), FLOGRD(:,:))&
+!$ACC            COPYIN(CG(:,:), WN(:,:), ALPHA(:,:), MAPSTA(:,:)     )&    
+!$ACC            COPYIN(IP11(:), IP12(:), IP13(:), IP14(:)            )&
+!$ACC            COPYIN(IM11(:), IM12(:), IM13(:), IM14(:)            )&
+!$ACC            COPYIN(IP21(:), IP22(:), IP23(:), IP24(:)            )&
+!$ACC            COPYIN(IM21(:), IM22(:), IM23(:), IM24(:)            )&
+!$ACC            COPYIN(IC11(:), IC12(:), IC21(:), IC22(:)            )&
+!$ACC            COPYIN(IC31(:), IC32(:), IC41(:), IC42(:)            )&
+!$ACC            COPYIN(IC51(:), IC52(:), IC61(:), IC62(:)            )&
+!$ACC            COPYIN(IC71(:), IC72(:), IC81(:), IC82(:), AF11(:)   )
+
+!/LS For ROUTINE SEQ SNL1
+!$ACC ENTER DATA COPYIN(FACHFE, KDCON, KDMN, SNLC1, SNLS1, SNLS2, SNLS3)
+
+!$ACC UPDATE DEVICE(DELTAUW, DELU, TAUHFT, TAUHFT2, TAUT)
+
+!! For SDS4
+!$ACC ENTER DATA COPYIN( &
+!$ACC         SSDSBM, SSDSC, DCKI,            &
+!$ACC         SATWEIGHTS, SATINDICES, CUMULW,     &
+!$ACC         QBI, IKTAB)
+
+!! FOR SIN4
+!$ACC ENTER DATA COPYIN( &
+!$ACC         TTAUWSHELTER, SSINTHP, ZZ0RAT, ZZALP, BBETA, SSWELLF, &
+!$ACC         FWTABLE, DTH, SIG2, DDEN2)
+
+!! For SPR4
+!$ACC ENTER DATA COPYIN( &
+!$ACC         ZZWND, AALPHA, &
+!$ACC         FTE, FTF, SSTXFTFTAIL, SSTXFTWN, WWNMEANP, WWNMEANPTAIL)
+
+
+!/LS For ROUTINE SEQ SDB1
+!$ACC ENTER DATA COPYIN(SDBC1, SDBC2, FDONLY, FSSOURCE, & 
+!$ACC                   SIG, DDEN, NTH, NK, NSPEC)
+!/LS For ROUTINE SEQ SBT1
+!$ACC ENTER DATA COPYIN(MAPWN(:), SBTC1)
+
+
+!/LS Diffuclt variables
+!$ACC ENTER DATA COPYIN(MAPSF(:,:), FLAGST(:), CLATS(:)               )&
+!$ACC            COPYIN(MAPFS(:,:), ISBPI(:), BBPIN(:,:), BBPI0(:,:)  )&
+!$ACC            COPYIN(TBPIN(:), TBPI0(:), GSQRT(:,:)       )&
+!$ACC            COPYIN(TIME(:), DPDY(:,:), DPDX(:,:), DQDX(:,:)      )&
+!$ACC            COPYIN(DQDY(:,:), NSEA, NBI)
+
+!/LS Updates, already present on device.
+!$ACC UPDATE DEVICE(DELAB, DIKCUMUL, DELU, DELTAUW, DELUST, DELALP,    &
+!$ACC               DELTAIL, FWTABLE(:), TAUT(:,:), TAUHFT(:,:),       &
+!$ACC               TAUHFT2(:,:,:))
+
+!/LS SMC Grid
+!$ACC ENTER DATA COPYIN(IJKCel, IJKUFc, IJKVFc, NCel, NUFc, NVFc, FVERG)&
+!$ACC         COPYIN(IJKCel3, IJKCel4,  IJKVFc5, IJKVFc6, CLATS, ANGARC)&
+!$ACC         COPYIN(IJKUFc5,IJKUFc6, MRFct, ARCTC, CLATF, CY, CX)&
+!$ACC         COPYIN(FUNO3, CTRNX, CTRNY, NLvUFc, NLvVFc, NRLv, FLCUR)&
+!$ACC         COPYIN(DTCFL, DTMS, SX, SY, NGLO, NLvCel)
+
+!/LS POST PORT OPTIMISATIONS
+!$ACC ENTER DATA COPYIN(WHITECAP, BEDFORMS, TAUBBL, TAUICE)&
+!$ACC            COPYIN(WNMEAN, TAUOCX, TAUOCY, PHICE, PHIBBL)& 
+!$ACC            COPYIN(PHIOC, TWS, CHARN, PHIAW, TAUWNX, TAUWNY, TAUWIX )&
+!$ACC            COPYIN(TAUWIY, TAUOX, TAUOY, FCUT, DTDYN, TRNX, TRNY)&
+!$ACC            COPYIN(AS, DW)
+#endif
     !
 #ifdef W3_MPI
     CALL W3MPII ( IMOD )

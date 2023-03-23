@@ -133,7 +133,13 @@ CONTAINS
   !> @author Jian-Guo Li
   !> @date 18 Apr 2018
   !>
+#ifdef W3_GPU
+  SUBROUTINE W3PSMC (ISP,DTG,VQ,FCNt,AFCN,BCNt,UCFL,VCFL,CQ,CQA, &
+                     ULCFLX,VLCFLY,FUMD,FUDIFX,FVMD,FVDIFY, CXTOT, &
+                     CYTOT, AUN, AVN)
+#else
   SUBROUTINE W3PSMC ( ISP, DTG, VQ )
+#endif
     !/
     !/                  +------------------------------------+
     !/                  | Spherical Multiple-Cell (SMC) grid |
@@ -296,11 +302,17 @@ CONTAINS
     LOGICAL                 :: YFIRST
     !/
     !/ Automatic work arrays
-    !
+#ifdef W3_GPU
+    REAL, DIMENSION(:), INTENT(INOUT) :: FCNt, AFCN, BCNt, UCFL, VCFL, CQ, &
+                                         CQA, CXTOT, CYTOT, AUN, AVN
+    REAL, DIMENSION(:), INTENT(INOUT) ::  FUMD, FUDIFX, ULCFLX
+    REAL, DIMENSION(:), INTENT(INOUT) ::  FVMD, FVDIFY, VLCFLY
+#else
     REAL, Dimension(-9:NCel) ::  FCNt, AFCN, BCNt, UCFL, VCFL, CQ,  &
          CQA, CXTOT, CYTOT
     REAL, Dimension(   NUFc) ::  FUMD, FUDIFX, ULCFLX
     REAL, Dimension(   NVFc) ::  FVMD, FVDIFY, VLCFLY
+#endif
     !/
     !/ ------------------------------------------------------------------- /
     !/
@@ -394,12 +406,48 @@ CONTAINS
     WRITE (NDST,9010)
 #endif
     !
+#ifdef W3_GPU
+    !$ACC KERNELS
+    DO ISEA=1,NUFc
+      ULCFLX(ISEA) = 0.0
+      FUMD(ISEA) = 0.0
+      FUDIFX(ISEA) = 0.0
+    ENDDO
+    !$ACC END KERNELS
+
+    !$ACC KERNELS
+    DO ISEA=1,NVFc
+      VLCFLY(ISEA) = 0.0
+      FVMD(ISEA) = 0.0
+      FVDIFY(ISEA) = 0.0
+    ENDDO
+    !$ACC END KERNELS
+
+    !$ACC KERNELS
+    DO ISEA=-9,NCel
+      CQ(ISEA) = 0.0
+      CQA(ISEA) = 0.0
+      UCFL(ISEA) = 0.0
+      VCFL(ISEA) = 0.0
+      FCNt(ISEA) = 0.0
+      AFCN(ISEA) = 0.0
+      BCNt(ISEA) = 0.0
+      CXTOT(ISEA) = 0.0
+      CYTOT(ISEA) = 0.0
+      AUN(ISEA) = 0.0
+      AVN(ISEA) = 0.0
+    ENDDO
+    !$ACC END KERNELS
+#else
     ULCFLX = 0.
     VLCFLY = 0.
-
+#endif
     !Li    Pass spectral element VQ to CQ and define size-1 cell CFL
 #ifdef W3_OMPG
     !$OMP Parallel DO Private(ISEA)
+#elif W3_GPU
+    !$ACC KERNELS
+    !$ACC LOOP INDEPENDENT
 #endif
     DO ISEA=1, NSEA
       !Li  Transported variable is divided by CG as in WW3.
@@ -409,12 +457,17 @@ CONTAINS
     END DO
 #ifdef W3_OMPG
     !$OMP END Parallel DO
+#elif W3_GPU
+    !$ACC END KERNELS
 #endif
 
     !Li  Add current components if any to wave velocity.
     IF ( FLCUR ) THEN
 #ifdef W3_OMPG
       !$OMP Parallel DO Private(ISEA)
+#elif W3_GPU
+      !$ACC KERNELS
+      !$ACC LOOP INDEPENDENT
 #endif
       DO ISEA=1, NSEA
         CXTOT(ISEA) = (CGCOS * CG(IK,ISEA) + CX(ISEA))
@@ -422,11 +475,16 @@ CONTAINS
       ENDDO
 #ifdef W3_OMPG
       !$OMP END Parallel DO
+#elif W3_GPU
+      !$ACC END KERNELS
 #endif
     ELSE
       !Li   No current case use group speed only.
 #ifdef W3_OMPG
       !$OMP Parallel DO Private(ISEA)
+#elif W3_GPU
+      !$ACC KERNELS
+      !$ACC LOOP INDEPENDENT
 #endif
       DO ISEA=1, NSEA
         CXTOT(ISEA) =  CGCOS * CG(IK,ISEA)
@@ -434,6 +492,8 @@ CONTAINS
       END DO
 #ifdef W3_OMPG
       !$OMP END Parallel DO
+#elif W3_GPU
+      !$ACC END KERNELS
 #endif
       !Li   End of IF( FLCUR ) block.
     ENDIF
@@ -441,6 +501,10 @@ CONTAINS
     !Li   Arctic cell velocity components need to be rotated
     !Li   back to local east referenence system for propagation.
     IF( ARCTC ) THEN
+#ifdef W3_GPU
+      !$ACC KERNELS
+      !$ACC LOOP INDEPENDENT
+#endif
       DO ISEA=NGLO+1, NSEA
         ARCTH = ANGARC(ISEA-NGLO)*DERA
         CXC = CXTOT(ISEA)*COS(ARCTH) + CYTOT(ISEA)*SIN(ARCTH)
@@ -453,12 +517,18 @@ CONTAINS
       !Li   V-component is reset to zero for Polar cell as direction
       !Li   is undefined there.
       CYTOT(NSEA) = 0.0
+#ifdef W3_GPU
+      !$ACC END KERNELS
+#endif
     ENDIF
 
 
     !Li     Convert velocity components into CFL factors.
 #ifdef W3_OMPG
     !$OMP Parallel DO Private(ISEA)
+#elif W3_GPU
+    !$ACC KERNELS
+    !$ACC LOOP INDEPENDENT
 #endif
     DO ISEA=1, NSEA
       UCFL(ISEA) = DTLDX*CXTOT(ISEA)/CLATS(ISEA)
@@ -466,12 +536,16 @@ CONTAINS
     ENDDO
 #ifdef W3_OMPG
     !$OMP END Parallel DO
+#elif W3_GPU
+    !$ACC END KERNELS
 #endif
 
     !Li  Initialise boundary cell CQ and Velocity values.
+#ifndef W3_GPU
     CQ(-9:0)=0.0
     UCFL(-9:0)=0.0
     VCFL(-9:0)=0.0
+#endif
     !
     ! 3.  Loop over frequency-dependent sub-steps -------------------------*
     !
@@ -684,6 +758,9 @@ CONTAINS
               jvf=NLvVFc(LL)
               !
               !  Use 3rd order UNO3 scheme.  JGLi03Sep2015
+#ifdef W3_GPU 
+              !!$ACC KERNELS
+#endif
               IF( FUNO3 ) THEN
                 CALL SMCxUNO3(iuf, juf, CQ, UCFL, ULCFLX, DNND, FUMD, FUDIFX, FMR)
               ELSE
@@ -691,9 +768,15 @@ CONTAINS
                 CALL SMCxUNO2(iuf, juf, CQ, UCFL, ULCFLX, DNND, FUMD, FUDIFX, FMR)
               ENDIF
 
+#ifdef W3_GPU 
+              !!$ACC END KERNELS
+#endif
               !  Store fineset level conservative flux in FCNt advective one in AFCN
 #ifdef W3_OMPG
               !$OMP Parallel DO Private(i, L, M, FUTRN)
+#elif W3_GPU
+              !$ACC KERNELS
+              !$ACC LOOP INDEPENDENT PRIVATE(i, L, M, FUTRN)
 #endif
               DO i=iuf, juf
                 L=IJKUFc5(i)
@@ -707,21 +790,29 @@ CONTAINS
                   IF( (CTRNX(M)+CTRNX(L)) .GE. 1.96 )  THEN
 #ifdef W3_OMPG
                     !$OMP ATOMIC
+#elif W3_GPU
+                    !$ACC ATOMIC
 #endif
                     FCNt(L) = FCNt(L) - FUTRN
                   ELSE IF( ULCFLX(i) .GE. 0.0 ) THEN
 #ifdef W3_OMPG
                     !$OMP ATOMIC
+#elif W3_GPU
+                    !$ACC ATOMIC
 #endif
                     FCNt(L) = FCNt(L) - FUTRN*CTRNX(L)
                   ELSE
 #ifdef W3_OMPG
                     !$OMP ATOMIC
+#elif W3_GPU
+                    !$ACC ATOMIC
 #endif
                     FCNt(L) = FCNt(L) - FUTRN*CTRNX(L)*CTRNX(M)
                   ENDIF
 #ifdef W3_OMPG
                   !$OMP ATOMIC
+#elif W3_GPU
+                    !$ACC ATOMIC
 #endif
                   ! ChrisB: Re-arranged the RHS term below to make it
                   ! valid for OMP ATMOIC directive.
@@ -732,25 +823,32 @@ CONTAINS
                   IF( (CTRNX(M)+CTRNX(L)) .GE. 1.96 )  THEN
 #ifdef W3_OMPG
                     !$OMP ATOMIC
+#elif W3_GPU
+                    !$ACC ATOMIC
 #endif
                     FCNt(M) = FCNt(M) + FUTRN
                   ELSE IF( ULCFLX(i) .GE. 0.0 ) THEN
 #ifdef W3_OMPG
                     !$OMP ATOMIC
+#elif W3_GPU
+                    !$ACC ATOMIC
 #endif
                     FCNt(M) = FCNt(M) + FUTRN*CTRNX(M)*CTRNX(L)
                   ELSE
 #ifdef W3_OMPG
                     !$OMP ATOMIC
+#elif W3_GPU
+                    !$ACC ATOMIC
 #endif
                     FCNt(M) = FCNt(M) + FUTRN*CTRNX(M)
                   ENDIF
 #ifdef W3_OMPG
                   !$OMP ATOMIC
+#elif W3_GPU
+                  !$ACC ATOMIC
 #endif
                   AFCN(M) = AFCN(M) + (FUMD(i)*UCFL(M)*FMR - FUDIFX(i))
                 ENDIF
-                !! !$OMP END CRITICAL
               ENDDO
 #ifdef W3_OMPG
               !$OMP END Parallel DO
@@ -761,6 +859,8 @@ CONTAINS
               !  Also divided by another cell x-size as UCFL is in size-1 unit.
 #ifdef W3_OMPG
               !$OMP Parallel DO Private(n)
+#elif
+              !$ACC LOOP INDEPENDENT
 #endif
               DO n=icl, jcl
                 CQA(n)=CQ(n) + FCNt(n)/FLOAT( IJKCel3(n)*IJKCel4(n) )
@@ -770,8 +870,13 @@ CONTAINS
               ENDDO
 #ifdef W3_OMPG
               !$OMP END Parallel DO
+#elif
+              !$ACC END KERNELS
 #endif
               !
+#ifdef W3_GPU 
+              !!$ACC KERNELS
+#endif
               !  Use 3rd order UNO3 scheme.  JGLi03Sep2015
               IF( FUNO3 ) THEN
                 CALL SMCyUNO3(ivf, jvf, CQ, VCFL, VLCFLY, DSSD, FVMD, FVDIFY, FMR)
@@ -779,10 +884,16 @@ CONTAINS
                 !  Call SMCyUNO2 to calculate MFy value
                 CALL SMCyUNO2(ivf, jvf, CQ, VCFL, VLCFLY, DSSD, FVMD, FVDIFY, FMR)
               ENDIF
+#ifdef W3_GPU 
+              !!$ACC END KERNELS
+#endif
               !
               !  Store conservative flux in BCNt
 #ifdef W3_OMPG
               !$OMP Parallel DO Private(j, L, M, FVTRN)
+#elif W3_GPU
+              !$ACC KERNELS
+              !$ACC LOOP INDEPENDENT PRIVATE(j, L, M, FVTRN)
 #endif
               DO j=ivf, jvf
                 L=IJKVFc5(j)
@@ -796,16 +907,22 @@ CONTAINS
                   IF( (CTRNY(M)+CTRNY(L)) .GE. 1.96 )  THEN
 #ifdef W3_OMPG
                     !$OMP ATOMIC
+#elif W3_GPU
+                    !$ACC ATOMIC
 #endif
                     BCNt(L) = BCNt(L) - FVTRN
                   ELSE IF( VLCFLY(j) .GE. 0.0 )  THEN
 #ifdef W3_OMPG
                     !$OMP ATOMIC
+#elif W3_GPU
+                    !$ACC ATOMIC
 #endif
                     BCNt(L) = BCNt(L) - FVTRN*CTRNY(L)
                   ELSE
 #ifdef W3_OMPG
                     !$OMP ATOMIC
+#elif W3_GPU
+                    !$ACC ATOMIC
 #endif
                     BCNt(L) = BCNt(L) - FVTRN*CTRNY(L)*CTRNY(M)
                   ENDIF
@@ -815,16 +932,22 @@ CONTAINS
                   IF( (CTRNY(M)+CTRNY(L)) .GE. 1.96 )  THEN
 #ifdef W3_OMPG
                     !$OMP ATOMIC
+#elif W3_GPU
+                    !$ACC ATOMIC
 #endif
                     BCNt(M) = BCNt(M) + FVTRN
                   ELSE IF( VLCFLY(j) .GE. 0.0 )  THEN
 #ifdef W3_OMPG
                     !$OMP ATOMIC
+#elif W3_GPU
+                    !$ACC ATOMIC
 #endif
                     BCNt(M) = BCNt(M) + FVTRN*CTRNY(M)*CTRNY(L)
                   ELSE
 #ifdef W3_OMPG
                     !$OMP ATOMIC
+#elif W3_GPU
+                    !$ACC ATOMIC
 #endif
                     BCNt(M) = BCNt(M) + FVTRN*CTRNY(M)
                   ENDIF
@@ -841,6 +964,8 @@ CONTAINS
               !! One cosine factor is also needed to be divided for SMC grid.
 #ifdef W3_OMPG
               !$OMP Parallel DO Private(n)
+#elif W3_GPU
+              !$ACC LOOP INDEPENDENT
 #endif
               DO n=icl, jcl
                 CQ(n)=CQA(n) + BCNt(n)/( CLATS(n)*            &
@@ -849,6 +974,8 @@ CONTAINS
               ENDDO
 #ifdef W3_OMPG
               !$OMP END Parallel DO
+#elif W3_GPU
+              !$ACC END KERNELS
 #endif
               !Li  Polar cell needs a special area factor, multi-level case.
               IF( ARCTC .AND. jcl .EQ. NSEA ) THEN
@@ -879,30 +1006,50 @@ CONTAINS
           RD1    = 0.
           RD2    = 1.
         END IF
+#ifdef W3_GPU
+        !$ACC KERNELS
+        !$ACC LOOP INDEPENDENT
+#endif
         DO IBI=1, NBI
           ISEA     = ISBPI(IBI)
           CQ(ISEA) = (RD1*BBPI0(ISP,IBI) + RD2*BBPIN(ISP,IBI))   &
                /CG(IK,ISEA)
         END DO
+#ifdef W3_GPU
+        !$ACC END KERNELS
+#endif
       ENDIF
       !
       !!    End of ITLOC DO
     ENDDO
 
     !  Average with 1-2-1 scheme.  JGLi20Aug2015
-    IF(FVERG) CALL SMCAverg(CQ)
+    IF ( FVERG ) THEN
+#ifdef W3_GPU
+        !$ACC KERNELS
+#endif
+      CALL SMCAverg(CQ)
+#ifdef W3_GPU
+        !$ACC END KERNELS
+#endif
+    ENDIF
 
     !
     ! 4.  Store results in VQ in proper format --------------------------- *
     !
 #ifdef W3_OMPG
     !$OMP Parallel DO Private(ISEA)
+#elif W3_GPU
+    !$ACC KERNELS
+    !$ACC LOOP INDEPENDENT
 #endif
     DO ISEA=1, NSEA
       VQ(ISEA) =  MAX ( 0. , CQ(ISEA)*CG(IK,ISEA) )
     END DO
 #ifdef W3_OMPG
     !$OMP END Parallel DO
+#elif W3_GPU
+    !$ACC END KERNELS
 #endif
     !
     RETURN
@@ -3315,9 +3462,16 @@ CONTAINS
     ! 1.  Shared memory version ------------------------------------------ /
     !
 #ifdef W3_SHRD
+#ifdef W3_GPU
+!$ACC KERNELS      
+!$ACC LOOP INDEPENDENT
+#endif
     DO ISEA=1, NSEA
       FIELD(ISEA) = A(ISPEC,ISEA)
     END DO
+#ifdef W3_GPU
+!$ACC END KERNELS      
+#endif
     !
     RETURN
 #endif
@@ -3547,10 +3701,17 @@ CONTAINS
     ! 1.  Shared memory version ------------------------------------------ *
     !
 #ifdef W3_SHRD
+#ifdef W3_GPU
+!$ACC KERNELS      
+!$ACC LOOP INDEPENDENT
+#endif
     DO ISEA=1, NSEA
       IXY           = MAPSF(ISEA,3)
       IF ( MAPSTA(IXY) .GE. 1 ) A(ISPEC,ISEA) = FIELD(ISEA)
     END DO
+#ifdef W3_GPU
+!$ACC END KERNELS      
+#endif
     !
     RETURN
 #endif
