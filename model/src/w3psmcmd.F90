@@ -859,7 +859,7 @@ CONTAINS
               !  Also divided by another cell x-size as UCFL is in size-1 unit.
 #ifdef W3_OMPG
               !$OMP Parallel DO Private(n)
-#elif
+#elif W3_GPU
               !$ACC LOOP INDEPENDENT
 #endif
               DO n=icl, jcl
@@ -870,7 +870,7 @@ CONTAINS
               ENDDO
 #ifdef W3_OMPG
               !$OMP END Parallel DO
-#elif
+#elif W3_GPU
               !$ACC END KERNELS
 #endif
               !
