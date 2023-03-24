@@ -93,6 +93,11 @@
     opt="$opt <optomp>"
   fi
 
+  # ACC support
+  if [ "$acc_mod" = 'yes' ] ; then
+    opt="$opt <optacc>"
+  fi
+
 # 2.b Compile - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
   $comp $opt $name.$fext 1> $name.out 2> $name.err
