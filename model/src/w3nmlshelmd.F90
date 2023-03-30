@@ -984,6 +984,25 @@ CONTAINS
     END IF
 
     ! save namelist
+!LS Hard coded namelist to force homogenous fields
+        HOMOG_INPUT(1)%NAME       = 'WND'
+        HOMOG_INPUT(1)%DATE       = '20100101 120000'
+        HOMOG_INPUT(1)%VALUE1     = 5.
+        HOMOG_INPUT(1)%VALUE2     = 90.
+        HOMOG_INPUT(1)%VALUE3     = 2.
+
+        HOMOG_INPUT(2)%NAME       = 'WND'
+        HOMOG_INPUT(2)%DATE       = '20100101 140000'
+        HOMOG_INPUT(2)%VALUE1     = 25.
+        HOMOG_INPUT(2)%VALUE2     = 120.
+        HOMOG_INPUT(2)%VALUE3     = 2.
+
+        HOMOG_INPUT(3)%NAME       = 'LEV'
+        HOMOG_INPUT(3)%DATE       = '20100101 120000'
+        HOMOG_INPUT(3)%VALUE1     = 5.
+
+    NML_HOMOG_COUNT = HOMOG_COUNT
+    NML_HOMOG_INPUT = HOMOG_INPUT
     NML_HOMOG_COUNT = HOMOG_COUNT
     NML_HOMOG_INPUT = HOMOG_INPUT
 
