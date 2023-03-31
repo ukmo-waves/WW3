@@ -197,9 +197,6 @@ MODULE W3WAVEMD
   !
   PUBLIC
   !/
-#ifdef W3_GPU
-  REAL :: s1, e1
-#endif
 CONTAINS
   !/ ------------------------------------------------------------------- /
   !>
@@ -605,6 +602,7 @@ CONTAINS
 #endif
     integer :: memunit
 #ifdef W3_GPU
+    !/LS Hoisted automatic arrays from W3PSMC
     REAL, DIMENSION(-9:NCel) ::  FCNt, AFCN, BCNt, UCFL, VCFL, &
                           CQ, CQA, CXTOT, CYTOT, AUN, AVN
     REAL, DIMENSION(NUFc) :: ULCFLX, FUMD, FUDIFX
@@ -1867,9 +1865,6 @@ CONTAINS
               !
               ! Initialize FIELD variable
               FIELD = 0.
-#ifdef W3_GPU
-              CALL CPU_TIME(s1)
-#endif
               !
               DO ISPEC=1, NSPEC
                 IF ( IAPPRO(ISPEC) .EQ. IAPROC ) THEN
@@ -1951,10 +1946,6 @@ CONTAINS
               END IF
 #endif
               call print_memcheck(memunit, 'memcheck_____:'//' WW3_WAVE TIME LOOP 17')
-#ifdef W3_GPU
-              CALL CPU_TIME(e1)
-              PRINT*,'SMC Prop time: ', e1-s1
-#endif
               !
               !Li   Initialise IK IX IY in case ARC option is not used to avoid warnings.
               IK=1
@@ -2180,9 +2171,6 @@ CONTAINS
             !$OMP&                  REFLEC,REFLED,D50,PSIC,TMP1,TMP2,TMP3,TMP4)
             !$OMP DO SCHEDULE (DYNAMIC,1)
 #endif
-#ifdef W3_GPU
-            CALL CPU_TIME(s1)
-#endif
             !
             DO JSEA=1, NSEAL
               CALL INIT_GET_ISEA(ISEA, JSEA)
@@ -2295,10 +2283,6 @@ CONTAINS
             !$OMP END PARALLEL
 #endif
             !
-#ifdef W3_GPU
-            CALL CPU_TIME(e1)
-            PRINT*,'SRC time: ', e1-s1
-#endif
 #ifdef W3_PDLIB
 #ifdef W3_DEBUGSRC
             WRITE(740+IAPROC,*) 'ITIME=', ITIME, ' IT=', IT

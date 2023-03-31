@@ -134,7 +134,8 @@ CONTAINS
   !> @date 18 Apr 2018
   !>
 #ifdef W3_GPU
-  SUBROUTINE W3PSMC (ISP,DTG,VQ,FCNt,AFCN,BCNt,UCFL,VCFL,CQ,CQA, &
+  !/LS GPU Code uses hoisted arrays and functional call. 
+  SUBROUTINE W3PSMC (ISP,DTG,VQ,FCNt,AFCN,BCNt,UCFL,VCFL,CQ,CQA,   &
                      ULCFLX,VLCFLY,FUMD,FUDIFX,FVMD,FVDIFY, CXTOT, &
                      CYTOT, AUN, AVN)
 #else
@@ -302,11 +303,12 @@ CONTAINS
     LOGICAL                 :: YFIRST
     !/
 #ifdef W3_GPU
-    !/ Inline SMC functions require additional variables
+    !/LS Inlined SMC functions require additional variables
     INTEGER ::  ij
     REAL    :: CNST, CNST0, CNST1, CNST2, CNST3, CNST4, CNST5, CNST6,  &
                CNST7, CNST8, CNST9
-    !/ Automatic work arrays
+    !/LS GPU ported code using functions via subroutine call to avoid 
+    !/LS automatic work arrays. 
     REAL, DIMENSION(:), INTENT(INOUT) :: FCNt, AFCN, BCNt, UCFL, VCFL, CQ, &
                                          CQA, CXTOT, CYTOT, AUN, AVN
     REAL, DIMENSION(:), INTENT(INOUT) ::  FUMD, FUDIFX, ULCFLX
@@ -412,6 +414,7 @@ CONTAINS
 #endif
     !
 #ifdef W3_GPU
+    !/LS Explicit initialisation for hoisted arrays.
     !$ACC KERNELS
     DO ISEA=1,NUFc
       ULCFLX(ISEA) = 0.0
@@ -772,6 +775,7 @@ CONTAINS
 #ifdef W3_GPU 
               !$ACC KERNELS
               IF( FUNO3 ) THEN
+!/LS The SMCxUNO3 routine is inlined to facilitate the OpenACC implicit directives.
                 CNST0=DNND*FMR*FMR*2.0
 !$ACC LOOP INDEPENDENT PRIVATE(i, ij, K, L, M, N, &
 !$ACC CNST,CNST1,CNST2,CNST3,CNST4,CNST5,CNST6,CNST7,CNST8,CNST9)
@@ -969,8 +973,8 @@ CONTAINS
               !  Code inline to facilitate GPU port
               !$ACC KERNELS
               IF( FUNO3 ) THEN
+!/LS The SMCyUNO3 routine is inlined to facilitate the OpenACC implicit directives.
                 CNST0=DSSD*FMR*FMR*2.0
-
 !$ACC LOOP INDEPENDENT PRIVATE(j, k, L, M, N, & 
 !$ACC CNST,CNST1,CNST2,CNST3,CNST4,CNST5,CNST6,CNST7,CNST8,CNST9)
                 DO j=ivf, jvf
@@ -1022,6 +1026,7 @@ CONTAINS
                   FVDIFY(j)=CNST0*CNST5*CNST8
                  END DO
               ELSE
+!/LS The SMCyUNO2 routine is inlined to facilitate the OpenACC implicit directives.
                 CNST0=DSSD*FMR*FMR*2.0
 !$ACC LOOP INDEPENDENT PRIVATE(j, K, L, M, N )&
 !$ACC Private(CNST,CNST1,CNST2,CNST3,CNST4,CNST5,CNST6,CNST8)
@@ -1206,6 +1211,7 @@ CONTAINS
     !  Average with 1-2-1 scheme.  JGLi20Aug2015
     IF ( FVERG ) THEN
 #ifdef W3_GPU
+!/ LS The SMCAverg routine is inlined to facilitate the OpenACC implicit directives.
       !$ACC KERNELS
       AUN = 0.
       AVN = 0.
