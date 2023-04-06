@@ -1867,11 +1867,15 @@
     echo ' ' >> matrix.body
     echo "$rtst $ww3 -w work_SHRD_SMC ww3_tp2.10" >> matrix.body
     echo "$rtst -w work_SHRD $ww3 ww3_tp2.16" >> matrix.body
+    echo "$rtst $ww3 -s GPU -w work_SHRD_SMC_GPU ww3_tp2.10" >> matrix.body
+    echo "$rtst -s GPU -w work_SHRD_GPU $ww3 ww3_tp2.16" >> matrix.body
   fi
 
   if [ "$smcgr" = 'y' ] && [ "$dist" = 'y' ]
   then
     echo ' ' >> matrix.body
+    echo "$rtst -s MPI_GPU -w work_GPU -f -p $mpi -n $np $ww3 ww3_tp2.10" >> matrix.body
+    echo "$rtst -s MPI_GPU -w work_GPU -f -p $mpi -n $np $ww3 ww3_tp2.16" >> matrix.body
     echo "$rtst -s MPI -w work_MPI -f -p $mpi -n $np $ww3 ww3_tp2.10" >> matrix.body
     echo "$rtst -s MPI -w work_MPI -f -p $mpi -n $np $ww3 ww3_tp2.16" >> matrix.body
   fi
