@@ -309,10 +309,11 @@ CONTAINS
                CNST7, CNST8, CNST9
     !/LS GPU ported code using functions via subroutine call to avoid 
     !/LS automatic work arrays. 
-    REAL, DIMENSION(:), INTENT(INOUT) :: FCNt, AFCN, BCNt, UCFL, VCFL, CQ, &
-                                         CQA, CXTOT, CYTOT, AUN, AVN
-    REAL, DIMENSION(:), INTENT(INOUT) ::  FUMD, FUDIFX, ULCFLX
-    REAL, DIMENSION(:), INTENT(INOUT) ::  FVMD, FVDIFY, VLCFLY
+    REAL, DIMENSION(-9:NCel), INTENT(INOUT) :: FCNt, AFCN, BCNt, UCFL, VCFL, CQ, &
+                              CQA, CXTOT, CYTOT
+    REAL, DIMENSION(-9:NSEA), INTENT(INOUT) :: AUN, AVN
+    REAL, DIMENSION(NUFc), INTENT(INOUT) ::  FUMD, FUDIFX, ULCFLX
+    REAL, DIMENSION(NVFc), INTENT(INOUT) ::  FVMD, FVDIFY, VLCFLY
 #else
     !/ Automatic work arrays
     REAL, Dimension(-9:NCel) ::  FCNt, AFCN, BCNt, UCFL, VCFL, CQ,  &

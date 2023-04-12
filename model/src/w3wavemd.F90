@@ -603,10 +603,10 @@ CONTAINS
     integer :: memunit
 #ifdef W3_GPU
     !/LS Hoisted automatic arrays from W3PSMC
-    REAL, DIMENSION(-9:NCel) ::  FCNt, AFCN, BCNt, UCFL, VCFL, &
+    REAL, ALLOCATABLE, DIMENSION(:) ::  FCNt, AFCN, BCNt, UCFL, VCFL, &
                           CQ, CQA, CXTOT, CYTOT, AUN, AVN
-    REAL, DIMENSION(NUFc) :: ULCFLX, FUMD, FUDIFX
-    REAL, DIMENSION(NVFc) :: VLCFLY, FVMD, FVDIFY
+    REAL, ALLOCATABLE, DIMENSION(:) :: ULCFLX, FUMD, FUDIFX
+    REAL, ALLOCATABLE, DIMENSION(:) :: VLCFLY, FVMD, FVDIFY
 !$ACC DECLARE CREATE(TAUWX, TAUWY, FIELD)
 #endif
     !/ ------------------------------------------------------------------- /
@@ -635,6 +635,14 @@ CONTAINS
 
     !
     ALLOCATE(TAUWX(NSEAL), TAUWY(NSEAL))
+#ifdef W3_GPU
+    IF ( .NOT. ALLOCATED(FCNt) ) THEN 
+       ALLOCATE(FCNt(-9:NCel), AFCN(-9:NCel), BCNt(-9:NCel), UCFL(-9:NCel), VCFL(-9:NCel),&
+                CQ(-9:NCel), CQA(-9:NCel), CXTOT(-9:NCel), CYTOT(-9:NCel), AUN(-9:NSEA),  &
+                AVN(-9:NSEA), FUMD(NUFc), FUDIFX(NUFc), ULCFLX(NUFc), FVMD(NVFc),         &
+                FVDIFY(NVFc), VLCFLY(NVFc))
+   END IF
+#endif
 #ifdef W3_REFRX
     ALLOCATE(CIK(NSEAL))
 #endif
@@ -2823,6 +2831,12 @@ CONTAINS
     !
     DEALLOCATE(FIELD)
     DEALLOCATE(TAUWX, TAUWY)
+#ifdef W3_GPU
+    IF ( ALLOCATED(FCNt) ) THEN 
+       DEALLOCATE(FCNt, AFCN, BCNt, UCFL, VCFL, CQ, CQA, CXTOT, CYTOT, AUN, AVN, &
+                  FUMD, FUDIFX, ULCFLX, FVMD, FVDIFY, VLCFLY)
+   END IF
+#endif
     !
     call print_memcheck(memunit, 'memcheck_____:'//' WW3_WAVE END W3WAVE')
     !
