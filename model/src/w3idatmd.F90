@@ -266,9 +266,6 @@ MODULE W3IDATMD
   LOGICAL, POINTER        ::  FLLEVTIDE, FLCURTIDE,  &
        FLLEVRESI, FLCURRESI
 #endif
-#ifdef W3_GPU
-!$ACC DECLARE COPYIN(INFLAGS2, ICEP2)
-#endif
   !/
 CONTAINS
   !/ ------------------------------------------------------------------- /
