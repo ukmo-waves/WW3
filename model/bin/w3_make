@@ -490,13 +490,6 @@ EOF
       fi
       export omp_mod
 
-      acc_mod=no
-      if [ -n "`grep GPU $switch_file`" ]
-      then
-        acc_mod=yes
-      fi
-      export acc_mod
-
       oasis_mod=no
       if [ -n "`grep OASIS $switch_file`" ]
       then
