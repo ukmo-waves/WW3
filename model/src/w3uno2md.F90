@@ -983,6 +983,10 @@ CONTAINS
     !
     ! 1.  Initialize aux. array FLA and closure ------------------------- *
     !
+#ifdef W3_GPU
+    !$ACC DATA CREATE(FLA)
+    !$ACC KERNELS
+#endif
     FLA = 0.
     !
     IF ( BCLOSE ) THEN
@@ -1026,6 +1030,8 @@ CONTAINS
     !$OMP QBO, IX, IY, IY2, IX2, QN                   &
 #endif
     !$OMP IXYC, IXYD, QB)
+#elif W3_GPU
+      !$ACC LOOP INDEPENDENT
 #endif
     !
     DO IP=1, NB0
@@ -1073,6 +1079,9 @@ CONTAINS
     WRITE (NDST,9011) NB1-NB0, 'BOUNDARY ABOVE'
 #endif
     !
+#ifdef W3_GPU
+      !$ACC LOOP INDEPENDENT
+#endif
     DO IP=NB0+1, NB1
       IXY    = MAPBOU(IP)
       CFL    = CFLL(IXY)
@@ -1099,6 +1108,9 @@ CONTAINS
     WRITE (NDST,9011) NB2-NB1, 'BOUNDARY BELOW'
 #endif
     !
+#ifdef W3_GPU
+      !$ACC LOOP INDEPENDENT
+#endif
     DO IP=NB1+1, NB2
       IXY    = MAPBOU(IP)
       CFL    = CFLL(IXY+INC)
@@ -1141,6 +1153,8 @@ CONTAINS
     !$OMP       PRIVATE(QOLD), &
 #endif
     !$OMP       PRIVATE (IP, IXY, JN, JP)
+#elif W3_GPU
+      !$ACC LOOP INDEPENDENT
 #endif
     !
     DO IP=1, NACT
@@ -1172,6 +1186,9 @@ CONTAINS
     !
 #ifdef W3_OMPH
     !$OMP END PARALLEL DO
+#elif W3_GPU
+    !$ACC END KERNELS
+    !$ACC END DATA
 #endif
     !
 #ifdef W3_T0

@@ -1853,6 +1853,9 @@ CONTAINS
               !
               !
               ! Initialize FIELD variable
+#ifdef W3_GPU
+!$ACC UPDATE DEVICE(VA)
+#endif
               FIELD = 0.
               !
               DO ISPEC=1, NSPEC
@@ -1919,6 +1922,9 @@ CONTAINS
 
                 END IF
               END DO
+#ifdef W3_GPU
+!$ACC UPDATE SELF(VA)
+#endif
               !
 #ifdef W3_MPI
               IF ( NRQSG1 .GT. 0 ) THEN

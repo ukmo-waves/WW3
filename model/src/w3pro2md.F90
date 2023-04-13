@@ -814,6 +814,12 @@ CONTAINS
     WRITE (NDST,9010)
 #endif
     !
+#ifdef W3_GPU
+!$ACC DATA CREATE(VLCFLY, VLCFLX, VDXX, VDYY, VDXY, CXTOT, CYTOT) &
+!$ACC      CREATE(VFDIFX_FAC, VFDIFY_FAC, VFDIFC_FAC, VQ_OLD)     &
+!$ACC      CREATE(HQFAC, HPFAC)
+!$ACC KERNELS      
+#endif
     VLCFLX = 0.
     VLCFLY = 0.
     VFDIFX = 0.
@@ -838,6 +844,8 @@ CONTAINS
     !
 #ifdef W3_OMPH
     !$OMP PARALLEL DO PRIVATE (ISEA, IXY)
+#elif W3_GPU
+    !$ACC LOOP INDEPENDENT
 #endif
     !
     DO ISEA=1, NSEA
@@ -858,11 +866,17 @@ CONTAINS
     !
 #ifdef W3_OMPH
     !$OMP END PARALLEL DO
+#elif W3_GPU
+    !$ACC END KERNELS        
 #endif
     !
     IF ( FLCUR ) THEN
 #ifdef W3_T
       WRITE (NDST,9022)
+#endif
+#ifdef W3_GPU
+!$ACC KERNELS      
+!$ACC LOOP INDEPENDENT      
 #endif
       DO ISEA=1, NSEA
         IXY         = MAPSF(ISEA,3)
@@ -873,11 +887,17 @@ CONTAINS
              VQ(IXY), CXTOT(IXY), CYTOT(IXY)
 #endif
       END DO
+#ifdef W3_GPU
+!$ACC END KERNELS        
+#endif
     END IF
 
     !
 #ifdef W3_OMPH
     !$OMP PARALLEL DO PRIVATE (ISEA, IX, IY, IXY, CP, CQ)
+#elif W3_GPU
+!$ACC KERNELS      
+!$ACC LOOP INDEPENDENT      
 #endif
     !
     DO ISEA=1, NSEA
@@ -892,6 +912,8 @@ CONTAINS
     !
 #ifdef W3_OMPH
     !$OMP END PARALLEL DO
+#elif W3_GPU
+    !$ACC END KERNELS      
 #endif
     !
     ! 2.b Diffusion coefficients
@@ -901,6 +923,9 @@ CONTAINS
 #ifdef W3_OMPH
       !$OMP PARALLEL DO PRIVATE (ISEA, IX, IY, IXY, &
       !$OMP&                     DCELL, XWIND, TFAC, DSS, DNN)
+#elif W3_GPU
+      !$ACC KERNELS      
+      !$ACC LOOP INDEPENDENT      
 #endif
       !
       DO ISEA=1, NSEA
@@ -937,6 +962,8 @@ CONTAINS
       !
 #ifdef W3_OMPH
       !$OMP END PARALLEL DO
+#elif W3_GPU
+      !$ACC END KERNELS        
 #endif
       !
     END IF
@@ -949,8 +976,10 @@ CONTAINS
       !
 #ifdef W3_OMPH
       !$OMP PARALLEL DO PRIVATE (ISEA, IX, IY, IXY )
+#elif W3_GPU
+      !$ACC KERNELS      
+      !$ACC LOOP INDEPENDENT      
 #endif
-      !
       DO ISEA=1, NSEA
         IX     = MAPSF(ISEA,1)
         IY     = MAPSF(ISEA,2)
@@ -960,6 +989,8 @@ CONTAINS
       !
 #ifdef W3_OMPH
       !$OMP END PARALLEL DO
+#elif W3_GPU
+      !$ACC END KERNELS 
 #endif
       !
       IF ( YFIRST ) THEN
@@ -1014,6 +1045,9 @@ CONTAINS
       !
 #ifdef W3_OMPH
       !$OMP PARALLEL DO PRIVATE (ISEA, IX, IY, IXY )
+#elif W3_GPU
+      !$ACC KERNELS
+      !$ACC LOOP INDEPENDENT        
 #endif
       !
       DO ISEA=1, NSEA
@@ -1047,11 +1081,16 @@ CONTAINS
                / CG(IK,ISEA) * CLATS(ISEA)
         END DO
       END IF
+#ifdef W3_GPU
+      !$ACC END KERNELS
+#endif
       !
       ! 3.c Diffusion correction
       !
       IF ( DTME .NE. 0. ) THEN
-
+#ifdef W3_GPU
+      !$ACC KERNELS
+#endif
         IF ( GLOBAL ) THEN
           DO IY=1, NY
             VQ(IY+NX*NY) = VQ(IY)
@@ -1088,8 +1127,9 @@ CONTAINS
 #ifdef W3_OMPH
         !$OMP PARALLEL DO PRIVATE (ISEA, IX, IY, IXY, &
         !$OMP&                     QXX, QYY, QXY, DVQ )
+#elif W3_GPU
+        !$ACC LOOP INDEPENDENT            
 #endif
-        !
         DO IP=1, NACT
           IXY    = MAPAXY(IP)
           ISEA   = MAPFS(IXY)
@@ -1159,6 +1199,8 @@ CONTAINS
         !
 #ifdef W3_OMPH
         !$OMP END PARALLEL DO
+#elif W3_GPU
+        !$ACC END KERNELS             
 #endif
         !
       END IF
@@ -1174,6 +1216,9 @@ CONTAINS
     !
 #ifdef W3_OMPH
     !$OMP PARALLEL DO PRIVATE (ISEA, IXY )
+#elif W3_GPU
+    !$ACC KERNELS
+    !$ACC LOOP INDEPENDENT        
 #endif
     !
     DO ISEA=1, NSEA
@@ -1190,6 +1235,9 @@ CONTAINS
     !
 #ifdef W3_OMPH
     !$OMP END PARALLEL DO
+#elif W3_GPU
+    !$ACC END KERNELS
+    !$ACC END DATA          
 #endif
     !
     RETURN
