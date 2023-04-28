@@ -1970,7 +1970,7 @@
 !/OASIS                DTTST=0.
 !/OASIS              ELSE
 !/OASIS                ID_OASIS_TIME = NINT(DSEC21 ( TIME00 , TFN(:,J) ))
-!/OASIS                IF ( MOD(DSEC21(TIME00,TIME)), NINT(DTOUT(7))) .EQ. 0 .AND. &
+!/OASIS                IF ( MOD(NINT(DSEC21(TIME00,TIME)), NINT(DTOUT(7))) .EQ. 0 .AND. &
 !/OASIS                     DSEC21 (TFN(:,J), TIMEEND) .GT. 0.0 ) DTTST=0.
 !/OASIS              ENDIF
 !/OASIS            ENDIF
