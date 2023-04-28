@@ -1970,7 +1970,7 @@
 !/OASIS                DTTST=0.
 !/OASIS              ELSE
 !/OASIS                ID_OASIS_TIME = NINT(DSEC21 ( TIME00 , TFN(:,J) ))
-!/OASIS                IF ( NINT(MOD(DSEC21(TIME00,TIME), DTOUT(7))) .EQ. 0 .AND. &
+!/OASIS                IF ( MOD(DSEC21(TIME00,TIME)), NINT(DTOUT(7))) .EQ. 0 .AND. &
 !/OASIS                     DSEC21 (TFN(:,J), TIMEEND) .GT. 0.0 ) DTTST=0.
 !/OASIS              ENDIF
 !/OASIS            ENDIF
@@ -1998,17 +1998,12 @@
 !/OASIS                COUPL_COMM = MPI_COMM
 !/OASICM                IF (FLAGSC(J)) FLAGSCI = .TRUE.
 !/OASICM                IF (.NOT.FLAGSCI) ID_OASIS_TIME = -1
-!/OASIS                IF (ID_OASIS_TIME >0 .OR. FIRST_STEP .OR.       &
-!/OASIS                                     .NOT. FLAGSC(J)) THEN
                 CALL W3FLDG ('READ', IDSTR(J), NDSF(J),         &
                              NDST, NDSEN, NX, NY, NX, NY, TIME0, TIMEN, &
                              TTT, XXX, XXX, XXX, TI1, XXX, XXX, ICEP1,  &
                              IERR, FLAGSC(J)                            &
 !/OASICM                             , COUPL_COMM                       &
                              )
-!/OASIS                ELSE
-!/OASIS                  IERR = -1
-!/OASIS                END IF
               END IF
               IF ( IERR .LT. 0 ) FLLST_ALL(J) = .TRUE.
 
@@ -2064,17 +2059,12 @@
 !/OASIS                COUPL_COMM = MPI_COMM
 !/OASICM                IF (FLAGSC(J)) FLAGSCI = .TRUE.
 !/OASICM                IF (.NOT.FLAGSCI) ID_OASIS_TIME = -1
-!/OASIS                IF (ID_OASIS_TIME >0 .OR. FIRST_STEP .OR.       &
-!/OASIS                                     .NOT. FLAGSC(J)) THEN
                 CALL W3FLDG ('READ', IDSTR(J), NDSF(J),         &
                              NDST, NDSEN, NX, NY, NX, NY, TIME0, TIMEN, &
                              TTT, XXX, XXX, XXX, TI5, XXX, XXX, ICEP5,  &
                              IERR, FLAGSC(J)                            &
 !/OASICM                             , COUPL_COMM                       &
                              )
-!/OASIS                ELSE
-!/OASIS                  IERR = -1
-!/OASIS                END IF
               END IF
               IF ( IERR .LT. 0 )FLLST_ALL(J) = .TRUE.
 
@@ -2137,17 +2127,12 @@
 !/TIDE                ELSE
 !/OASIS                COUPL_COMM = MPI_COMM
 !/OASOCM                IF (.NOT.FLAGSC(J)) ID_OASIS_TIME = -1
-!/OASIS                IF (ID_OASIS_TIME >0 .OR. FIRST_STEP .OR.       &
-!/OASIS                                     .NOT. FLAGSC(J)) THEN
                 CALL W3FLDG ('READ', IDSTR(J), NDSF(J),         &
                              NDST, NDSEN, NX, NY, NX, NY, TIME0, TIMEN, &
                              TTT, XXX, XXX, XXX, TLN, XXX, XXX, WLEV,   &
                              IERR, FLAGSC(J)                            &
 !/OASOCM                             , COUPL_COMM                       &
                              )
-!/OASIS                ELSE
-!/OASIS                  IERR = -1
-!/OASIS                END IF
 !/TIDE                END IF
               END IF
               IF ( IERR .LT. 0 ) FLLSTL = .TRUE.
@@ -2178,15 +2163,12 @@
 !/TIDE                ELSE
 !/OASIS                COUPL_COMM = MPI_COMM
 !/OASOCM                IF (.NOT.FLAGSC(J)) ID_OASIS_TIME = -1
-!/OASIS                IF (ID_OASIS_TIME >0 .OR. FIRST_STEP .OR.       &
-!/OASIS                                     .NOT. FLAGSC(J)) THEN
                 CALL W3FLDG ('READ', IDSTR(J), NDSF(J),         &
                              NDST, NDSEN, NX, NY, NX, NY, TIME0, TIMEN, &
                              TC0, CX0, CY0, XXX, TCN, CXN, CYN, XXX,    &
                              IERR, FLAGSC(J)                            &
 !/OASOCM                             , COUPL_COMM                       &
                              )
-!/OASIS                END IF
 !/TIDE                END IF
               END IF
 
@@ -2207,15 +2189,12 @@
               ELSE
 !/OASIS                COUPL_COMM = MPI_COMM
 !/OASACM                IF (.NOT.FLAGSC(J)) ID_OASIS_TIME = -1
-!/OASIS                IF (ID_OASIS_TIME >0 .OR. FIRST_STEP .OR.       &
-!/OASIS                                     .NOT. FLAGSC(J)) THEN
                 CALL W3FLDG ('READ', IDSTR(J), NDSF(J),         &
                              NDST, NDSEN, NX, NY, NX, NY, TIME0, TIMEN, &
                              TW0, WX0, WY0, DT0, TWN, WXN, WYN, DTN,    &
                              IERR, FLAGSC(J)                            &
 !/OASACM                             , COUPL_COMM                       &
                              )
-!/OASIS                END IF
               END IF
 
 ! ICE : ice conc.
@@ -2228,17 +2207,12 @@
 !/OASIS                COUPL_COMM = MPI_COMM
 !/OASICM                IF (FLAGSC(J)) FLAGSCI = .TRUE.
 !/OASICM                IF (.NOT.FLAGSCI) ID_OASIS_TIME = -1
-!/OASIS                IF (ID_OASIS_TIME >0 .OR. FIRST_STEP .OR.       &
-!/OASIS                                     .NOT. FLAGSC(J)) THEN
                 CALL W3FLDG ('READ', IDSTR(J), NDSF(J),            &
                              NDST, NDSEN, NX, NY, NX, NY, TIME0, TIMEN,    &
                              TTT, XXX, XXX, XXX, TIN, XXX, BERGI, ICEI,    &
                              IERR, FLAGSC(J)                               &
 !/OASICM                             , COUPL_COMM                          &
                             )
-!/OASIS                ELSE
-!/OASIS                  IERR = -1
-!/OASIS                END IF
                 IF ( IERR .LT. 0 ) FLLSTI = .TRUE.
 !could be:      IF ( IERR .LT. 0 ) FLLST_ALL(J) = .TRUE.
               END IF
@@ -2260,15 +2234,12 @@
               ELSE
 !/OASIS                COUPL_COMM = MPI_COMM
 !/OASACM                IF (.NOT.FLAGSC(J)) ID_OASIS_TIME = -1
-!/OASIS                IF (ID_OASIS_TIME >0 .OR. FIRST_STEP .OR.       &
-!/OASIS                                     .NOT. FLAGSC(J)) THEN
                 CALL W3FLDG ('READ', IDSTR(J), NDSF(J),         &
                              NDST, NDSEN, NX, NY, NX, NY, TIME0, TIMEN, &
                              TU0, UX0, UY0, XXX, TUN, UXN, UYN, XXX,    &
                              IERR, FLAGSC(J)                            &
 !/OASACM                             , COUPL_COMM                               &
                              )
-!/OASIS                END IF
               END IF
 
 ! RHO : air density
@@ -2287,15 +2258,12 @@
               ELSE
 !/OASIS                COUPL_COMM = MPI_COMM
 !/OASACM                IF (.NOT.FLAGSC(J)) ID_OASIS_TIME = -1
-!/OASIS                IF (ID_OASIS_TIME >0 .OR. FIRST_STEP .OR.       &
-!/OASIS                                     .NOT. FLAGSC(J)) THEN
                 CALL W3FLDG ('READ', IDSTR(J), NDSF(J),         &
                              NDST, NDSEN, NX, NY, NX, NY, TIME0, TIMEN, &
                              TR0, XXX, XXX, RH0, TRN, XXX, XXX, RHN,    &
                              IERR, FLAGSC(J)                            &
 !/OASACM                              , COUPL_COMM                               &
                              )
-!/OASIS                END IF
                 IF ( IERR .LT. 0 ) FLLSTR = .TRUE.
               END IF
 
