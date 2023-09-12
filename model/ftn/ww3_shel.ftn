@@ -1905,6 +1905,7 @@
 !/OASACM       CALL SND_FIELDS_TO_ATMOS()
 !/OASOCM       CALL SND_FIELDS_TO_OCEAN()
 !/OASICM       CALL SND_FIELDS_TO_ICE()
+!/OASIS       ID_OASIS_TIME = -1
 !/OASIS      END IF
 
   700 CONTINUE
@@ -1965,8 +1966,10 @@
 !/OASIS            IF ( DTOUT(7).NE.0 ) THEN
 !/OASIS              ! TFN not initialized at TIME=TIME00, using TIME instead
 !/OASIS              IF(NINT(DSEC21(TIME00,TIME)) == 0) THEN
-!/OASIS                ID_OASIS_TIME = 0
-!/OASIS                DTTST=0.
+!/OASIS                IF(ID_OASIS_TIME .LT. 0 .OR. .NOT. CPLT0) THEN
+!/OASIS                  ID_OASIS_TIME = 0
+!/OASIS                  DTTST=0.
+!/OASIS                ENDIF
 !/OASIS              ELSE
 !/OASIS                ID_OASIS_TIME = NINT(DSEC21 ( TIME00 , TFN(:,J) ))
 !/OASIS                IF ( NINT(MOD(DSEC21(TIME00,TIME), DTOUT(7))) .EQ. 0 .AND. &
