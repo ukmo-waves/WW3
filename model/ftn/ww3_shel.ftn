@@ -346,6 +346,7 @@
 !/MPI      LOGICAL             :: FLHYBR = .FALSE.
 !/OMPH      INTEGER             :: THRLEV
 !/OASIS      LOGICAL             :: L_MASTER    
+!/OASIS      LOGICAL             :: FIRST_STEP = .TRUE.
 !
 !/
 !/ ------------------------------------------------------------------- /
@@ -1972,7 +1973,7 @@
 !/OASIS                ENDIF
 !/OASIS              ELSE
 !/OASIS                ID_OASIS_TIME = NINT(DSEC21 ( TIME00 , TFN(:,J) ))
-!/OASIS                IF ( NINT(MOD(DSEC21(TIME00,TIME), DTOUT(7))) .EQ. 0 .AND. &
+!/OASIS                IF ( MOD(NINT(DSEC21(TIME00,TIME)), NINT(DTOUT(7))) .EQ. 0 .AND. &
 !/OASIS                     DSEC21 (TFN(:,J), TIMEEND) .GT. 0.0 ) DTTST=0.
 !/OASIS              ENDIF
 !/OASIS            ENDIF
@@ -2362,6 +2363,7 @@
 !
 ! update the next assimilation data time
 !
+!/OASIS      FIRST_STEP = .FALSE.
 
 !/MEMCHECK      write(740+IAPROC,*) 'memcheck_____:', 'WW3_SHEL SECTION 8'
 !/MEMCHECK      call getMallocInfo(mallinfos)
