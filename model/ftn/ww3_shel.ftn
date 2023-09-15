@@ -346,7 +346,6 @@
 !/MPI      LOGICAL             :: FLHYBR = .FALSE.
 !/OMPH      INTEGER             :: THRLEV
 !/OASIS      LOGICAL             :: L_MASTER    
-!/OASIS      LOGICAL             :: FIRST_STEP = .TRUE.
 !
 !/
 !/ ------------------------------------------------------------------- /
@@ -2363,7 +2362,6 @@
 !
 ! update the next assimilation data time
 !
-!/OASIS      FIRST_STEP = .FALSE.
 
 !/MEMCHECK      write(740+IAPROC,*) 'memcheck_____:', 'WW3_SHEL SECTION 8'
 !/MEMCHECK      call getMallocInfo(mallinfos)
