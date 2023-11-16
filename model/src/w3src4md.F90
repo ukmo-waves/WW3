@@ -138,6 +138,8 @@ CONTAINS
 !> @param[in]    LLWS      Wind sea true/false array for each component.
 !> @param[out]   FMEANWS   Mean frequency of wind sea, used for tail.
 !> @param[out]   DLWMEAN   Mean Long wave direction  (L. Romero 2019).
+!> @param[in]    MASK      Seapoint mask
+!> @param[in]    NP        Number of sea points
 !>
 !> @author F. Ardhuin
 !> @author H. L. Tolman
@@ -149,7 +151,8 @@ CONTAINS
        TAUA, TAUADIR, DAIR,                              &
 #endif
        USTAR, USDIR,                                     &
-       TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DLWMEAN)
+       TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DLWMEAN, &
+       MASK, NP)
     !/
     !/                  +-----------------------------------+
     !/                  | WAVEWATCH III                SHOM |
@@ -164,6 +167,8 @@ CONTAINS
     !/    08-Jun-2018 : use STRACE and FLUSH                ( version 6.04 )
     !/    22-Feb-2020 : Merge Romero (2019) and cleanup     ( version 7.06 )
     !/    22-Jun-2021 : Add FLX5 to use stresses with the ST( version 7.14 )
+    !/    16-Nov-2023 : Refactored to process array of      ( versoin 7.14 )
+    !/                  seapoints
     !/
     !  1. Purpose :
     !
@@ -200,6 +205,8 @@ CONTAINS
     !       LLWS    L.A.  I   Wind sea true/false array for each component
     !       FMEANWS Real  O   Mean frequency of wind sea, used for tail
     !       DLWMEAN Real  O   Mean Long wave direction  (L. Romero 2019)
+    !       MASK    L.A.  I   Seapoint mask
+    !       NP      Int   I   Number of points
     !     ----------------------------------------------------------------
     !
     !  4. Subroutines used :
@@ -215,6 +222,13 @@ CONTAINS
     !  6. Error messages :
     !
     !  7. Remarks :
+    !
+    !       Points with a MASK value of .TRUE. will not be calculated.
+    !       Element in MASK array is set to .TRUE. for points in any of the following
+    !       conditions:
+    !         - Point is "disabled" (e.g. dry or coverd by ice; determined by MAPSTA)
+    !         - Has FLAGST = .FALSE.
+    !         - Has completed source term integration time stepping (set in w3srce)
     !
     !  8. Structure :
     !
@@ -251,26 +265,29 @@ CONTAINS
     !/ ------------------------------------------------------------------- /
     !/ Parameter list
     !/
-    REAL, INTENT(IN)        :: A(NTH,NK), CG(NK), WN(NK), U, UDIR
+    REAL, INTENT(IN)        :: A(NTH,NK,NP), CG(NK,NP), WN(NK,NP), U(NP), UDIR(NP)
 #ifdef W3_FLX5
-    REAL, INTENT(IN)        :: TAUA, TAUADIR, DAIR
+    REAL, INTENT(IN)        :: TAUA(NP), TAUADIR(NP), DAIR(NP)
 #endif
-    REAL, INTENT(IN)        :: TAUWX, TAUWY
-    LOGICAL, INTENT(IN)     :: LLWS(NSPEC)
-    REAL, INTENT(INOUT)     :: USTAR ,USDIR
-    REAL, INTENT(OUT)       :: EMEAN, FMEAN, FMEAN1, WNMEAN, AMAX,  &
-         CD, Z0, CHARN, FMEANWS, DLWMEAN
+    REAL, INTENT(IN)        :: TAUWX(NP), TAUWY(NP)
+    LOGICAL, INTENT(IN)     :: LLWS(NSPEC,NP)
+    REAL, INTENT(INOUT)     :: USTAR(NP), USDIR(NP)
+    REAL, INTENT(OUT)       :: EMEAN(NP), FMEAN(NP), FMEAN1(NP), WNMEAN(NP), &
+                               AMAX(NP), CD(NP), Z0(NP), CHARN(NP), & 
+                               FMEANWS(NP), DLWMEAN(NP)
+    LOGICAL, INTENT(IN)     :: MASK(NP)
+    INTEGER, INTENT(IN)     :: NP
     !/
     !/ ------------------------------------------------------------------- /
     !/ Local parameters
     !/
-    INTEGER                 :: IS, IK, ITH
+    INTEGER :: IS, IK, ITH, IP
 #ifdef W3_S
-    INTEGER, SAVE           :: IENT = 0
+    INTEGER, SAVE :: IENT = 0
 #endif
 
-    REAL                    :: TAUW, EBAND, EMEANWS,UNZ,            &
-         EB(NK),EB2(NK),ELCS, ELSN
+    REAL :: TAUW, EBAND, EMEANWS,UNZ,            &
+            EB(NK),EB2(NK),ELCS, ELSN
     !/
     !/ ------------------------------------------------------------------- /
     !/
@@ -278,8 +295,9 @@ CONTAINS
     CALL STRACE (IENT, 'W3SPR4')
 #endif
     !
-    UNZ    = MAX ( 0.01 , U )
-    USTAR  = MAX ( 0.0001 , USTAR )
+    ! Below moved into NP loop.
+    !UNZ = MAX( 0.01 , U(IP) )
+    !USTAR(IP) = MAX( 0.0001 , USTAR(IP) )
     !
     EMEAN  = 0.
     EMEANWS= 0.
@@ -291,89 +309,103 @@ CONTAINS
     DLWMEAN =0.
     ELCS =0.
     ELSN =0.
-    !
-    ! 1.  Integral over directions and maximum --------------------------- *
-    !
-    DO IK=1, NK
-      EB(IK)  = 0.
-      EB2(IK) = 0.
-      DO ITH=1, NTH
-        IS=ITH+(IK-1)*NTH
-        EB(IK) = EB(IK) + A(ITH,IK)
-        ELCS = ELCS + A(ITH,IK)*ECOS(IS)*DDEN(IK) / CG(IK)
-        ELSN = ELSN + A(ITH,IK)*ESIN(IS)*DDEN(IK) / CG(IK)
-        IF (LLWS(IS)) EB2(IK) = EB2(IK) + A(ITH,IK)
-        AMAX   = MAX ( AMAX , A(ITH,IK) )
+
+    ! Seapoint loop
+    DO IP=1,NP
+      ! Don't process point if masked (disabled, or already finished integration)
+      IF(MASK(IP)) CYCLE
+
+      ! Refactor notes: Moved from outside loop
+      ! TODO: UNZ scalar can be factored out in section 5
+      UNZ = MAX( 0.01 , U(IP) )
+      USTAR(IP) = MAX( 0.0001 , USTAR(IP) )
+
+      !
+      ! 1.  Integral over directions and maximum --------------------------- *
+      !
+      DO IK=1, NK
+        EB(IK)  = 0.
+        EB2(IK) = 0.
+        DO ITH=1, NTH
+          IS=ITH+(IK-1)*NTH
+          EB(IK) = EB(IK) + A(ITH,IK,IP)
+          ELCS = ELCS + A(ITH,IK,IP)*ECOS(IS)*DDEN(IK) / CG(IK,IP)
+          ELSN = ELSN + A(ITH,IK,IP)*ESIN(IS)*DDEN(IK) / CG(IK,IP)
+#define TEST_W3GDATMD___disabledf
+          IF (LLWS(IS,IP)) EB2(IK) = EB2(IK) + A(ITH,IK,IP)
+          AMAX   = MAX ( AMAX , A(ITH,IK,IP) )
+        END DO
       END DO
-    END DO
 
-    DLWMEAN=ATAN2(ELSN,ELCS);
-    !
-    ! 2.  Integrate over directions -------------------------------------- *
-    !
-    DO IK=1, NK
-      EB(IK)   = EB(IK) * DDEN(IK) / CG(IK)
-      EB2(IK)   = EB2(IK) * DDEN(IK) / CG(IK)
-      EMEAN    = EMEAN  + EB(IK)
-      FMEAN    = FMEAN  + EB(IK) /SIG(IK)
-      FMEAN1   = FMEAN1 + EB(IK) *(SIG(IK)**(2.*WWNMEANPTAIL))
-      WNMEAN   = WNMEAN + EB(IK) *(WN(IK)**WWNMEANP)
-      EMEANWS  = EMEANWS+ EB2(IK)
-      FMEANWS  = FMEANWS+ EB2(IK)*(SIG(IK)**(2.*WWNMEANPTAIL))
-    END DO
-    !
-    ! 3.  Add tail beyond discrete spectrum and get mean pars ------------ *
-    !     ( DTH * SIG absorbed in FTxx )
-    !
-    EBAND  = EB(NK) / DDEN(NK)
-    EMEAN  = EMEAN  + EBAND * FTE
-    FMEAN  = FMEAN  + EBAND * FTF
-    FMEAN1 = FMEAN1 + EBAND * SSTXFTFTAIL
-    WNMEAN = WNMEAN + EBAND * SSTXFTWN
-    EBAND  = EB2(NK) / DDEN(NK)
-    EMEANWS = EMEANWS + EBAND * FTE
-    FMEANWS = FMEANWS + EBAND * SSTXFTFTAIL
-    !
-    ! 4.  Final processing
-    !
-    FMEAN  = TPIINV * EMEAN / MAX ( 1.E-7 , FMEAN )
-    IF (FMEAN1.LT.1.E-7) THEN
-      FMEAN1=TPIINV * SIG(NK)
-    ELSE
-      FMEAN1  = TPIINV *( MAX ( 1.E-7 , FMEAN1 )                       &
-           / MAX ( 1.E-7 , EMEAN ))**(1/(2.*WWNMEANPTAIL))
-    ENDIF
-    WNMEAN = ( MAX ( 1.E-7 , WNMEAN )                              &
-         / MAX ( 1.E-7 , EMEAN ) )**(1/WWNMEANP)
-    IF (FMEANWS.LT.1.E-7.OR.EMEANWS.LT.1.E-7) THEN
-      FMEANWS=TPIINV * SIG(NK)
-    ELSE
-      FMEANWS  = TPIINV *( MAX ( 1.E-7 , FMEANWS )                       &
-           / MAX ( 1.E-7 , EMEANWS ))**(1/(2.*WWNMEANPTAIL))
-    END IF
+      DLWMEAN=ATAN2(ELSN,ELCS);
+      !
+      ! 2.  Integrate over directions -------------------------------------- *
+      !
+      DO IK=1, NK
+        EB(IK) = EB(IK) * DDEN(IK) / CG(IK,IP)
+        EB2(IK) = EB2(IK) * DDEN(IK) / CG(IK,IP)
+        EMEAN(IP) = EMEAN(IP) + EB(IK)
+        FMEAN(IP) = FMEAN(IP) + EB(IK) / SIG(IK)
+        FMEAN1(IP) = FMEAN1(IP) + EB(IK) * (SIG(IK)**(2.*WWNMEANPTAIL))
+        WNMEAN(IP) = WNMEAN(IP) + EB(IK) * (WN(IK,IP)**WWNMEANP)
+        EMEANWS = EMEANWS + EB2(IK)
+        FMEANWS(IP) = FMEANWS(IP) + EB2(IK) * (SIG(IK)**(2.*WWNMEANPTAIL))
+      END DO
+      !
+      ! 3.  Add tail beyond discrete spectrum and get mean pars ------------ *
+      !     ( DTH * SIG absorbed in FTxx )
+      !
+      EBAND = EB(NK) / DDEN(NK)
+      EMEAN(IP)  = EMEAN(IP)  + EBAND * FTE
+      FMEAN(IP)  = FMEAN(IP)  + EBAND * FTF
+      FMEAN1(IP) = FMEAN1(IP) + EBAND * SSTXFTFTAIL
+      WNMEAN(IP) = WNMEAN(IP) + EBAND * SSTXFTWN
+      EBAND  = EB2(NK) / DDEN(NK)
+      EMEANWS = EMEANWS + EBAND * FTE
+      FMEANWS(IP) = FMEANWS(IP) + EBAND * SSTXFTFTAIL
+      !
+      ! 4.  Final processing
+      !
+      FMEAN(IP) = TPIINV * EMEAN(IP) / MAX ( 1.E-7 , FMEAN(IP) )
+      IF (FMEAN1(IP) .LT. 1.E-7) THEN
+        FMEAN1(IP) = TPIINV * SIG(NK)
+      ELSE
+        FMEAN1(IP) = TPIINV * ( MAX ( 1.E-7, FMEAN1(IP) )              &
+            / MAX ( 1.E-7, EMEAN(IP) ))**(1/(2.*WWNMEANPTAIL))
+      ENDIF
+      WNMEAN(IP) = ( MAX ( 1.E-7, WNMEAN(IP) )                         &
+          / MAX ( 1.E-7, EMEAN(IP) ) )**(1/WWNMEANP)
+      IF (FMEANWS(IP) .LT. 1.E-7 .OR. EMEANWS .LT. 1.E-7) THEN
+        FMEANWS(IP) = TPIINV * SIG(NK)
+      ELSE
+        FMEANWS(IP) = TPIINV * ( MAX ( 1.E-7, FMEANWS(IP) )            &
+            / MAX ( 1.E-7, EMEANWS ))**(1/(2.*WWNMEANPTAIL))
+      END IF
 
-    !
-    ! 5.  Cd and z0 ----------------------------------------------- *
-    !
-    TAUW = SQRT(TAUWX**2+TAUWY**2)
-    !
+      !
+      ! 5.  Cd and z0 ----------------------------------------------- *
+      !
+      TAUW = SQRT(TAUWX(IP)**2 + TAUWY(IP)**2)
+      !
 #ifdef W3_FLX5
-    CALL W3FLX5 ( ZZWND, U, UDIR, TAUA, TAUADIR, DAIR,  &
-         USTAR, USDIR, Z0, CD, CHARN )
+      CALL W3FLX5 ( ZZWND, U(IP), UDIR(IP), TAUA(IP), TAUADIR(IP),     &
+          DAIR(IP), USTAR(IP), USDIR(IP), Z0(IP), CD(IP), CHARN(IP) )
 #else
-    Z0=0.
-    CALL CALC_USTAR(U,TAUW,USTAR,Z0,CHARN)
-    UNZ    = MAX ( 0.01 , U )
-    CD     = (USTAR/UNZ)**2
-    USDIR = UDIR
+      Z0 = 0.0
+      CALL CALC_USTAR(U(IP), TAUW, USTAR(IP), Z0(IP), CHARN(IP))
+      UNZ = MAX ( 0.01 , U(IP) )
+      CD = (USTAR(IP) / UNZ)**2
+      USDIR(IP) = UDIR(IP)
 #endif
-    !
-    ! 6.  Final test output ---------------------------------------------- *
-    !
+      !
+      ! 6.  Final test output ---------------------------------------------- *
+      !
 #ifdef W3_T
-    WRITE (NDST,9060) EMEAN, WNMEAN, TPIINV, USTAR, CD, Z0
+      WRITE (NDST,9060) EMEAN(IP), WNMEAN(IP), TPIINV, USTAR(IP), CD(IP), Z0(IP)
 #endif
-    !
+      !
+    END DO ! IP
+
     RETURN
     !
     ! Formats

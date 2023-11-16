@@ -1339,27 +1339,39 @@ CONTAINS
       !
       ! 1.c Set mean parameters
       !
-      DO CSEA=1,NSEAC
-        IF(SRC_MASK(CSEA)) CYCLE
-        JSEA = CHUNK0 + CSEA - 1
-
+      
         ! CB Refactor - zero CHARN element wise, rather than whole array (for b4b reproducibility)
         CHARN(JSEA) = 0.
 
 #ifdef W3_ST0
+      DO CSEA=1,NSEAC
+        IF(SRC_MASK(CSEA)) CYCLE
+        JSEA = CHUNK0 + CSEA - 1
         CALL W3SPR0 (SPEC(:,JSEA), CG1_CHUNK(:,CSEA), WN1_CHUNK(:,CSEA), EMEAN(CSEA), FMEAN(CSEA), WNMEAN(JSEA), AMAX(CSEA))
         FP(CSEA) = 0.85 * FMEAN(CSEA)
+      END DO
 #endif
 #ifdef W3_ST1
+      DO CSEA=1,NSEAC
+        IF(SRC_MASK(CSEA)) CYCLE
+        JSEA = CHUNK0 + CSEA - 1
         CALL W3SPR1 (SPEC(:,JSEA), CG1_CHUNK(:,CSEA), WN1_CHUNK(:,CSEA), EMEAN(CSEA), FMEAN(CSEA), WNMEAN(JSEA), AMAX(CSEA))
         FP(CSEA)= 0.85 * FMEAN(CSEA)
+      END DO
 #endif
 #ifdef W3_ST2
+      DO CSEA=1,NSEAC
+        IF(SRC_MASK(CSEA)) CYCLE
+        JSEA = CHUNK0 + CSEA - 1
         CALL INIT_GET_ISEA(ISEA, JSEA)  !! TODO - to keep FPI working
         CALL W3SPR2 (SPEC(:,JSEA), CG1_CHUNK(:,CSEA), WN1_CHUNK(:,CSEA), DEPTH(CSEA), FPI(ISEA), U10_CHUNK(CSEA), UST_CHUNK(CSEA),  &
            EMEAN(CSEA), FMEAN(CSEA), WNMEAN(JSEA), AMAX(CSEA), ALPHA(:,JSEA), FP(CSEA) )
+      END DO           
 #endif
 #ifdef W3_ST3
+      DO CSEA=1,NSEAC
+        IF(SRC_MASK(CSEA)) CYCLE
+        JSEA = CHUNK0 + CSEA - 1
         TAUWX(JSEA)=0.
         TAUWY(JSEA)=0.
         IF ( IT .eq. 0 ) THEN
@@ -1381,71 +1393,85 @@ CONTAINS
            AMAX(CSEA), U10_CHUNK(CSEA), U10D_CHUNK(CSEA), UST_CHUNK(CSEA), USTD_CHUNK(CSEA),          &
            TAUWX(JSEA), TAUWY(JSEA), CD(CSEA), Z0(CSEA), CHARN(JSEA), LLWS(:,CSEA), FMEANWS(CSEA))
         TWS(JSEA) = 1./FMEANWS(CSEA)
+      END DO
 #endif
 #ifdef W3_ST4
-        TAUWX(JSEA)=0.
-        TAUWY(JSEA)=0.
-        IF ( IT .eq. 0 ) THEN
-          LLWS(:,CSEA) = .TRUE.
-          UST_CHUNK(CSEA)=0.
-          USTD_CHUNK(CSEA)=0.
-        ELSE
-          CALL W3SPR4 (SPEC(:,JSEA), CG1_CHUNK(:,CSEA), WN1_CHUNK(:,CSEA), EMEAN(CSEA), FMEAN(CSEA), FMEAN1(CSEA), WNMEAN(JSEA), &
-             AMAX(CSEA), U10_CHUNK(CSEA), U10D_CHUNK(CSEA),                           &
+      !! Refactored call to W3SPT4 to take array of spectra
+      TAUWX(CHUNK0:CHUNKN) = 0.
+      TAUWY(CHUNK0:CHUNKN) = 0.
+      IF ( IT .eq. 0 ) THEN
+        LLWS(:,CHUNK0:CHUNKN) = .TRUE.
+        UST_CHUNK(CHUNK0:CHUNKN)=0.
+        USTD_CHUNK(CHUNK0:CHUNKN)=0.
+      ELSE
+        CALL W3SPR4 (SPEC(:,CHUNK0:CHUNKN), CG1_CHUNK(:,1:NSEAC), &
+            WN1_CHUNK(:,1:NSEAC), EMEAN(1:NSEAC), FMEAN(1:NSEAC), &
+            FMEAN1(1:NSEAC), WNMEAN(CHUNK0:CHUNKN), &
+            AMAX(1:NSEAC), U10_CHUNK(1:NSEAC), U10D_CHUNK(1:NSEAC), &
 #ifdef W3_FLX5
-             TAUA_CHUNK(CSEA), TAUADIR_CHUNK(CSEA), DAIR_CHUNK(CSEA),    &
+            TAUA_CHUNK(1:NSEAC), TAUADIR_CHUNK(1:NSEAC), DAIR_CHUNK(1:NSEAC), &
 #endif
-             UST_CHUNK(CSEA), USTD_CHUNK(CSEA),                                  &
-             TAUWX(JSEA), TAUWY(JSEA), CD(CSEA), Z0(CSEA), CHARN(JSEA), LLWS(:,CSEA), FMEANWS(CSEA), DLWMEAN(CSEA))
-#endif
+            UST_CHUNK(1:NSEAC), USTD_CHUNK(1:NSEAC), &
+            TAUWX(CHUNK0:CHUNKN), TAUWY(CHUNK0:CHUNKN), CD(1:NSEAC), Z0(1:NSEAC), &
+            CHARN(CHUNK0:CHUNKN), LLWS(:,1:NSEAC), FMEANWS(1:NSEAC), DLWMEAN(1:NSEAC), &
+            SRC_MASK(1:NSEAC), NSEAC)
 
-#if defined(W3_DEBUGSRC) && defined(W3_ST4)
-          IF (IX(CSEA) == DEBUG_NODE) THEN
-            WRITE(740+IAPROC,*) '1: out value USTAR=', UST_CHUNK(CSEA), ' USTDIR=', USTD_CHUNK(CSEA)
-            WRITE(740+IAPROC,*) '1: out value EMEAN(JSEA)=', EMEAN(CSEA), ' FMEAN(JSEA)=', FMEAN(JSEA)
-            WRITE(740+IAPROC,*) '1: out value FMEAN1(JSEA)=', FMEAN1(CSEA), ' WNMEAN(JSEA)=', WNMEAN(JSEA)
-            WRITE(740+IAPROC,*) '1: out value CD=', CD(CSEA), ' Z0=', Z0(CSEA)
-            WRITE(740+IAPROC,*) '1: out value ALPHA=', CHARN(JSEA), ' FMEANWS=', FMEANWS(CSEA)
-          END IF
-#endif
-
-#ifdef W3_ST4
-          CALL W3SIN4 ( SPEC(:,JSEA), CG1_CHUNK(:,CSEA), WN2(:,CSEA), U10_CHUNK(CSEA), UST_CHUNK(CSEA), DRAT(CSEA), AS_CHUNK(CSEA),       &
-             U10D_CHUNK(CSEA), Z0(CSEA), CD(CSEA), TAUWX(JSEA), TAUWY(JSEA), TAUWAX(CSEA), TAUWAY(CSEA),       &
-             VSIN(:,CSEA), VDIN(:,CSEA), LLWS(:,CSEA), IX(CSEA), IY(CSEA), BRLAMBDA(:,CSEA) )
-        END IF  ! IT==0
-#endif
-#if defined(W3_DEBUGSRC) && defined(W3_ST4)
+#if defined(W3_DEBUGSRC)
         IF (IX(CSEA) == DEBUG_NODE) THEN
-          WRITE(740+IAPROC,*) '1: U10DIR=', U10D_CHUNK(CSEA), ' Z0=', Z0(CSEA), ' CHARN=', CHARN(JSEA)
-          WRITE(740+IAPROC,*) '1: USTAR=', UST_CHUNK(CSEA), ' U10ABS=', U10_CHUNK(CSEA), ' AS=', AS_CHUNK(CSEA)
-          WRITE(740+IAPROC,*) '1: DRAT=', DRAT(CSEA)
-          WRITE(740+IAPROC,*) '1: TAUWX=', TAUWX(JSEA), ' TAUWY=', TAUWY(JSEA)
-          WRITE(740+IAPROC,*) '1: TAUWAX=', TAUWAX, ' TAUWAY=', TAUWAY
-          WRITE(740+IAPROC,*) '1: min(CG1)=', minval(CG1_CHUNK(:,CSEA)), ' max(CG1)=', maxval(CG1_CHUNK(:,CSEA))
-          WRITE(740+IAPROC,*) '1: W3SIN4(min/max/sum)VSIN=', minval(VSIN(:,CSEA)), maxval(VSIN(:,CSEA)), sum(VSIN(:,CSEA))
-          WRITE(740+IAPROC,*) '1: W3SIN4(min/max/sum)VDIN=', minval(VDIN(:,CSEA)), maxval(VDIN(:,CSEA)), sum(VDIN(:,CSEA))
+          WRITE(740+IAPROC,*) '1: out value USTAR=', UST_CHUNK(CSEA), ' USTDIR=', USTD_CHUNK(CSEA)
+          WRITE(740+IAPROC,*) '1: out value EMEAN(JSEA)=', EMEAN(CSEA), ' FMEAN(JSEA)=', FMEAN(JSEA)
+          WRITE(740+IAPROC,*) '1: out value FMEAN1(JSEA)=', FMEAN1(CSEA), ' WNMEAN(JSEA)=', WNMEAN(JSEA)
+          WRITE(740+IAPROC,*) '1: out value CD=', CD(CSEA), ' Z0=', Z0(CSEA)
+          WRITE(740+IAPROC,*) '1: out value ALPHA=', CHARN(JSEA), ' FMEANWS=', FMEANWS(CSEA)
         END IF
 #endif
 
-#ifdef W3_ST4
-        CALL W3SPR4 (SPEC(:,JSEA), CG1_CHUNK(:,CSEA), WN1_CHUNK(:,CSEA), &
-          EMEAN(CSEA), FMEAN(CSEA), FMEAN1(CSEA), WNMEAN(JSEA), &
-          AMAX(CSEA), U10_CHUNK(CSEA), U10D_CHUNK(CSEA),        &
+        !! Still need explicit loop around W3SIN4 
+        DO CSEA=1,NSEAC
+          IF(SRC_MASK(CSEA)) CYCLE
+          JSEA = CHUNK0 + CSEA - 1
+          CALL W3SIN4 ( SPEC(:,JSEA), CG1_CHUNK(:,CSEA), WN2(:,CSEA), U10_CHUNK(CSEA), UST_CHUNK(CSEA), DRAT(CSEA), AS_CHUNK(CSEA),       &
+             U10D_CHUNK(CSEA), Z0(CSEA), CD(CSEA), TAUWX(JSEA), TAUWY(JSEA), TAUWAX(CSEA), TAUWAY(CSEA),       &
+             VSIN(:,CSEA), VDIN(:,CSEA), LLWS(:,CSEA), IX(CSEA), IY(CSEA), BRLAMBDA(:,CSEA) )
+        END DO             
+      END IF  ! IT==0
+
+#if defined(W3_DEBUGSRC)
+      IF (IX(CSEA) == DEBUG_NODE) THEN
+        WRITE(740+IAPROC,*) '1: U10DIR=', U10D_CHUNK(CSEA), ' Z0=', Z0(CSEA), ' CHARN=', CHARN(JSEA)
+        WRITE(740+IAPROC,*) '1: USTAR=', UST_CHUNK(CSEA), ' U10ABS=', U10_CHUNK(CSEA), ' AS=', AS_CHUNK(CSEA)
+        WRITE(740+IAPROC,*) '1: DRAT=', DRAT(CSEA)
+        WRITE(740+IAPROC,*) '1: TAUWX=', TAUWX(JSEA), ' TAUWY=', TAUWY(JSEA)
+        WRITE(740+IAPROC,*) '1: TAUWAX=', TAUWAX, ' TAUWAY=', TAUWAY
+        WRITE(740+IAPROC,*) '1: min(CG1)=', minval(CG1_CHUNK(:,CSEA)), ' max(CG1)=', maxval(CG1_CHUNK(:,CSEA))
+        WRITE(740+IAPROC,*) '1: W3SIN4(min/max/sum)VSIN=', minval(VSIN(:,CSEA)), maxval(VSIN(:,CSEA)), sum(VSIN(:,CSEA))
+        WRITE(740+IAPROC,*) '1: W3SIN4(min/max/sum)VDIN=', minval(VDIN(:,CSEA)), maxval(VDIN(:,CSEA)), sum(VDIN(:,CSEA))
+      END IF
+#endif
+
+      !! Refactored call to W3SPT4 to take array of spectra
+      CALL W3SPR4 (SPEC(:,CHUNK0:CHUNKN), CG1_CHUNK(:,1:NSEAC), &
+          WN1_CHUNK(:,1:NSEAC), EMEAN(1:NSEAC), FMEAN(1:NSEAC), &
+          FMEAN1(1:NSEAC), WNMEAN(CHUNK0:CHUNKN), &
+          AMAX(1:NSEAC), U10_CHUNK(1:NSEAC), U10D_CHUNK(1:NSEAC), &
 #ifdef W3_FLX5
-          TAUA_CHUNK(CSEA), TAUADIR_CHUNK(CSEA), DAIR_CHUNK(CSEA),                    &
+          TAUA_CHUNK(1:NSEAC), TAUADIR_CHUNK(1:NSEAC), DAIR_CHUNK(1:NSEAC), &
 #endif
-          UST_CHUNK(CSEA), USTD_CHUNK(CSEA),                                &
-          TAUWX(JSEA), TAUWY(JSEA), CD(CSEA), Z0(CSEA), CHARN(JSEA), &
-          LLWS(:,CSEA), FMEANWS(CSEA), DLWMEAN(CSEA))
+          UST_CHUNK(1:NSEAC), USTD_CHUNK(1:NSEAC), &
+          TAUWX(CHUNK0:CHUNKN), TAUWY(CHUNK0:CHUNKN), CD(1:NSEAC), Z0(1:NSEAC), &
+          CHARN(CHUNK0:CHUNKN), LLWS(:,1:NSEAC), FMEANWS(1:NSEAC), DLWMEAN(1:NSEAC), &
+          SRC_MASK(1:NSEAC), NSEAC)
 
-        TWS(JSEA) = 1./FMEANWS(CSEA)
+      TWS(CHUNK0:CHUNKN) = 1./FMEANWS(1:NSEAC)
 #endif
+
 #ifdef W3_ST6
+      DO CSEA=1,NSEAC
+        IF(SRC_MASK(CSEA)) CYCLE
+        JSEA = CHUNK0 + CSEA - 1
         CALL W3SPR6 (SPEC(:,JSEA), CG1_CHUNK(:,CSEA), WN1_CHUNK(:,CSEA), EMEAN(CSEA), FMEAN(CSEA), WNMEAN(JSEA), AMAX(CSEA), FP(CSEA))
+      END DO
 #endif
-
-      END DO ! CSEA
       !
       ! 1.c2 Stores the initial data
       !
@@ -2255,6 +2281,8 @@ CONTAINS
         !   a Mean parameters
         !
         !
+
+#ifndef W3_ST4
         DO CSEA=1,NSEAC
           IF(SRC_MASK(CSEA)) CYCLE
           JSEA = CHUNK0 + CSEA - 1
@@ -2275,20 +2303,37 @@ CONTAINS
              WNMEAN(JSEA), AMAX(CSEA), U10_CHUNK(CSEA), U10D_CHUNK(CSEA), UST_CHUNK(CSEA), USTD_CHUNK(CSEA), &
              TAUWX(JSEA), TAUWY(JSEA), CD(CSEA), Z0(CSEA), CHARN(JSEA), LLWS(:,CSEA), FMEANWS(CSEA))
 #endif
-#ifdef W3_ST4
-          CALL W3SPR4 (SPEC(:,JSEA), CG1_CHUNK(:,CSEA), WN1_CHUNK(:,CSEA), EMEAN(CSEA), FMEAN(CSEA), FMEAN1(CSEA), WNMEAN(JSEA),&
-             AMAX(CSEA), U10_CHUNK(CSEA), U10D_CHUNK(CSEA),                          &
-#ifdef W3_FLX5
-             TAUA_CHUNK(CSEA), TAUADIR_CHUNK(CSEA), DAIR_CHUNK(CSEA),                     &
-#endif
-             UST_CHUNK(CSEA), USTD_CHUNK(CSEA),                                 &
-             TAUWX(JSEA), TAUWY(JSEA), CD(CSEA), Z0(CSEA), CHARN(JSEA), LLWS(:,CSEA), FMEANWS(CSEA), DLWMEAN(CSEA))
-#endif
+!!#ifdef W3_ST4
+!!          CALL W3SPR4 (SPEC(:,JSEA), CG1_CHUNK(:,CSEA), WN1_CHUNK(:,CSEA), EMEAN(CSEA), FMEAN(CSEA), FMEAN1(CSEA), WNMEAN(JSEA),&
+!!             AMAX(CSEA), U10_CHUNK(CSEA), U10D_CHUNK(CSEA),                          &
+!!#ifdef W3_FLX5
+!!             TAUA_CHUNK(CSEA), TAUADIR_CHUNK(CSEA), DAIR_CHUNK(CSEA),                     &
+!!#endif
+!!             UST_CHUNK(CSEA), USTD_CHUNK(CSEA),                                 &
+!!             TAUWX(JSEA), TAUWY(JSEA), CD(CSEA), Z0(CSEA), CHARN(JSEA), LLWS(:,CSEA), FMEANWS(CSEA), DLWMEAN(CSEA))
+!!#endif
 #ifdef W3_ST6
           CALL W3SPR6 (SPEC(:,JSEA), CG1_CHUNK(:,CSEA), WN1_CHUNK(:,CSEA), EMEAN(CSEA), FMEAN(CSEA), WNMEAN(JSEA), AMAX(CSEA), FP(CSEA))
 #endif
         END DO ! CSEA; W3SPRx
+! ifndef W3_ST4:        
+#endif
 
+#ifdef W3_ST4
+        ! Recatored call to W3SPR4 - needs to happen outside CSEA loop
+        CALL W3SPR4 (SPEC(:,CHUNK0:CHUNKN), CG1_CHUNK(:,1:NSEAC), &
+            WN1_CHUNK(:,1:NSEAC), EMEAN(1:NSEAC), FMEAN(1:NSEAC), &
+            FMEAN1(1:NSEAC), WNMEAN(CHUNK0:CHUNKN), &
+            AMAX(1:NSEAC), U10_CHUNK(1:NSEAC), U10D_CHUNK(1:NSEAC), &
+#ifdef W3_FLX5
+            TAUA_CHUNK(1:NSEAC), TAUADIR_CHUNK(1:NSEAC), DAIR_CHUNK(1:NSEAC), &
+#endif
+            UST_CHUNK(1:NSEAC), USTD_CHUNK(1:NSEAC), &
+            TAUWX(CHUNK0:CHUNKN), TAUWY(CHUNK0:CHUNKN), CD(1:NSEAC), Z0(1:NSEAC), &
+            CHARN(CHUNK0:CHUNKN), LLWS(:,1:NSEAC), FMEANWS(1:NSEAC), DLWMEAN(1:NSEAC), &
+            SRC_MASK(1:NSEAC), NSEAC)
+#endif
+!
         DO CSEA=1,NSEAC
           IF(SRC_MASK(CSEA)) CYCLE
           JSEA = CHUNK0 + CSEA - 1
