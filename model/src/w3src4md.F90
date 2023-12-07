@@ -337,7 +337,7 @@ CONTAINS
         END DO
       END DO
 
-      DLWMEAN=ATAN2(ELSN,ELCS);
+      DLWMEAN(IP) = ATAN2(ELSN,ELCS)
       !
       ! 2.  Integrate over directions -------------------------------------- *
       !
@@ -391,10 +391,10 @@ CONTAINS
       CALL W3FLX5 ( ZZWND, U(IP), UDIR(IP), TAUA(IP), TAUADIR(IP),     &
           DAIR(IP), USTAR(IP), USDIR(IP), Z0(IP), CD(IP), CHARN(IP) )
 #else
-      Z0 = 0.0
+      Z0(IP) = 0.0
       CALL CALC_USTAR(U(IP), TAUW, USTAR(IP), Z0(IP), CHARN(IP))
       UNZ = MAX ( 0.01 , U(IP) )
-      CD = (USTAR(IP) / UNZ)**2
+      CD(IP) = (USTAR(IP) / UNZ)**2
       USDIR(IP) = UDIR(IP)
 #endif
       !
