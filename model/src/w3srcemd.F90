@@ -2480,25 +2480,31 @@ CONTAINS
               ICE_CHUNK(CSEA), VSIN(:,CSEA), VDIN(:,CSEA), LLWS(:,CSEA), IX(CSEA), IY(CSEA) )
 #endif
 #ifdef W3_ST4
-        CALL W3SIN4 ( SPEC(:,JSEA), CG1_CHUNK(:,CSEA), WN2(:,CSEA), &
+          CALL W3SIN4 ( SPEC(:,JSEA), CG1_CHUNK(:,CSEA), WN2(:,CSEA), &
              U10_CHUNK(CSEA), UST_CHUNK(CSEA), DRAT(CSEA), AS_CHUNK(CSEA),      &
              U10D_CHUNK(CSEA), Z0(CSEA), CD(CSEA), TAUWX(JSEA), TAUWY(JSEA), &
              TAUWAX(CSEA), TAUWAY(CSEA), &
              VSIN(:,CSEA), VDIN(:,CSEA), LLWS(:,CSEA), IX(CSEA), IY(CSEA), BRLAMBDA(:,CSEA) )
-        IF (SINTAILPAR(4).LT.0.5) THEN 
-          CALL W3SPR4 (SPEC(:,JSEA), CG1_CHUNK(:,CSEA), WN1_CHUNK(:,CSEA), EMEAN(CSEA), &
-              FMEAN(CSEA), FMEAN1(CSEA), WNMEAN(JSEA), AMAX(CSEA), U10_CHUNK(CSEA), U10D_CHUNK(CSEA), &
-#ifdef W3_FLX5
-              TAUA_CHUNK(CSEA), TAUADIR_CHUNK(CSEA), DAIR_CHUNK(CSEA), &
-#endif
-              UST_CHUNK(CSEA), USTD_CHUNK(CSEA), &
-              TAUWX(JSEA), TAUWY(JSEA), CD(CSEA), Z0(CSEA), CHARN(JSEA), &
-              LLWS(:,CSEA), FMEANWS(CSEA), DLWMEAN(CSEA))
-        ENDIF
 #endif
 
         END DO ! CSEA; W3SINx
 
+#ifdef W3_ST4
+        IF (SINTAILPAR(4).LT.0.5) THEN 
+          ! Recatored call to W3SPR4 - needs to happen outside CSEA loop
+          CALL W3SPR4 (SPEC(:,CHUNK0:CHUNKN), CG1_CHUNK(:,1:NSEAC), &
+              WN1_CHUNK(:,1:NSEAC), EMEAN(1:NSEAC), FMEAN(1:NSEAC), &
+              FMEAN1(1:NSEAC), WNMEAN(CHUNK0:CHUNKN), &
+              AMAX(1:NSEAC), U10_CHUNK(1:NSEAC), U10D_CHUNK(1:NSEAC), &
+#ifdef W3_FLX5
+              TAUA_CHUNK(1:NSEAC), TAUADIR_CHUNK(1:NSEAC), DAIR_CHUNK(1:NSEAC), &
+#endif
+              UST_CHUNK(1:NSEAC), USTD_CHUNK(1:NSEAC), &
+              TAUWX(CHUNK0:CHUNKN), TAUWY(CHUNK0:CHUNKN), CD(1:NSEAC), Z0(1:NSEAC), &
+              CHARN(CHUNK0:CHUNKN), LLWS(:,1:NSEAC), FMEANWS(1:NSEAC), DLWMEAN(1:NSEAC), &
+              SRC_MASK(1:NSEAC), NSEAC)
+        ENDIF
+#endif
         !
         ! 7.  Check if integration complete ---------------------------------- *
         !
