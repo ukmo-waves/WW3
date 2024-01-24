@@ -609,7 +609,7 @@ CONTAINS
 #endif
 #ifdef W3_ST4
     USE W3SRC4MD, ONLY : W3SPR4, W3SIN4, W3SDS4
-    USE W3GDATMD, ONLY : ZZWND, FFXFM, FFXPM, FFXFA
+    USE W3GDATMD, ONLY : ZZWND, FFXFM, FFXPM, FFXFA, SINTAILPAR
 #endif
 #ifdef W3_ST6
     USE W3SRC6MD
@@ -1396,14 +1396,18 @@ CONTAINS
       END DO
 #endif
 #ifdef W3_ST4
-      !! Refactored call to W3SPT4 to take array of spectra
-      TAUWX(CHUNK0:CHUNKN) = 0.
-      TAUWY(CHUNK0:CHUNKN) = 0.
-      IF ( IT .eq. 0 ) THEN
+      IF (SINTAILPAR(4).GT.0.5) THEN ! this is designed to keep the bug as an option
+        TAUWX(CHUNK0:CHUNKN) = 0.
+        TAUWY(CHUNK0:CHUNKN) = 0.
+      END IF
+      IF ( IT .EQ. 0 ) THEN
         LLWS(:,1:NSEAC) = .TRUE.
+        TAUWX(CHUNK0:CHUNKN) = 0.
+        TAUWY(CHUNK0:CHUNKN) = 0.
         UST_CHUNK(1:NSEAC) = 0.
         USTD_CHUNK(1:NSEAC) = 0.
       ELSE
+        !! Refactored call to W3SPR4 to take array of spectra
         CALL W3SPR4 (SPEC(:,CHUNK0:CHUNKN), CG1_CHUNK(:,1:NSEAC), &
             WN1_CHUNK(:,1:NSEAC), EMEAN(1:NSEAC), FMEAN(1:NSEAC), &
             FMEAN1(1:NSEAC), WNMEAN(CHUNK0:CHUNKN), &
@@ -1426,14 +1430,17 @@ CONTAINS
         END IF
 #endif
 
-        !! Still need explicit loop around W3SIN4 
-        DO CSEA=1,NSEAC
-          IF(SRC_MASK(CSEA)) CYCLE
-          JSEA = CHUNK0 + CSEA - 1
-          CALL W3SIN4 ( SPEC(:,JSEA), CG1_CHUNK(:,CSEA), WN2(:,CSEA), U10_CHUNK(CSEA), UST_CHUNK(CSEA), DRAT(CSEA), AS_CHUNK(CSEA),       &
-             U10D_CHUNK(CSEA), Z0(CSEA), CD(CSEA), TAUWX(JSEA), TAUWY(JSEA), TAUWAX(CSEA), TAUWAY(CSEA),       &
-             VSIN(:,CSEA), VDIN(:,CSEA), LLWS(:,CSEA), IX(CSEA), IY(CSEA), BRLAMBDA(:,CSEA) )
-        END DO             
+        IF (SINTAILPAR(4).GT.0.5) THEN
+
+!! Still need explicit loop around W3SIN4 
+          DO CSEA=1,NSEAC
+            IF(SRC_MASK(CSEA)) CYCLE
+            JSEA = CHUNK0 + CSEA - 1
+              CALL W3SIN4 ( SPEC(:,JSEA), CG1_CHUNK(:,CSEA), WN2(:,CSEA), U10_CHUNK(CSEA), UST_CHUNK(CSEA), DRAT(CSEA), AS_CHUNK(CSEA),       &
+                U10D_CHUNK(CSEA), Z0(CSEA), CD(CSEA), TAUWX(JSEA), TAUWY(JSEA), TAUWAX(CSEA), TAUWAY(CSEA),       &
+                VSIN(:,CSEA), VDIN(:,CSEA), LLWS(:,CSEA), IX(CSEA), IY(CSEA), BRLAMBDA(:,CSEA) )
+          END DO             
+        END IF ! SINTAILPART(4) 
       END IF  ! IT==0
 
 #if defined(W3_DEBUGSRC)
@@ -2478,6 +2485,16 @@ CONTAINS
              U10D_CHUNK(CSEA), Z0(CSEA), CD(CSEA), TAUWX(JSEA), TAUWY(JSEA), &
              TAUWAX(CSEA), TAUWAY(CSEA), &
              VSIN(:,CSEA), VDIN(:,CSEA), LLWS(:,CSEA), IX(CSEA), IY(CSEA), BRLAMBDA(:,CSEA) )
+        IF (SINTAILPAR(4).LT.0.5) THEN 
+          CALL W3SPR4 (SPEC(:,JSEA), CG1_CHUNK(:,CSEA), WN1_CHUNK(:,CSEA), EMEAN(CSEA), &
+              FMEAN(CSEA), FMEAN1(CSEA), WNMEAN(JSEA), AMAX(CSEA), U10_CHUNK(CSEA), U10D_CHUNK(CSEA), &
+#ifdef W3_FLX5
+              TAUA_CHUNK(CSEA), TAUADIR_CHUNK(CSEA), DAIR_CHUNK(CSEA), &
+#endif
+              UST_CHUNK(CSEA), USTD_CHUNK(CSEA), &
+              TAUWX(JSEA), TAUWY(JSEA), CD(CSEA), Z0(CSEA), CHARN(JSEA), &
+              LLWS(:,CSEA), FMEANWS(CSEA), DLWMEAN(CSEA))
+        ENDIF
 #endif
 
         END DO ! CSEA; W3SINx
