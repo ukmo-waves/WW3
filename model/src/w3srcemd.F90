@@ -1339,10 +1339,6 @@ CONTAINS
       !
       ! 1.c Set mean parameters
       !
-      
-        ! CB Refactor - zero CHARN element wise, rather than whole array (for b4b reproducibility)
-        CHARN(JSEA) = 0.
-
 #ifdef W3_ST0
       DO CSEA=1,NSEAC
         IF(SRC_MASK(CSEA)) CYCLE
@@ -1372,8 +1368,9 @@ CONTAINS
       DO CSEA=1,NSEAC
         IF(SRC_MASK(CSEA)) CYCLE
         JSEA = CHUNK0 + CSEA - 1
-        TAUWX(JSEA)=0.
-        TAUWY(JSEA)=0.
+        TAUWX(JSEA) = 0.
+        TAUWY(JSEA) = 0.                
+        CHARN(JSEA) = 0. ! CB Refactor - zero CHARN element wise, rather than whole array (for b4b reproducibility)
         IF ( IT .eq. 0 ) THEN
           LLWS(:,CSEA) = .TRUE.
           UST_CHUNK(CSEA)=0.
@@ -1396,6 +1393,7 @@ CONTAINS
       END DO
 #endif
 #ifdef W3_ST4
+      CHARN(CHUNK0:CHUNKN) = 0. ! CB Refactor - TODO: This might cause b4b differrence as zeroing whole chunk
       IF (SINTAILPAR(4).GT.0.5) THEN ! this is designed to keep the bug as an option
         TAUWX(CHUNK0:CHUNKN) = 0.
         TAUWY(CHUNK0:CHUNKN) = 0.

@@ -325,7 +325,7 @@ CONTAINS
       DO IK=1, NK
         EB(IK)  = 0.
         EB2(IK) = 0.
-        SIGFAC=SIG(IK)**SSDSC(12) * DDEN(IK) / CG(IK)
+        SIGFAC=SIG(IK)**SSDSC(12) * DDEN(IK) / CG(IK,IP)
         DO ITH=1, NTH
           IS=ITH+(IK-1)*NTH
           EB(IK) = EB(IK) + A(ITH,IK,IP)
