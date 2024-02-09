@@ -333,7 +333,7 @@ CONTAINS
           ELSN = ELSN + A(ITH,IK,IP)*ESIN(IS)*SIGFAC
 #define TEST_W3GDATMD___disabledf
           IF (LLWS(IS,IP)) EB2(IK) = EB2(IK) + A(ITH,IK,IP)
-          AMAX   = MAX ( AMAX , A(ITH,IK,IP) )
+          AMAX(IP) = MAX ( AMAX(IP) , A(ITH,IK,IP) )
         END DO
       END DO
 
