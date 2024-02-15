@@ -298,21 +298,26 @@ CONTAINS
     !UNZ = MAX( 0.01 , U(IP) )
     !USTAR(IP) = MAX( 0.0001 , USTAR(IP) )
     !
-    EMEAN  = 0.
-    EMEANWS= 0.
-    FMEANWS= 0.
-    FMEAN  = 0.
+
+    ! Zero arrays:
+    EMEAN = 0.
+    FMEANWS = 0.
+    FMEAN = 0.
     FMEAN1 = 0.
     WNMEAN = 0.
-    AMAX   = 0.
-    DLWMEAN =0.
-    ELCS =0.
-    ELSN =0.
+    AMAX = 0.
+    DLWMEAN = 0.
 
     ! Seapoint loop
     DO IP=1,NP
+
       ! Don't process point if masked (disabled, or already finished integration)
       IF(MASK(IP)) CYCLE
+
+      ! Zero local scalars
+      EMEANWS = 0.
+      ELCS = 0.
+      ELSN = 0.
 
       ! Refactor notes: Moved from outside loop
       ! TODO: UNZ scalar can be factored out in section 5
