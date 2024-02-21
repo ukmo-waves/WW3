@@ -590,7 +590,7 @@
 !/T      INTEGER, ALLOCATABLE    :: MAPOUT(:,:)
 !
       REAL                    :: RXFR, RFR1, SIGMA, SXFR, FACHF,      &
-                                 VSC, VSC0, VOF,                      &
+                                 VSC, VSC0, VOF, DVSMC,               &
                                  ZLIM, X, Y, XP,  XO0, YO0, DXO, DYO, &
                                  XO, YO, RD(4), RDTOT,                &
                                  FACTOR, RTH0, FMICHE, RWNDC,         &
@@ -3328,6 +3328,9 @@
       IF (IDFM.EQ.2) WRITE (NDSO,973) TRIM(RFORM)
       IF (FROM.EQ.'NAME' .AND. NDSG.NE.NDSI) &
           WRITE (NDSO,974) TRIM(FNAME)
+
+!/SMC !Li  Save the depth conversion factor for SMC grid use.  JGLi03Nov2023
+!/SMC        DVSMC = VSC
 !
 ! 7.e Read bottom depths
 !
@@ -4497,13 +4500,18 @@
 !/SMC        END IF
 !/SMC
 !/SMC !Li  Minimum DMIN depth is used as well for SMC. 
-!/SMC          ZB(ISEA)= - MAX( DMIN, FLOAT( IJKCel(5, ISEA) ) )
-!/SMC          MAPFS(IY:IY+JS-1,IX:IX+IK-1)  = ISEA
-!/SMC         MAPSTA(IY:IY+JS-1,IX:IX+IK-1)  = 1
-!/SMC         MAPST2(IY:IY+JS-1,IX:IX+IK-1)  = 0
-!/SMC          MAPSF(ISEA,1)  = IX
-!/SMC          MAPSF(ISEA,2)  = IY
-!/SMC          MAPSF(ISEA,3)  = IY + (IX    -1)*NY
+!/SMC !!       ZB(ISEA)= - MAX( DMIN, FLOAT( IJKCel(5, ISEA) ) )
+!/SMC !Li  Allow land cell to be defined by ZLIM value and only reset
+!/SMC !Li  MAPST* land values for sea points.   JGLi03Nov2023
+!/SMC        ZB(ISEA)= DVSMC*FLOAT( IJKCel(5, ISEA) )
+!/SMC        IF( ZB(ISEA) .LT. ZLIM ) THEN
+!/SMC          MAPSTA(IY:IY+JS-1,IX:IX+IK-1) = 1
+!/SMC          MAPST2(IY:IY+JS-1,IX:IX+IK-1) = 0
+!/SMC        ENDIF
+!/SMC        MAPFS(IY:IY+JS-1,IX:IX+IK-1) = ISEA
+!/SMC        MAPSF(ISEA,1) = IX
+!/SMC        MAPSF(ISEA,2) = IY
+!/SMC        MAPSF(ISEA,3) = IY + (IX-1)*NY
 !/SMC 
 !/SMC !Li   New variable CLATS to hold cosine latitude at cell centre.
 !/SMC !Li   Also added CLATIS and CTHG0S for version 4.08.
