@@ -212,6 +212,9 @@ PROGRAM W3PRNC
 #ifdef W3_T3
   USE W3ARRYMD, ONLY : PRTBLK
 #endif
+#ifdef W3_RTD
+  USE W3SERVMD, ONLY : W3LLTOEQ
+#endif
   USE W3IOGRMD, ONLY: W3IOGR
   USE W3FLDSMD, ONLY: W3FLDO, W3FLDP, W3FLDG, W3FLDD,  &
        W3FLDTIDE1, W3FLDTIDE2
@@ -324,7 +327,11 @@ PROGRAM W3PRNC
   LOGICAL                 :: FLMOD
 #endif
 
-
+#ifdef W3_RTD
+  ! For rotated pole conversion
+  REAL, ALLOCATABLE, TARGET :: EQ_ALA(:,:), EQ_ALO(:,:)
+  REAL, ALLOCATABLE :: ANGLES(:,:)
+#endif
 
   !
   ! Variables used in tidal analysis
@@ -1010,6 +1017,21 @@ PROGRAM W3PRNC
       !
       PTR_ALA => ALA
       PTR_ALO => ALO
+
+#if W3_RTD
+      ! If model on rotated pole then rotate input file coordinates
+      ! to rotated pole coordinates. Assumes input file is on standard pole.
+      ! Remember we need to rotate vectors later
+      ! IF( FILE_POLE != MODEL_POLE ) ! TODO - make this check?
+      WRITE(NDSO,*) "Rotating input file to model coordinates"
+      ALLOCATE(EQ_ALO(NXI,NYI), EQ_ALA(NXI,NYI), ANGLES(NXI,NYI))
+      CALL W3LLTOEQ( ALA, ALO, EQ_ALA, EQ_ALO,   &
+          ANGLES, POLAT, POLON, NXI*NYI )
+
+      PTR_ALO => EQ_ALO
+      PTR_ALA => EQ_ALA
+#endif
+
       GSI = W3GSUC( .TRUE., FLAGLL, ICLO, PTR_ALO, PTR_ALA )
       !
       ! ... construct Interpolation data
