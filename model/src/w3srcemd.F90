@@ -1429,15 +1429,15 @@ CONTAINS
 #endif
 
         IF (SINTAILPAR(4).GT.0.5) THEN
-
-!! Still need explicit loop around W3SIN4 
-          DO CSEA=1,NSEAC
-            IF(SRC_MASK(CSEA)) CYCLE
-            JSEA = CHUNK0 + CSEA - 1
-              CALL W3SIN4 ( SPEC(:,JSEA), CG1_CHUNK(:,CSEA), WN2(:,CSEA), U10_CHUNK(CSEA), UST_CHUNK(CSEA), DRAT(CSEA), AS_CHUNK(CSEA),       &
-                U10D_CHUNK(CSEA), Z0(CSEA), CD(CSEA), TAUWX(JSEA), TAUWY(JSEA), TAUWAX(CSEA), TAUWAY(CSEA),       &
-                VSIN(:,CSEA), VDIN(:,CSEA), LLWS(:,CSEA), IX(CSEA), IY(CSEA), BRLAMBDA(:,CSEA) )
-          END DO             
+          ! W3SIN4 refactored to handle multiple seapoints:
+          CALL W3SIN4 ( SPEC(:,CHUNK0:CHUNKN), CG1_CHUNK(:,1:NSEAC), &
+              WN2(:,1:NSEAC), U10_CHUNK(1:NSEAC), UST_CHUNK(1:NSEAC), &
+              DRAT(1:NSEAC), AS_CHUNK(1:NSEAC), U10D_CHUNK(1:NSEAC), &
+              Z0(1:NSEAC), CD(1:NSEAC), TAUWX(CHUNK0:CHUNKN), &
+              TAUWY(CHUNK0:CHUNKN), TAUWAX(1:NSEAC), TAUWAY(1:NSEAC), &
+              VSIN(:,1:NSEAC), VDIN(:,1:NSEAC), LLWS(:,1:NSEAC), &
+              IX(1:NSEAC), IY(1:NSEAC), BRLAMBDA(:,1:NSEAC), &
+              SRC_MASK(1:NSEAC), NSEAC)
         END IF ! SINTAILPART(4) 
       END IF  ! IT==0
 
@@ -1588,6 +1588,10 @@ CONTAINS
 #endif
         ENDDO ! CSEA loop - W3LNx
         !
+
+#ifndef W3_ST4
+! Only SIN4 currently handles multiple points, all others need to be called
+! with single seapoint in a loop:
         DO CSEA=1,NSEAC
           IF(SRC_MASK(CSEA)) CYCLE
           JSEA = CHUNK0 + CSEA - 1
@@ -1605,31 +1609,44 @@ CONTAINS
              Z0(CSEA), CD(CSEA), TAUWX(JSEA), TAUWY(JSEA), TAUWAX(CSEA), TAUWAY(CSEA), &
              ICE_CHUNK(CSEA), VSIN(:,CSEA), VDIN(:,CSEA), LLWS(:,CSEA), IX(CSEA), IY(CSEA) )
 #endif
-#ifdef W3_ST4
-          ! TESTING!
-          VSIN(:,CSEA)=0  ! Not needed?
-          VDIN(:,CSEA)=0 
-          BRLAMBDA(:,CSEA)=0   ! TODO: Shouldn't be needed
-          ! END TESTING !
-          CALL W3SIN4 ( SPEC(:,JSEA), CG1_CHUNK(:,CSEA), WN2(:,CSEA), &
-             U10_CHUNK(CSEA), UST_CHUNK(CSEA), DRAT(CSEA), AS_CHUNK(CSEA),       &
-             U10D_CHUNK(CSEA), Z0(CSEA), CD(CSEA), TAUWX(JSEA), TAUWY(JSEA), &
-             TAUWAX(CSEA), TAUWAY(CSEA),       &
-             VSIN(:,CSEA), VDIN(:,CSEA), LLWS(:,CSEA), IX(CSEA), IY(CSEA), BRLAMBDA(:,CSEA) )
-#endif
-
-#if defined(W3_DEBUGSRC) && defined(W3_ST4)
-          IF (IX(CSEA) == DEBUG_NODE) THEN
-            WRITE(740+IAPROC,*) '2 : W3SIN4(min/max/sum)VSIN=', minval(VSIN(:,CSEA)), maxval(VSIN(:,CSEA)), sum(VSIN(:,CSEA))
-            WRITE(740+IAPROC,*) '2 : W3SIN4(min/max/sum)VDIN=', minval(VDIN(:,CSEA)), maxval(VDIN(:,CSEA)), sum(VDIN(:,CSEA))
-          END IF
-#endif
-
 #ifdef W3_ST6
           CALL W3SIN6 ( SPEC(:,JSEA), CG1_CHUNK(:,CSEA), WN2(:,CSEA), U10_CHUNK(CSEA), UST_CHUNK(CSEA), USTD_CHUNK(CSEA), CD(CSEA), DAIR_CHUNK(CSEA), &
              TAUWX(JSEA), TAUWY(JSEA), TAUWAX(CSEA), TAUWAY(CSEA), VSIN(:,CSEA), VDIN(:,CSEA) )
 #endif
         END DO ! CSEA; W3SINx
+
+! ifndef W3_ST4:
+#endif
+
+
+#ifdef W3_ST4
+        ! W3SIN4 refactored to handle multiple seapoints:
+
+        ! TESTING!
+        VSIN(:,1:NSEAC)=0  ! Not needed?
+        VDIN(:,1:NSEAC)=0 
+        BRLAMBDA(:,1:NSEAC)=0   ! TODO: Shouldn't be needed
+        ! END TESTING !
+        CALL W3SIN4 ( SPEC(:,CHUNK0:CHUNKN), CG1_CHUNK(:,1:NSEAC), &
+            WN2(:,1:NSEAC), U10_CHUNK(1:NSEAC), UST_CHUNK(1:NSEAC), &
+            DRAT(1:NSEAC), AS_CHUNK(1:NSEAC), U10D_CHUNK(1:NSEAC), &
+            Z0(1:NSEAC), CD(1:NSEAC), TAUWX(CHUNK0:CHUNKN), &
+            TAUWY(CHUNK0:CHUNKN), TAUWAX(1:NSEAC), TAUWAY(1:NSEAC), &
+            VSIN(:,1:NSEAC), VDIN(:,1:NSEAC), LLWS(:,1:NSEAC), &
+            IX(1:NSEAC), IY(1:NSEAC), BRLAMBDA(:,1:NSEAC), &
+            SRC_MASK(1:NSEAC), NSEAC)
+
+#if defined(W3_DEBUGSRC)
+        DO CSEA=1,NSEAC
+          IF (IX(CSEA) == DEBUG_NODE) THEN
+            WRITE(740+IAPROC,*) '2 : W3SIN4(min/max/sum)VSIN=', minval(VSIN(:,CSEA)), maxval(VSIN(:,CSEA)), sum(VSIN(:,CSEA))
+            WRITE(740+IAPROC,*) '2 : W3SIN4(min/max/sum)VDIN=', minval(VDIN(:,CSEA)), maxval(VDIN(:,CSEA)), sum(VDIN(:,CSEA))
+          END IF
+        END DO
+#endif
+#endif
+
+
         !
         ! 2.b Nonlinear interactions.
         !
@@ -2466,26 +2483,30 @@ CONTAINS
         !
         ! 6.e  Update wave-supported stress----------------------------------- *
         !
+#ifdef W3_ST3
         DO CSEA=1,NSEAC
           IF(SRC_MASK(CSEA)) CYCLE
           JSEA = CHUNK0 + CSEA - 1
 
-#ifdef W3_ST3
           CALL W3SIN3 ( SPEC(:,JSEA), CG1_CHUNK(:,CSEA), WN2(:,CSEA), & 
               U10_CHUNK(CSEA), UST_CHUNK(CSEA), DRAT(CSEA), AS_CHUNK(CSEA),      &
               U10D_CHUNK(CSEA), Z0(CSEA), CD(CSEA), TAUWX(JSEA), TAUWY(JSEA), &
               TAUWAX(CSEA), TAUWAY(CSEA), &
               ICE_CHUNK(CSEA), VSIN(:,CSEA), VDIN(:,CSEA), LLWS(:,CSEA), IX(CSEA), IY(CSEA) )
+        END DO ! CSEA; W3SINx
 #endif
 #ifdef W3_ST4
-          CALL W3SIN4 ( SPEC(:,JSEA), CG1_CHUNK(:,CSEA), WN2(:,CSEA), &
-             U10_CHUNK(CSEA), UST_CHUNK(CSEA), DRAT(CSEA), AS_CHUNK(CSEA),      &
-             U10D_CHUNK(CSEA), Z0(CSEA), CD(CSEA), TAUWX(JSEA), TAUWY(JSEA), &
-             TAUWAX(CSEA), TAUWAY(CSEA), &
-             VSIN(:,CSEA), VDIN(:,CSEA), LLWS(:,CSEA), IX(CSEA), IY(CSEA), BRLAMBDA(:,CSEA) )
+        ! W3SIN4 refactored to handle multiple seapoints:
+        CALL W3SIN4 ( SPEC(:,CHUNK0:CHUNKN), CG1_CHUNK(:,1:NSEAC), &
+            WN2(:,1:NSEAC), U10_CHUNK(1:NSEAC), UST_CHUNK(1:NSEAC), &
+            DRAT(1:NSEAC), AS_CHUNK(1:NSEAC), U10D_CHUNK(1:NSEAC), &
+            Z0(1:NSEAC), CD(1:NSEAC), TAUWX(CHUNK0:CHUNKN), &
+            TAUWY(CHUNK0:CHUNKN), TAUWAX(1:NSEAC), TAUWAY(1:NSEAC), &
+            VSIN(:,1:NSEAC), VDIN(:,1:NSEAC), LLWS(:,1:NSEAC), &
+            IX(1:NSEAC), IY(1:NSEAC), BRLAMBDA(:,1:NSEAC), &
+            SRC_MASK(1:NSEAC), NSEAC)
 #endif
 
-        END DO ! CSEA; W3SINx
 
 #ifdef W3_ST4
         IF (SINTAILPAR(4).LT.0.5) THEN 

@@ -310,7 +310,6 @@ CONTAINS
 
     ! Seapoint loop
     DO IP=1,NP
-
       ! Don't process point if masked (disabled, or already finished integration)
       IF(MASK(IP)) CYCLE
 
@@ -462,7 +461,7 @@ CONTAINS
   !>
   SUBROUTINE W3SIN4 (A, CG, K, U, USTAR, DRAT, AS, USDIR, Z0, CD,    &
        TAUWX, TAUWY, TAUWNX, TAUWNY, S, D, LLWS,       &
-       IX, IY, BRLAMBDA)
+       IX, IY, BRLAMBDA, MASK, NP)
     !/
     !/                  +-----------------------------------+
     !/                  | WAVEWATCH III                SHOM |
@@ -475,6 +474,8 @@ CONTAINS
     !/    09-Oct-2007 : Origination.                        ( version 3.13 )
     !/    24-Jan-2013 : Adding breaking-related input       ( version 4.16 )
     !/    05-Dec-2013 : Cleaning up the ICE input           ( version 4.16 )
+    !/    01-Mar-2024 : Refactored for processing of        ( version 7.14 )
+    !/                  multiple points (for GPU).
     !/
     !  1. Purpose :
     !
@@ -572,52 +573,63 @@ CONTAINS
     !/ ------------------------------------------------------------------- /
     !/ Parameter list
     !/
-    REAL, INTENT(IN)        :: A(NSPEC), BRLAMBDA(NSPEC)
-    REAL, INTENT(IN)        :: CG(NK), K(NSPEC),Z0,U, CD
-    REAL, INTENT(IN)        :: USTAR, USDIR, AS, DRAT
-    REAL, INTENT(OUT)       :: S(NSPEC), D(NSPEC), TAUWX, TAUWY, TAUWNX, TAUWNY
-    LOGICAL, INTENT(OUT)    :: LLWS(NSPEC)
-    INTEGER, INTENT(IN)     :: IX, IY
+    REAL, INTENT(IN)        :: A(NSPEC,NP), BRLAMBDA(NSPEC,NP)
+    REAL, INTENT(IN)        :: CG(NK,NP), K(NSPEC,NP), Z0(NP), U(NP), CD(NP)
+    REAL, INTENT(IN)        :: USTAR(NP), USDIR(NP), AS(NP), DRAT(NP)
+    REAL, INTENT(OUT)       :: S(NSPEC,NP), D(NSPEC,NP)
+    REAL, INTENT(OUT)       :: TAUWX(NP), TAUWY(NP), TAUWNX(NP), TAUWNY(NP)
+    LOGICAL, INTENT(OUT)    :: LLWS(NSPEC,NP)
+    INTEGER, INTENT(IN)     :: IX(NP), IY(NP) !! TODO - NOT USED REMOVE!
+    LOGICAL, INTENT(IN)     :: MASK(NP)
+    INTEGER, INTENT(IN)     :: NP
     !/
     !/ ------------------------------------------------------------------- /
     !/ Local parameters
     !/
-    INTEGER                 :: IS,IK,ITH
+    INTEGER, PARAMETER      :: JTOT=50
+    REAL   , PARAMETER      :: KM=363.,CMM=0.2325  ! K and C at phase speed minimum in rad/m
+    REAL   , PARAMETER      :: EPS1 = 0.00001, EPS2 = 0.000001
+
+    INTEGER                 :: IS,IK,ITH,IP
 #ifdef W3_S
     INTEGER, SAVE           :: IENT = 0
 #endif
-    REAL                    :: FACLN1, FACLN2, LAMBDA
-    REAL                    :: COSU, SINU, TAUX, TAUY, USDIRP, USTP
+    REAL                    :: USDIRP, USTP
     REAL                    :: TAUPX, TAUPY, UST2, TAUW, TAUWB
-    REAL   , PARAMETER      :: EPS1 = 0.00001, EPS2 = 0.000001
     REAL                    :: Usigma           !standard deviation of U due to gustiness
     REAL                    :: USTARsigma       !standard deviation of USTAR due to gustiness
     REAL                    :: CM,UCN,ZCN, &
          Z0VISC, Z0NOZ, EB,  &
-         EBX, EBY, AORB, AORB1, FW, UORB, TH2, &
-         RE, FU, FUD, SWELLCOEFV, SWELLCOEFT
-    REAL                   ::  PTURB, PVISC, SMOOTH
+         RE, SWELLCOEFV, SWELLCOEFT
+    REAL                   :: SMOOTH
     REAL XI,DELI1,DELI2
     REAL XJ,DELJ1,DELJ2
     REAL XK,DELK1,DELK2
-    REAL                    :: CONST, CONST0, CONST2, TAU1, TAU1NT, ZINF, TENSK
+    REAL                    :: CONST, CONST0, CONST2, TAU1, ZINF, TENSK
     REAL X,ZARG,ZLOG,UST
-    REAL                    :: COSWIND, XSTRESS, YSTRESS, TAUHF
+    REAL                    :: COSWIND, TAUHF
     REAL TEMP, TEMP2
     INTEGER IND,J,I,ISTAB
-    REAL DSTAB(3,NSPEC), DVISC, DTURB
-    REAL STRESSSTAB(3,2),STRESSSTABN(3,2)
+    REAL DVISC, DTURB
     !
-    INTEGER, PARAMETER      :: JTOT=50
-    REAL   , PARAMETER      :: KM=363.,CMM=0.2325  ! K and C at phase speed minimum in rad/m
-    REAL                    :: OMEGACC, OMEGA, ZZ0, ZX, ZBETA, USTR, TAUR,  &
+    REAL                    :: OMEGACC, OMEGA, ZX, ZBETA, USTR, TAUR,  &
          CONST1, LEVTAIL0, X0, Y, DELY, YC, ZMU,      &
-         LEVTAIL, CGTAIL, ALPHAM, FM, ALPHAT, FMEAN
+         LEVTAIL, CGTAIL, ALPHAM, FM, ALPHAT
 
     REAL, ALLOCATABLE       :: W(:)
 #ifdef W3_T0
     REAL                    :: DOUT(NK,NTH)
 #endif
+
+! GPU Refactor: Variables with added NP dimension
+    REAL :: UORB(NP), AORB(NP), AORB1(NP), PTURB(NP), PVISC(NP)
+    REAL :: FW(NP), FU(NP), FUD(NP), TAUX(NP), TAUY(NP), COSU(NP), SINU(NP)
+    REAL :: XSTRESS(NP), YSTRESS(NP)
+
+   ! TODO: Determine best dimension number for NP in STRESSTAB[N] and DSTAB
+    REAL :: STRESSSTAB(NP,3,2),STRESSSTABN(NP,3,2)
+    REAL :: DSTAB(3,NSPEC,NP) 
+! -- END OF GPU Refactored variables
     !/
     !/ ------------------------------------------------------------------- /
     !/
@@ -641,75 +653,102 @@ CONTAINS
     ! Coupling coefficient times density ratio DRAT
     !
     CONST1=BBETA/KAPPA**2  ! needed for the tail
-    CONST0=CONST1*DRAT     ! needed for the resolved spectrum
+    !CONST0=CONST1*DRAT    ! GPU Refactor - moved into loop below (sec 2)
     !
     ! 1.a  estimation of surface roughness parameters
     !
-    Z0VISC = 0.1*nu_air/MAX(USTAR,0.0001)
-    Z0NOZ = MAX(Z0VISC,ZZ0RAT*Z0)
-    FACLN1 = U / LOG(ZZWND/Z0NOZ)
-    FACLN2 = LOG(Z0NOZ)
+
+    !! GPU Refactor, moved Z0VISC and Z0NOZ calculations inside loop
+    !! in section 1.b.
+    !Z0VISC = 0.1*nu_air/MAX(USTAR,0.0001)
+    !Z0NOZ = MAX(Z0VISC,ZZ0RAT*Z0)
+
+    !FACLN1 = U(IP) / LOG(ZZWND/Z0NOZ)  ! GPU Refactor: Removed; not used
+    !FACLN2 = LOG(Z0NOZ)               ! GPU Refactor: Removed; not used
     !
     ! 1.b  estimation of surface orbital velocity and displacement
     !
-    UORB=0.
-    AORB=0.
 
-    DO IK=1, NK
-      EB  = 0.
-      EBX = 0.
-      EBY = 0.
-      DO ITH=1, NTH
-        IS=ITH+(IK-1)*NTH
-        EB  = EB  + A(IS)
-      END DO
-      !
-      !  At this point UORB and AORB are the variances of the orbital velocity and surface elevation
-      !
-      UORB = UORB + EB *SIG(IK)**2 * DDEN(IK) / CG(IK)
-      AORB = AORB + EB             * DDEN(IK) / CG(IK)  !correct for deep water only
-    END DO
-    !      FMEAN = SQRT((UORB+1E-6)/(AORB+1E-6))
-    UORB  = 2*SQRT(UORB)                  ! significant orbital amplitude
-    AORB1 = 2*AORB**(1-0.5*SSWELLF(6))    ! half the significant wave height ... if SWELLF(6)=1
-    RE = 4*UORB*AORB1 / NU_AIR           ! Reynolds number
+    DO IP=1, NP ! GPU Refactor: New seapoint loop
+      IF(MASK(IP)) CYCLE
+
+      UORB(IP) = 0.
+      AORB(IP) = 0.
+
+      DO IK=1, NK
+        EB = 0.
+        !EBX = 0.  ! GPU Refactor: Removed; not used
+        !EBY = 0.  ! GPU Refactor: Removed; not used
+        DO ITH=1, NTH
+          IS = ITH + (IK-1) * NTH
+          EB = EB + A(IS,IP)
+        END DO ! ITH
+        !
+        ! At this point UORB and AORB are the variances of the orbital
+        ! velocity and surface elevation
+        !
+        UORB(IP) = UORB(IP) + EB * SIG(IK)**2 * DDEN(IK) / CG(IK,IP)
+        AORB(IP) = AORB(IP) + EB * DDEN(IK) / CG(IK,IP)  !correct for deep water only
+      END DO ! IK
+      
+      UORB(IP) = 2 * SQRT(UORB(IP))  ! significant orbital amplitude
+      AORB1(IP) = 2 * AORB(IP)**(1 - 0.5 * SSWELLF(6))  ! half the significant wave height ... if SWELLF(6)=1
+
+      ! GPU Refactor: RE calculation moved to loop below so can be loop private
+      !!RE = 4 * UORB(IP) * AORB1(IP) / NU_AIR  ! Reynolds number
+    END DO ! IP
+
     !
     ! Defines the swell dissipation based on the "Reynolds number"
     !
-    IF (SSWELLF(4).GT.0) THEN
-      IF (SSWELLF(7).GT.0.) THEN
-        SMOOTH = 0.5*TANH((RE-SSWELLF(4))/SSWELLF(7))
-        PTURB=(0.5+SMOOTH)
-        PVISC=(0.5-SMOOTH)
-      ELSE
-        IF (RE.LE.SSWELLF(4)) THEN
-          PTURB =  0.
-          PVISC =  1.
+    DO IP=1,NP ! GPU Refactor: New IP loop
+      IF(MASK(IP)) CYCLE
+
+      IF (SSWELLF(4).GT.0) THEN
+        IF (SSWELLF(7).GT.0.) THEN
+          RE = 4 * UORB(IP) * AORB1(IP) / NU_AIR  ! Reynolds number (moved from above)
+          SMOOTH = 0.5*TANH((RE-SSWELLF(4))/SSWELLF(7))
+          PTURB(IP)=(0.5+SMOOTH)
+          PVISC(IP)=(0.5-SMOOTH)
         ELSE
-          PTURB =  1.
-          PVISC =  0.
+          IF (RE.LE.SSWELLF(4)) THEN
+            PTURB(IP) = 0.
+            PVISC(IP) = 1.
+          ELSE
+            PTURB(IP) = 1.
+            PVISC(IP) = 0.
+          END IF
         END IF
+      ELSE
+        PTURB(IP) = 1.
+        PVISC(IP) = 1.
       END IF
-    ELSE
-      PTURB=1.
-      PVISC=1.
-    END IF
+    END DO ! IP
 
     !
-    IF (SSWELLF(2).EQ.0) THEN
-      FW=MAX(ABS(SSWELLF(3)),0.)
-      FU=0.
-      FUD=0.
-    ELSE
-      FU=ABS(SSWELLF(3))
-      FUD=SSWELLF(2)
-      AORB=2*SQRT(AORB)
-      XI=(ALOG10(MAX(AORB/Z0NOZ,3.))-ABMIN)/DELAB
-      IND  = MIN (SIZEFWTABLE-1, INT(XI))
-      DELI1= MIN (1. ,XI-FLOAT(IND))
-      DELI2= 1. - DELI1
-      FW =FWTABLE(IND)*DELI2+FWTABLE(IND+1)*DELI1
-    END IF
+    DO IP = 1,NP
+      IF(MASK(IP)) CYCLE
+
+      IF (SSWELLF(2).EQ.0) THEN
+        FW(IP) = MAX(ABS(SSWELLF(3)),0.)
+        FU(IP) = 0.
+        FUD(IP) = 0.
+      ELSE
+        FU(IP) = ABS(SSWELLF(3))
+        FUD(IP) = SSWELLF(2)
+        AORB(IP) = 2*SQRT(AORB(IP))
+
+        ! GPU Refactor - move Z0VISC and Z0NOZ from section 1.
+        Z0VISC = 0.1*nu_air/MAX(USTAR(IP),0.0001)
+        Z0NOZ = MAX(Z0VISC,ZZ0RAT*Z0(IP))
+
+        XI = (ALOG10(MAX(AORB(IP) / Z0NOZ, 3.)) - ABMIN) / DELAB
+        IND = MIN (SIZEFWTABLE - 1, INT(XI))
+        DELI1 = MIN (1., XI - FLOAT(IND))
+        DELI2 = 1. - DELI1
+        FW(IP) = FWTABLE(IND) * DELI2 + FWTABLE(IND+1) * DELI1
+      END IF
+    END DO ! IP
     !
     ! 2.  Diagonal
     !
@@ -717,299 +756,375 @@ CONTAINS
     ! Abdalla & Cavaleri, JGR 2002 for Usigma. For USTARsigma ... I do not see where
     ! I got it from, maybe just made up from drag law ...
     !
+
+    DO IP=1,NP ! GPU Refactor: New IP Loop
+      IF(MASK(IP)) CYCLE
+
+
+! GPU Refactor Note: the W3_STAB3 sections below complicate the code a bit.
+! If W3_STAB3 is defined, it brings in an extra loop (ISTAB=1,2) and USTAR
+! is adjusted with +- USTARSigma in each iteraction.
+! It might be better/clearer/easier-to-accelerate if we keep the ISTAB loop
+! in the base code and change the range accordingly (ISTAB=1,2 when W3_STAB
+! is defined, ISTAB=3 if not)?
+!
+! Also, when W3_STAB3 is not defined, the UST variable is unnecessary (is
+! just a copy of USTAR.
 #ifdef W3_STAB3
-    IF ( ISNAN(AS) ) THEN
-      ! AS is typically NaN on land and can propagate into the domain by interpolation
-      Usigma = 0.
-    ELSE
-      Usigma = MAX(0.,-0.025*AS)
-    END IF
-    USTARsigma=(1.0+U/(10.+U))*Usigma
+      IF ( ISNAN(AS(IP)) ) THEN
+        ! AS is typically NaN on land and can propagate into the domain by interpolation
+        Usigma = 0.
+      ELSE
+        Usigma = MAX(0.,-0.025 * AS(IP))
+      END IF
+      USTARsigma = (1.0 + U(IP) / (10. + U(IP))) * Usigma
 #endif
 #ifdef W3_T
-    WRITE (NDST,9003) AS, Usigma, USTARsigma, U
+      WRITE (NDST,9003) AS(IP), Usigma, USTARsigma, U(IP)
 #endif
-    UST=USTAR
-    ISTAB=3
+      UST = USTAR(IP) ! GPU Refactor: TODO - move this into an #else block
+      ISTAB = 3       ! and merge the W3_STAB3 sections? Will be clearer?
 #ifdef W3_STAB3
-    DO ISTAB=1,2
-      IF (ISTAB.EQ.1) UST=USTAR*(1.-USTARsigma)
-      IF (ISTAB.EQ.2) UST=USTAR*(1.+USTARsigma)
+      DO ISTAB=1,2
+        IF (ISTAB.EQ.1) UST = USTAR(IP) * (1. - USTARsigma)
+        IF (ISTAB.EQ.2) UST = USTAR(IP) * (1. + USTARsigma)
 #endif
-      TAUX = UST**2* COS(USDIR)
-      TAUY = UST**2* SIN(USDIR)
+        TAUX(IP) = UST**2 * COS(USDIR(IP))
+        TAUY(IP) = UST**2 * SIN(USDIR(IP))
 #ifdef W3_T
-      WRITE (NDST,9001) ISTAB, TAUX, TAUY, UST
+        WRITE (NDST,9001) ISTAB, TAUX(IP), TAUY(IP), UST
 #endif
-      !
-      ! Loop over the resolved part of the spectrum
-      !
-      STRESSSTAB(ISTAB,:)=0.
-      STRESSSTABN(ISTAB,:)=0.
-      !
-      DO IK=1, NK
-        TAUPX=TAUX-ABS(TTAUWSHELTER)*STRESSSTAB(ISTAB,1)
-        TAUPY=TAUY-ABS(TTAUWSHELTER)*STRESSSTAB(ISTAB,2)
-        ! With MIN and MAX the bug should disappear.... but where did it come from?
-        USTP=MIN((TAUPX**2+TAUPY**2)**0.25,MAX(UST,0.3))
-        USDIRP=ATAN2(TAUPY,TAUPX)
-        COSU   = COS(USDIRP)
-        SINU   = SIN(USDIRP)
-        IS=1+(IK-1)*NTH
-        CM=K(IS)/SIG2(IS) !inverse of phase speed
-        UCN=USTP*CM+ZZALP  !this is the inverse wave age
-        ! the stress is the real stress (N/m^2) divided by
-        ! rho_a, and thus comparable to USTAR**2
-        ! it is the integral of rho_w g Sin/C /rho_a
-        ! (air-> waves momentum flux)
-        CONST2=DDEN2(IS)/CG(IK) &        !Jacobian to get energy in band
-             *GRAV/(SIG(IK)/K(IS)*DRAT) ! coefficient to get momentum
-        CONST=SIG2(IS)*CONST0
-        ! CM parameter is 1 / C_phi
-        ! Z0 corresponds to Z0+Z1 of the Janssen eq. 14
-        ZCN=ALOG(K(IS)*Z0)
         !
-        ! precomputes swell factors
+        ! Loop over the resolved part of the spectrum
         !
-        SWELLCOEFV=-SSWELLF(5)*DRAT*2*K(IS)*SQRT(2*NU_AIR*SIG2(IS))
-        SWELLCOEFT=-DRAT*SSWELLF(1)*16*SIG2(IS)**2/GRAV
+        STRESSSTAB(IP,ISTAB,:) = 0.  ! GPU Refactor: I don't think we need to zero
+        STRESSSTABN(IP,ISTAB,:) = 0. ! this again here? (is zeroed at top of routine)
         !
-        DO ITH=1,NTH
-          IS=ITH+(IK-1)*NTH
-          COSWIND=(ECOS(IS)*COSU+ESIN(IS)*SINU)
-          IF (COSWIND.GT.0.01) THEN
-            X=COSWIND*UCN
-            ! this ZARG term is the argument of the exponential
-            ! in Janssen 1991 eq. 16.
-            ZARG=KAPPA/X
-            ! ZLOG is ALOG(MU) where MU is defined by Janssen 1991 eq. 15
-            ! MU=
-            ZLOG=ZCN+ZARG
-
-            IF (ZLOG.LT.0.) THEN
-              ! The source term Sp is beta * omega * X**2
-              ! as given by Janssen 1991 eq. 19
-              ! Note that this is slightly diffent from ECWAM code CY45R2 where ZLOG is replaced by ??
-              DSTAB(ISTAB,IS) = CONST*EXP(ZLOG)*ZLOG**4*UCN*UCN*COSWIND**SSINTHP
-
-              ! Below is an example with breaking probability feeding back to the input...
-              !DSTAB(ISTAB,IS) = CONST*EXP(ZLOG)*ZLOG**4  &
-              !                  *UCN*UCN*COSWIND**SSINTHP *(1+BRLAMBDA(IS)*20*SSINBR)
-              LLWS(IS)=.TRUE.
+        DO IK=1, NK
+          ! TODO: IT feels like there are a lot of variables calculated in this
+          ! IK loop that don't depend on IK... can we move then out of loop?
+          ! E.G. TAPU[XY], COSU, SINU, USDIRP...
+          TAUPX = TAUX(IP) - ABS(TTAUWSHELTER) * STRESSSTAB(IP,ISTAB,1)
+          TAUPY = TAUY(IP) - ABS(TTAUWSHELTER) * STRESSSTAB(IP,ISTAB,2)
+          ! With MIN and MAX the bug should disappear.... but where did it come from?
+          USTP = MIN((TAUPX**2 + TAUPY**2)**0.25, MAX(UST, 0.3))
+          USDIRP = ATAN2(TAUPY,TAUPX)
+          COSU(IP) = COS(USDIRP)
+          SINU(IP) = SIN(USDIRP)
+          IS = 1+(IK-1)*NTH
+          CM = K(IS,IP) / SIG2(IS) ! inverse of phase speed
+          UCN = USTP * CM + ZZALP  ! this is the inverse wave age
+          ! the stress is the real stress (N/m^2) divided by
+          ! rho_a, and thus comparable to USTAR**2
+          ! it is the integral of rho_w g Sin/C /rho_a
+          ! (air-> waves momentum flux)
+          CONST2 = DDEN2(IS) / CG(IK,IP) &  !Jacobian to get energy in band
+               * GRAV / (SIG(IK) / K(IS,IP) * DRAT(IP)) ! coefficient to get momentum
+          !CONST0= CONST1 * DRAT(IP)
+          !CONST = SIG2(IS)*CONST0
+          ! GPU refactor - rewritten above to remove use of CONST:
+          CONST = SIG2(IS) * CONST1 * DRAT(IP)
+          ! CM parameter is 1 / C_phi
+          ! Z0 corresponds to Z0+Z1 of the Janssen eq. 14
+          ZCN = ALOG(K(IS,IP) * Z0(IP))
+          !
+          ! precomputes swell factors
+          !
+          SWELLCOEFV = -SSWELLF(5)*DRAT(IP)*2*K(IS,IP)*SQRT(2*NU_AIR*SIG2(IS))
+          SWELLCOEFT = -DRAT(IP)*SSWELLF(1)*16*SIG2(IS)**2/GRAV
+          !
+          DO ITH=1,NTH
+            IS=ITH+(IK-1)*NTH  ! GPU Refactor - might need to rename IS here to
+                               !avoid compiler complaints as is used in IK loop above?
+            COSWIND = ECOS(IS) * COSU(IP) + ESIN(IS) * SINU(IP)
+            IF (COSWIND .GT. 0.01) THEN
+              X=COSWIND*UCN
+              ! this ZARG term is the argument of the exponential
+              ! in Janssen 1991 eq. 16.
+              ZARG=KAPPA/X
+              ! ZLOG is ALOG(MU) where MU is defined by Janssen 1991 eq. 15
+              ! MU=
+              ZLOG=ZCN+ZARG
+  
+              IF (ZLOG.LT.0.) THEN
+                ! The source term Sp is beta * omega * X**2
+                ! as given by Janssen 1991 eq. 19
+                ! Note that this is slightly diffent from ECWAM code CY45R2 where ZLOG is replaced by ??
+                ! GPU Refactor: TODO: Decide on best dimension order for DSTAB
+                DSTAB(ISTAB,IS,IP) = CONST*EXP(ZLOG)*ZLOG**4*UCN*UCN*COSWIND**SSINTHP
+  
+                ! Below is an example with breaking probability feeding back to the input...
+                !DSTAB(ISTAB,IS) = CONST*EXP(ZLOG)*ZLOG**4  &
+                !                  *UCN*UCN*COSWIND**SSINTHP *(1+BRLAMBDA(IS)*20*SSINBR)
+                LLWS(IS,IP)=.TRUE.
+              ELSE
+                DSTAB(ISTAB,IS,IP) = 0.
+                LLWS(IS,IP)=.FALSE.
+              END IF
+              !
+              !  Added for consistency with ECWAM implsch.F
+              !
+              IF (28.*CM*USTAR(IP)*COSWIND.GE.1) THEN
+                LLWS(IS,IP)=.TRUE.
+              END IF
+            ELSE  ! (COSWIND.LE.0.01)
+              DSTAB(ISTAB,IS,IP) = 0.
+              LLWS(IS,IP)=.FALSE.
+            END IF
+            !
+            IF ((SSWELLF(1).NE.0.AND.DSTAB(ISTAB,IS,IP).LT.1E-7*SIG2(IS)) &
+                 .OR.SSWELLF(3).GT.0) THEN
+              !
+              DVISC=SWELLCOEFV
+              DTURB=SWELLCOEFT*(FW(IP)*UORB(IP)+(FU(IP)+FUD(IP)*COSWIND)*USTP)
+              !
+              DSTAB(ISTAB,IS,IP) = DSTAB(ISTAB,IS,IP) + PTURB(IP)*DTURB +  PVISC(IP)*DVISC
+            END IF
+            !
+            ! Sums up the wave-supported stress
+            !
+            ! Wave direction is "direction to"
+            ! therefore there is a PLUS sign for the stress
+            TEMP2=CONST2*DSTAB(ISTAB,IS,IP)*A(IS,IP)
+            IF (DSTAB(ISTAB,IS,IP).LT.0) THEN
+              STRESSSTABN(IP,ISTAB,1)=STRESSSTABN(IP,ISTAB,1)+TEMP2*ECOS(IS)
+              STRESSSTABN(IP,ISTAB,2)=STRESSSTABN(IP,ISTAB,2)+TEMP2*ESIN(IS)
             ELSE
-              DSTAB(ISTAB,IS) = 0.
-              LLWS(IS)=.FALSE.
+              STRESSSTAB(IP,ISTAB,1)=STRESSSTAB(IP,ISTAB,1)+TEMP2*ECOS(IS)
+              STRESSSTAB(IP,ISTAB,2)=STRESSSTAB(IP,ISTAB,2)+TEMP2*ESIN(IS)
             END IF
-            !
-            !  Added for consistency with ECWAM implsch.F
-            !
-            IF (28.*CM*USTAR*COSWIND.GE.1) THEN
-              LLWS(IS)=.TRUE.
-            END IF
-          ELSE  ! (COSWIND.LE.0.01)
-            DSTAB(ISTAB,IS) = 0.
-            LLWS(IS)=.FALSE.
-          END IF
-          !
-          IF ((SSWELLF(1).NE.0.AND.DSTAB(ISTAB,IS).LT.1E-7*SIG2(IS)) &
-               .OR.SSWELLF(3).GT.0) THEN
-            !
-            DVISC=SWELLCOEFV
-            DTURB=SWELLCOEFT*(FW*UORB+(FU+FUD*COSWIND)*USTP)
-            !
-            DSTAB(ISTAB,IS) = DSTAB(ISTAB,IS) + PTURB*DTURB +  PVISC*DVISC
-          END IF
-          !
-          ! Sums up the wave-supported stress
-          !
-          ! Wave direction is "direction to"
-          ! therefore there is a PLUS sign for the stress
-          TEMP2=CONST2*DSTAB(ISTAB,IS)*A(IS)
-          IF (DSTAB(ISTAB,IS).LT.0) THEN
-            STRESSSTABN(ISTAB,1)=STRESSSTABN(ISTAB,1)+TEMP2*ECOS(IS)
-            STRESSSTABN(ISTAB,2)=STRESSSTABN(ISTAB,2)+TEMP2*ESIN(IS)
-          ELSE
-            STRESSSTAB(ISTAB,1)=STRESSSTAB(ISTAB,1)+TEMP2*ECOS(IS)
-            STRESSSTAB(ISTAB,2)=STRESSSTAB(ISTAB,2)+TEMP2*ESIN(IS)
-          END IF
+          END DO
         END DO
-      END DO
+      END DO ! IP
+
       !
-      D(:)=DSTAB(3,:)
-      XSTRESS=STRESSSTAB (3,1)
-      YSTRESS=STRESSSTAB (3,2)
-      TAUWNX =STRESSSTABN(3,1)
-      TAUWNY =STRESSSTABN(3,2)
+      ! GPU Refactor: TODO: When W3_STAB3 is not usd, DSTAB isn't really 
+      ! required and is just a big array that has it's values copied to
+      ! D. When NP is large, this is a waste of memory+compute.
+      D(:,1:NP) = DSTAB(3,:,1:NP)
+
+      ! GPU Refactor - TODO: Move XSTRESS/YSTRESS into loop to avoid extra arrays
+      XSTRESS(1:NP) = STRESSSTAB(1:NP,3,1)
+      YSTRESS(1:NP) = STRESSSTAB(1:NP,3,2)
+      TAUWNX(1:NP) = STRESSSTABN(1:NP,3,1)
+      TAUWNY(1:NP) = STRESSSTABN(1:NP,3,2)
 #ifdef W3_STAB3
-    END DO
-    D(:)=0.5*(DSTAB(1,:)+DSTAB(2,:))
-    XSTRESS=0.5*(STRESSSTAB(1,1)+STRESSSTAB(2,1))
-    YSTRESS=0.5*(STRESSSTAB(1,2)+STRESSSTAB(2,2))
-    TAUWNX=0.5*(STRESSSTABN(1,1)+STRESSSTABN(2,1))
-    TAUWNY=0.5*(STRESSSTABN(1,2)+STRESSSTABN(2,2))
+    END DO ! ISTAB
+    D(:,1:NP) = 0.5 * (DSTAB(1,:,1:NP)+DSTAB(2,:,1:NP))
+    XSTRESS(IP) = 0.5 * (STRESSSTAB(IP,1,1) + STRESSSTAB(IP,2,1))
+    YSTRESS(IP) = 0.5 * (STRESSSTAB(IP,1,2) + STRESSSTAB(IP,2,2))
+    TAUWNX(IP) = 0.5 * (STRESSSTABN(IP,1,1) + STRESSSTABN(IP,2,1))
+    TAUWNY(IP) = 0.5 * (STRESSSTABN(IP,1,2) + STRESSSTABN(IP,2,2))
 #endif
 #ifdef W3_T
     WRITE (NDST,9002) SUM(D), SUM(A), XSTRESS, YSTRESS, TAUWNX, TAUWNY
 #endif
-    S = D * A
+
+    S(:,1:NP) = D(:,1:NP) * A(:,1:NP)
     !
     ! ... Test output of arrays
     !
 #ifdef W3_T0
-    DO IK=1, NK
-      DO ITH=1, NTH
-        DOUT(IK,ITH) = D(ITH+(IK-1)*NTH)
+    DO IP=1, NP
+      IF(MASK(IP)) CYCLE
+      DO IK=1, NK
+        DO ITH=1, NTH
+          DOUT(IK,ITH) = D(ITH+(IK-1)*NTH,IP)
+        END DO
       END DO
-    END DO
-    CALL PRT2DS (NDST, NK, NK, NTH, DOUT, SIG(1), '  ', 1.,         &
+      CALL PRT2DS (NDST, NK, NK, NTH, DOUT, SIG(1), '  ', 1.,         &
          0.0, 0.001, 'Diag Sin', ' ', 'NONAME')
+    END DO !IP
 #endif
     !
 #ifdef W3_T1
-    CALL OUTMAT (NDST, D, NTH, NTH, NK, 'diag Sin')
+    DO IP=1, NP
+      IF(MASK(IP)) CYCLE
+      CALL OUTMAT (NDST, D(:,IP), NTH, NTH, NK, 'diag Sin')
+    END DO
 #endif
     !
-    TAUPX=TAUX-ABS(TTAUWSHELTER)*XSTRESS
-    TAUPY=TAUY-ABS(TTAUWSHELTER)*YSTRESS
-    USTP=(TAUPX**2+TAUPY**2)**0.25
-    USDIRP=ATAN2(TAUPY,TAUPX)
 
-    UST=USTP
-    !
-    ! Computes HF tail
-    !
-    ! Computes the high-frequency contribution
-    ! the difference in spectal density (kx,ky) to (f,theta)
-    ! is integrated in this modified CONST0
-    CONST0=DTH*SIG(NK)**5/((GRAV**2)*tpi) &
-         *TPI*SIG(NK) / CG(NK)  !conversion WAM (E(f,theta) to WW3 A(k,theta)
-    TEMP=0.
-    DO ITH=1,NTH
-      IS=ITH+(NK-1)*NTH
-      COSWIND=(ECOS(IS)*COSU+ESIN(IS)*SINU)
-      TEMP=TEMP+A(IS)*(MAX(COSWIND,0.))**3
-    END DO
-    !
-    LEVTAIL0= CONST0*TEMP  ! LEVTAIL is sum over theta of A(k,theta)*cos^3(theta-wind)*DTH*SIG^5/(g^2*2pi)*2*pi*SIG/CG
-                           !  which is the same as sum of E(f,theta)*cos^3(theta-wind)*DTH*SIG^5/(g^2*2pi)
-                           ! reminder:  sum of E(f,theta)*DTH*SIG^5/(g^2*2pi) is 2*k^3*E(k)
-!
-! Computation of stress supported by tail: uses table if SINTAILPAR(1)=1 , correspoding to SINTABLE = 1
-!
+
+    ! GPU Refactor: If not using lookup table, allocate W here.
+    ! Moved from code below so it is no allocating/deallicating in NP loop.
     IF (SINTAILPAR(1).LT.0.5) THEN
+      ! GPU Refactor: Allocate W for explcit calculation of HF tail part
+      ! Note : W (weights?) does not get modified, so no need for NP dimension
       ALLOCATE(W(JTOT))
       W(2:JTOT-1)=1.
       W(1)=0.5
       W(JTOT)=0.5
-      X0 = 0.05
+    END IF
+
+
+    ! GPU Refactor: New IP loop:
+    DO IP=1,NP
+      IF(MASK(IP)) CYCLE
+
+      ! If STAB3 is enabled here, aren't TAU[XY] the values from ISTAB=2?
+      ! Is that correct? TODO: Raise ISSUE for this?
+      TAUPX = TAUX(IP) - ABS(TTAUWSHELTER) * XSTRESS(IP)
+      TAUPY = TAUY(IP) - ABS(TTAUWSHELTER) * YSTRESS(IP)
+      !USTP=(TAUPX**2+TAUPY**2)**0.25
+      UST=(TAUPX**2+TAUPY**2)**0.25
+      USDIRP=ATAN2(TAUPY,TAUPX)
+
+      !UST=USTP ! GPU Refactor - dont use USTP for no reason.
+
       !
-      USTR= UST
-      ZZ0=Z0
-      OMEGACC  = MAX(SIG(NK),X0*GRAV/UST)
-      YC       = OMEGACC*SQRT(ZZ0/GRAV)
-
-      ! DELY     = MAX((1.-YC)/REAL(JTOT),0.)
-      ! Changed integration variable from Y to LOG(Y) and to log(K)
-      !ZINF      = LOG(YC)
-      !DELY     = MAX((1.-ZINF)/REAL(JTOT),0.)
-      ZINF = LOG(SIG(NK)**2/GRAV)
-      DELY = (LOG(TPI/0.005)-ZINF)/REAL(JTOT)
-
-      TAUR=UST**2
-      TAU1=0.
-
-      ! Integration loop over the tail wavenumbers or frequencies ...
-      DO J=1,JTOT
-        !Y        = YC+REAL(J-1)*DELY
-        !OMEGA    = Y*SQRT(GRAV/ZZ0)
-        !OMEGA    = SQRT(GRAV*Y)
-        ! This is the deep water phase speed... No surface tension !!
-        !CM       = GRAV/OMEGA
-        ! With this form, Y is the wavenumber in the tail;
-        Y= EXP(ZINF+REAL(J-1)*DELY)
-        TENSK    =1+(Y/KM)**2
-        OMEGA    = SQRT(GRAV*Y*TENSK)
-        CM       = SQRT(GRAV*TENSK/Y)
-        CGTAIL   = 0.5*(3*(Y/KM)**2+1)*SQRT(GRAV/(Y*TENSK))
-        !this is the inverse wave age, shifted by ZZALP (tuning)
-        ZX       = USTR/CM +ZZALP
-        ZARG     = MIN(KAPPA/ZX,20.)
-        ! ZMU corresponds to EXP(ZCN)
-        ZMU      = MIN(GRAV*ZZ0/CM**2*EXP(ZARG),1.)
-        ZLOG     = MIN(ALOG(ZMU),0.)
-        ZBETA        = CONST1*ZMU*ZLOG**4
-        !
-        ! Optional addition of capillary wave peak if SINTAIL2=1 
-        !
-        IF (SINTAILPAR(3).GT.0) THEN
-          IF (USTR.LT.CM) THEN
-            ALPHAM=MAX(0.,0.01*(1.+ALOG(USTR/CM)))
-          ELSE
-            ALPHAM=0.01*(1+3.*ALOG(USTR/CM))
-          END IF
-          FM=EXP(-0.25*(Y/KM-1)**2)
-
-          ALPHAT=ALPHAM*(CMM/CM)*FM  ! equivalent to 2*Bh in Elfouhaily et al.
-          LEVTAIL=LEVTAIL0*0.5*(1-tanh((Y-20)/5))+SINTAILPAR(3)*0.5*(1+TANH((Y-20)/5))*ALPHAT
-        ELSE
-          LEVTAIL=LEVTAIL0
-        END IF
-        ! WRITE(991,*) 'TAIL??',SINTAILPAR(3),LEVTAIL0,LEVTAIL,ALPHAT,Y,Y/KM,OMEGA/(TPI)
-
-        !TAU1=TAU1+W(J)*ZBETA*(USTR/UST)**2/Y*DELY              ! integration over LOG(Y)
-        TAU1=TAU1+W(J)*ZBETA*USTR**2*LEVTAIL*DELY*CGTAIL/CM       ! integration over LOG(K)
-
-        ! NB: the factor ABS(TTAUWSHELTER) was forgotten in the TAUHFT2 table
-        !TAUR=TAUR-W(J)*ABS(TTAUWSHELTER)*USTR**2*ZBETA*LEVTAIL/Y*DELY
-        !TAUR=TAUR-W(J)*USTR**2*ZBETA*LEVTAIL*DELY    ! integration over LOG(Y)
-        TAUR=TAUR-W(J)*SINTAILPAR(2)*USTR**2*ZBETA*LEVTAIL*DELY*CGTAIL/CM   ! DK/K*CG/C = D OMEGA / OMEGA
-        USTR=SQRT(MAX(TAUR,0.))
+      ! Computes HF tail
+      !
+      ! Computes the high-frequency contribution
+      ! the difference in spectal density (kx,ky) to (f,theta)
+      ! is integrated in this modified CONST0
+      CONST0=DTH*SIG(NK)**5/((GRAV**2)*tpi) &
+           *TPI*SIG(NK) / CG(NK,IP)  !conversion WAM (E(f,theta) to WW3 A(k,theta)
+      TEMP=0.
+      DO ITH=1,NTH
+        IS=ITH+(NK-1)*NTH
+        COSWIND=ECOS(IS)*COSU(IP) + ESIN(IS)*SINU(IP)
+        TEMP=TEMP+A(IS,IP)*(MAX(COSWIND,0.))**3
       END DO
-      DEALLOCATE(W)
-      TAU1NT=TAU1
-      TAUHF = TAU1
-      !
-      ! In this case, uses tables for high frequency contribution to TAUW.
-      !
-    ELSE
-      ! finds the values in the tabulated stress TAUHFT
-      XI=UST/DELUST
-      IND  = MAX(1,MIN (IUSTAR-1, INT(XI)))
-      DELI1= MAX(MIN (1. ,XI-FLOAT(IND)),0.)
-      DELI2= 1. - DELI1
-      XJ=MAX(0.,(GRAV*Z0/MAX(UST,0.00001)**2-AALPHA) / DELALP)
-      J    = MAX(1 ,MIN (IALPHA-1, INT(XJ)))
-      DELJ1= MAX(0.,MIN (1.      , XJ-FLOAT(J)))
-      DELJ2=1. - DELJ1
-      IF (TTAUWSHELTER.GT.0) THEN
-        XK = LEVTAIL0/ DELTAIL
-        I = MIN (ILEVTAIL-1, INT(XK))
-        DELK1= MIN (1. ,XK-FLOAT(I))
-        DELK2=1. - DELK1
-        TAU1 =((TAUHFT2(IND,J,I)*DELI2+TAUHFT2(IND+1,J,I)*DELI1 )*DELJ2 &
-             +(TAUHFT2(IND,J+1,I)*DELI2+TAUHFT2(IND+1,J+1,I)*DELI1)*DELJ1)*DELK2 &
-             +((TAUHFT2(IND,J,I+1)*DELI2+TAUHFT2(IND+1,J,I+1)*DELI1 )*DELJ2 &
-             +(TAUHFT2(IND,J+1,I+1)*DELI2+TAUHFT2(IND+1,J+1,I+1)*DELI1)*DELJ1)*DELK1
-      ELSE
-        TAU1 =(TAUHFT(IND,J)*DELI2+TAUHFT(IND+1,J)*DELI1 )*DELJ2 &
-             +(TAUHFT(IND,J+1)*DELI2+TAUHFT(IND+1,J+1)*DELI1)*DELJ1
-      END IF
-      !
-      TAUHF = LEVTAIL0*UST**2*TAU1
-    END IF ! End of test on use of table
 
-    TAUWX = XSTRESS+TAUHF*COS(USDIRP)
-    TAUWY = YSTRESS+TAUHF*SIN(USDIRP)
-    !
-    ! Reduces tail effect to make sure that wave-supported stress
-    ! is less than total stress, this is borrowed from ECWAM Stresso.F
-    !
-    TAUW = SQRT(TAUWX**2+TAUWY**2)
-    UST2   = MAX(USTAR,EPS2)**2
-    TAUWB = MIN(TAUW,MAX(UST2-EPS1,EPS2**2))
-    IF (TAUWB.LT.TAUW) THEN
-      TAUWX=TAUWX*TAUWB/TAUW
-      TAUWY=TAUWY*TAUWB/TAUW
+      ! LEVTAIL is sum over theta of:
+      !   A(k,theta)*cos^3(theta-wind)*DTH*SIG^5/(g^2*2pi)*2*pi*SIG/CG
+      ! which is the same as sum of:
+      !   E(f,theta)*cos^3(theta-wind)*DTH*SIG^5/(g^2*2pi)
+      ! reminder:  sum of E(f,theta)*DTH*SIG^5/(g^2*2pi) is 2*k^3*E(k)
+      LEVTAIL0 = CONST0*TEMP
+                             
+!
+! Computation of stress supported by tail:
+! uses table if SINTAILPAR(1)=1 , correspoding to SINTABLE = 1
+!
+      IF (SINTAILPAR(1).LT.0.5) THEN
+        ! Explicit calculation
+
+        ! GPU Refactor: Move this outside NP loop (or make thread private on stack)?
+!        ALLOCATE(W(JTOT))
+!        W(2:JTOT-1)=1.
+!        W(1)=0.5
+!        W(JTOT)=0.5
+
+        X0 = 0.05 ! GPU Refactor: TODO move outside loop (maybe make parameter?)
+        !
+        USTR = UST
+        !ZZ0 = Z0(IP) ! GPU Refactor - removed; reference Z0 directly.
+
+        OMEGACC  = MAX(SIG(NK),X0*GRAV/UST)
+        YC       = OMEGACC*SQRT(Z0(IP)/GRAV)
+
+        ! DELY     = MAX((1.-YC)/REAL(JTOT),0.)
+        ! Changed integration variable from Y to LOG(Y) and to log(K)
+        !ZINF      = LOG(YC)
+        !DELY     = MAX((1.-ZINF)/REAL(JTOT),0.)
+        ZINF = LOG(SIG(NK)**2/GRAV)
+        DELY = (LOG(TPI/0.005)-ZINF)/REAL(JTOT)
+  
+        TAUR=UST**2
+        TAU1=0.
+  
+        ! Integration loop over the tail wavenumbers or frequencies ...
+        DO J=1,JTOT
+          !Y        = YC+REAL(J-1)*DELY
+          !OMEGA    = Y*SQRT(GRAV/Z0(IP))
+          !OMEGA    = SQRT(GRAV*Y)
+          ! This is the deep water phase speed... No surface tension !!
+          !CM       = GRAV/OMEGA
+          ! With this form, Y is the wavenumber in the tail;
+          Y= EXP(ZINF+REAL(J-1)*DELY)
+          TENSK    =1+(Y/KM)**2
+          OMEGA    = SQRT(GRAV*Y*TENSK)
+          CM       = SQRT(GRAV*TENSK/Y)
+          CGTAIL   = 0.5*(3*(Y/KM)**2+1)*SQRT(GRAV/(Y*TENSK))
+          !this is the inverse wave age, shifted by ZZALP (tuning)
+          ZX       = USTR/CM +ZZALP
+          ZARG     = MIN(KAPPA/ZX,20.)
+          ! ZMU corresponds to EXP(ZCN)
+          ZMU      = MIN(GRAV*Z0(IP)/CM**2*EXP(ZARG),1.)
+          ZLOG     = MIN(ALOG(ZMU),0.)
+          ZBETA    = CONST1*ZMU*ZLOG**4
+          !
+          ! Optional addition of capillary wave peak if SINTAIL2=1 
+          !
+          IF (SINTAILPAR(3).GT.0) THEN
+            IF (USTR.LT.CM) THEN
+              ALPHAM=MAX(0.,0.01*(1.+ALOG(USTR/CM)))
+            ELSE
+              ALPHAM=0.01*(1+3.*ALOG(USTR/CM))
+            END IF
+            FM=EXP(-0.25*(Y/KM-1)**2)
+  
+            ALPHAT=ALPHAM*(CMM/CM)*FM  ! equivalent to 2*Bh in Elfouhaily et al.
+            LEVTAIL=LEVTAIL0*0.5*(1-tanh((Y-20)/5))+SINTAILPAR(3)*0.5*(1+TANH((Y-20)/5))*ALPHAT
+          ELSE
+            LEVTAIL=LEVTAIL0
+          END IF
+          ! WRITE(991,*) 'TAIL??',SINTAILPAR(3),LEVTAIL0,LEVTAIL,ALPHAT,Y,Y/KM,OMEGA/(TPI)
+  
+          !TAU1=TAU1+W(J)*ZBETA*(USTR/UST)**2/Y*DELY              ! integration over LOG(Y)
+          TAU1=TAU1+W(J)*ZBETA*USTR**2*LEVTAIL*DELY*CGTAIL/CM       ! integration over LOG(K)
+  
+          ! NB: the factor ABS(TTAUWSHELTER) was forgotten in the TAUHFT2 table
+          !TAUR=TAUR-W(J)*ABS(TTAUWSHELTER)*USTR**2*ZBETA*LEVTAIL/Y*DELY
+          !TAUR=TAUR-W(J)*USTR**2*ZBETA*LEVTAIL*DELY    ! integration over LOG(Y)
+          TAUR=TAUR-W(J)*SINTAILPAR(2)*USTR**2*ZBETA*LEVTAIL*DELY*CGTAIL/CM   ! DK/K*CG/C = D OMEGA / OMEGA
+          USTR=SQRT(MAX(TAUR,0.))
+        END DO ! J=1,JTOT
+
+!        DEALLOCATE(W) ! GPU Refactor: allocation moved outside loop
+
+        !TAU1NT=TAU1  ! GPU Refactor: Not used
+        TAUHF = TAU1
+        !
+        ! In this case, uses tables for high frequency contribution to TAUW.
+        !
+      ELSE ! SINTAILPAR(1) == 1
+        ! finds the values in the tabulated stress TAUHFT
+        XI=UST/DELUST
+        IND  = MAX(1,MIN (IUSTAR-1, INT(XI)))
+        DELI1= MAX(MIN (1. ,XI-FLOAT(IND)),0.)
+        DELI2= 1. - DELI1
+        XJ=MAX(0.,(GRAV*Z0(IP)/MAX(UST,0.00001)**2-AALPHA) / DELALP)
+        J    = MAX(1 ,MIN (IALPHA-1, INT(XJ)))
+        DELJ1= MAX(0.,MIN (1.      , XJ-FLOAT(J)))
+        DELJ2=1. - DELJ1
+        IF (TTAUWSHELTER.GT.0) THEN
+          XK = LEVTAIL0/ DELTAIL
+          I = MIN (ILEVTAIL-1, INT(XK))
+          DELK1= MIN (1. ,XK-FLOAT(I))
+          DELK2=1. - DELK1
+          TAU1 =((TAUHFT2(IND,J,I)*DELI2+TAUHFT2(IND+1,J,I)*DELI1 )*DELJ2 &
+               +(TAUHFT2(IND,J+1,I)*DELI2+TAUHFT2(IND+1,J+1,I)*DELI1)*DELJ1)*DELK2 &
+               +((TAUHFT2(IND,J,I+1)*DELI2+TAUHFT2(IND+1,J,I+1)*DELI1 )*DELJ2 &
+               +(TAUHFT2(IND,J+1,I+1)*DELI2+TAUHFT2(IND+1,J+1,I+1)*DELI1)*DELJ1)*DELK1
+        ELSE
+          TAU1 =(TAUHFT(IND,J)*DELI2+TAUHFT(IND+1,J)*DELI1 )*DELJ2 &
+               +(TAUHFT(IND,J+1)*DELI2+TAUHFT(IND+1,J+1)*DELI1)*DELJ1
+        END IF
+        !
+        TAUHF = LEVTAIL0*UST**2*TAU1
+      END IF ! End of test on use of table
+  
+      TAUWX(IP) = XSTRESS(IP)+TAUHF*COS(USDIRP)
+      TAUWY(IP) = YSTRESS(IP)+TAUHF*SIN(USDIRP)
+      !
+      ! Reduces tail effect to make sure that wave-supported stress
+      ! is less than total stress, this is borrowed from ECWAM Stresso.F
+      !
+      TAUW = SQRT(TAUWX(IP)**2+TAUWY(IP)**2)
+      UST2   = MAX(USTAR(IP),EPS2)**2
+      TAUWB = MIN(TAUW,MAX(UST2-EPS1,EPS2**2))
+      IF (TAUWB.LT.TAUW) THEN
+        TAUWX(IP)=TAUWX(IP)*TAUWB/TAUW
+        TAUWY(IP)=TAUWY(IP)*TAUWB/TAUW
+      END IF
+    END DO !IP
+
+    ! GPU Refactor: Moved deallocation of W here:
+    IF (SINTAILPAR(1).LT.0.5) THEN
+      DEALLOCATE(W) 
     END IF
     !
     RETURN
