@@ -705,8 +705,8 @@ CONTAINS
       IF(MASK(IP)) CYCLE
 
       IF (SSWELLF(4).GT.0) THEN
+        RE = 4 * UORB(IP) * AORB1(IP) / NU_AIR  ! Reynolds number (moved from above)
         IF (SSWELLF(7).GT.0.) THEN
-          RE = 4 * UORB(IP) * AORB1(IP) / NU_AIR  ! Reynolds number (moved from above)
           SMOOTH = 0.5*TANH((RE-SSWELLF(4))/SSWELLF(7))
           PTURB(IP)=(0.5+SMOOTH)
           PVISC(IP)=(0.5-SMOOTH)
@@ -729,6 +729,7 @@ CONTAINS
     DO IP = 1,NP
       IF(MASK(IP)) CYCLE
 
+      ! TODO: Move this outside loop - no IP dependent
       IF (SSWELLF(2).EQ.0) THEN
         FW(IP) = MAX(ABS(SSWELLF(3)),0.)
         FU(IP) = 0.
@@ -911,10 +912,10 @@ CONTAINS
 #ifdef W3_STAB3
     END DO ! ISTAB
     D(:,1:NP) = 0.5 * (DSTAB(1,:,1:NP)+DSTAB(2,:,1:NP))
-    XSTRESS(IP) = 0.5 * (STRESSSTAB(IP,1,1) + STRESSSTAB(IP,2,1))
-    YSTRESS(IP) = 0.5 * (STRESSSTAB(IP,1,2) + STRESSSTAB(IP,2,2))
-    TAUWNX(IP) = 0.5 * (STRESSSTABN(IP,1,1) + STRESSSTABN(IP,2,1))
-    TAUWNY(IP) = 0.5 * (STRESSSTABN(IP,1,2) + STRESSSTABN(IP,2,2))
+    XSTRESS(1:NP) = 0.5 * (STRESSSTAB(1:NP,1,1) + STRESSSTAB(1:NP,2,1))
+    YSTRESS(1:NP) = 0.5 * (STRESSSTAB(1:NP,1,2) + STRESSSTAB(1:NP,2,2))
+    TAUWNX(1:NP) = 0.5 * (STRESSSTABN(1:NP,1,1) + STRESSSTABN(1:NP,2,1))
+    TAUWNY(1:NP) = 0.5 * (STRESSSTABN(1:NP,1,2) + STRESSSTABN(1:NP,2,2))
 #endif
 #ifdef W3_T
     WRITE (NDST,9002) SUM(D), SUM(A), XSTRESS, YSTRESS, TAUWNX, TAUWNY
