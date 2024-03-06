@@ -824,7 +824,7 @@ CONTAINS
           !CONST0= CONST1 * DRAT(IP)
           !CONST = SIG2(IS)*CONST0
           ! GPU refactor - rewritten above to remove use of CONST:
-          CONST = SIG2(IS) * CONST1 * DRAT(IP)
+          CONST = SIG2(IS) * (CONST1 * DRAT(IP))  ! Note brackets are needed for B4B!!
           ! CM parameter is 1 / C_phi
           ! Z0 corresponds to Z0+Z1 of the Janssen eq. 14
           ZCN = ALOG(K(IS,IP) * Z0(IP))
