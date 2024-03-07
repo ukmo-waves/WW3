@@ -107,6 +107,16 @@ MODULE W3SRC4MD
   REAL,    PARAMETER      :: FAC_KD1=1.01, KHSMAX=2., KHMAX=2.
   REAL,    PARAMETER      ::KDMAX=200000.
   !/
+
+  !/ Interface block defines 'array' and 'scalar' versions of source routines.
+  !/ Array versions are refactored to allow multiple points to be processed
+  !/ in parallel. Scalar version maintain subroutine call signature for
+  !/ backwards compatibility.
+  INTERFACE W3SIN4
+    MODULE PROCEDURE W3SIN4_ARR
+    MODULE PROCEDURE W3SIN4_SCALAR
+  END INTERFACE W3SIN4
+
 CONTAINS
   !/ ------------------------------------------------------------------- /
 
@@ -424,6 +434,43 @@ CONTAINS
   !/ ------------------------------------------------------------------- /
 
   !>
+  !> @brief Interface tp W3SIN4 with scalar values (single spectrum)
+  !> @details See W3SIN4_ARR
+  SUBROUTINE W3SIN4_SCALAR (A, CG, K, U, USTAR, DRAT, AS, USDIR, Z0, CD,    &
+    TAUWX, TAUWY, TAUWNX, TAUWNY, S, D, LLWS,       &
+    IX, IY, BRLAMBDA)
+
+    USE W3GDATMD, ONLY: NK, NSPEC
+
+    IMPLICIT NONE
+    !/
+    !/ ------------------------------------------------------------------- /
+    !/ Parameter list
+    !/
+    REAL, INTENT(IN)        :: A(NSPEC), BRLAMBDA(NSPEC)
+    REAL, INTENT(IN)        :: CG(NK), K(NSPEC), Z0, U, CD
+    REAL, INTENT(IN)        :: USTAR, USDIR, AS, DRAT
+    REAL, INTENT(OUT)       :: S(NSPEC), D(NSPEC)
+    REAL, INTENT(OUT)       :: TAUWX, TAUWY, TAUWNX, TAUWNY
+    LOGICAL, INTENT(OUT)    :: LLWS(NSPEC)
+    INTEGER, INTENT(IN)     :: IX, IY
+
+    ! Temporaries for capturing output arrays when we only have scalars
+    REAL :: A_TAUWX(1), A_TAUWY(1), A_TAUWNX(1), A_TAUWNY(1)
+
+    CALL W3SIN4_ARR(A, CG, K, (/U/), (/USTAR/), (/DRAT/), (/AS/), (/USDIR/), (/Z0/), (/CD/),    &
+        A_TAUWX, A_TAUWY, A_TAUWNX, A_TAUWNY, S, D, LLWS,       &
+        (/IX/), (/IY/), BRLAMBDA, (/.FALSE./), 1)
+
+    TAUWX = A_TAUWX(1)
+    TAUWY = A_TAUWY(1)
+    TAUWNX = A_TAUWNX(1)
+    TAUWNY = A_TAUWNY(1)
+
+    !/
+  END SUBROUTINE W3SIN4_SCALAR
+
+  !>
   !> @brief Calculate diagonal and input source term for WAM4+ approach.
   !>
   !> @verbatim
@@ -459,7 +506,7 @@ CONTAINS
   !> @author H. L. Tolman
   !> @date   05-Dec-2013
   !>
-  SUBROUTINE W3SIN4 (A, CG, K, U, USTAR, DRAT, AS, USDIR, Z0, CD,    &
+  SUBROUTINE W3SIN4_ARR (A, CG, K, U, USTAR, DRAT, AS, USDIR, Z0, CD,    &
        TAUWX, TAUWY, TAUWNX, TAUWNY, S, D, LLWS,       &
        IX, IY, BRLAMBDA, MASK, NP)
     !/
@@ -1153,7 +1200,7 @@ CONTAINS
     !/
     !/ End of W3SIN4 ----------------------------------------------------- /
     !/
-  END SUBROUTINE W3SIN4
+  END SUBROUTINE W3SIN4_ARR
   !/ ------------------------------------------------------------------- /
 
   !>
