@@ -117,8 +117,81 @@ MODULE W3SRC4MD
     MODULE PROCEDURE W3SIN4_SCALAR
   END INTERFACE W3SIN4
 
+  INTERFACE W3SPR4
+    MODULE PROCEDURE W3SPR4_ARR
+    MODULE PROCEDURE W3SPR4_SCALAR
+  END INTERFACE W3SPR4
+
+  INTERFACE W3SDS4
+    MODULE PROCEDURE W3SDS4_ARR
+    MODULE PROCEDURE W3SDS4_SCALAR
+  END INTERFACE W3SDS4
+
 CONTAINS
   !/ ------------------------------------------------------------------- /
+
+!>
+!> @brief Interface to W3SPR4 with scalar values (single spectrum)
+!> @details See: W3SPR4_ARR
+  SUBROUTINE W3SPR4_SCALAR (A, CG, WN, EMEAN, FMEAN, FMEAN1, WNMEAN,     &
+      AMAX, U, UDIR,                                    &
+#ifdef W3_FLX5
+      TAUA, TAUADIR, DAIR,                              &
+#endif
+      USTAR, USDIR,                                     &
+      TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DLWMEAN )
+
+    USE W3GDATMD, ONLY: NK, NTH, NSPEC
+
+    IMPLICIT NONE
+    !/
+    !/ ------------------------------------------------------------------- /
+    !/ Parameter list
+    !/
+    REAL, INTENT(IN)        :: A(NTH,NK), CG(NK), WN(NK), U, UDIR
+#ifdef W3_FLX5
+    REAL, INTENT(IN)        :: TAUA, TAUADIR, DAIR
+#endif
+    REAL, INTENT(IN)        :: TAUWX, TAUWY
+    LOGICAL, INTENT(IN)     :: LLWS(NSPEC)
+    REAL, INTENT(INOUT)     :: USTAR, USDIR
+    REAL, INTENT(OUT)       :: EMEAN, FMEAN, FMEAN1, WNMEAN, &
+                               AMAX, CD, Z0, CHARN, & 
+                               FMEANWS, DLWMEAN
+ !
+    ! Temporaries for passing array versions of OUT/INOUT scalars
+    REAL :: A_USTAR(1), A_USDIR(1)
+    REAL :: A_EMEAN(1), A_FMEAN(1), A_FMEAN1(1), A_WNMEAN(1), &
+            A_AMAX(1), A_CD(1), A_Z0(1), A_CHARN(1), & 
+            A_FMEANWS(1), A_DLWMEAN(1)
+!
+    ! Set initial INOUT values:
+    A_USTAR(1) = USTAR
+    A_USDIR(1) = USDIR
+
+    CALL W3SPR4_ARR (A, CG, WN, A_EMEAN, A_FMEAN, A_FMEAN1, A_WNMEAN,      &
+                      A_AMAX, (/U/), (/UDIR/),                             &
+#ifdef W3_FLX5
+                      (/TAUA/), (/TAUADIR/), (/DAIR/),                     &
+#endif
+                      A_USTAR, A_USDIR, (/TAUWX/), (/TAUWY/), A_CD, A_Z0,  &
+                      A_CHARN, LLWS, A_FMEANWS, A_DLWMEAN, (/.TRUE./), 1 )
+!
+    ! Copy back INOUT/OUT variables
+    USTAR = A_USTAR(1)
+    USDIR = A_USDIR(1)
+    EMEAN = A_EMEAN(1)
+    FMEAN = A_FMEAN(1)
+    FMEAN1 = A_FMEAN1(1)
+    WNMEAN = A_WNMEAN(1)
+    AMAX = A_AMAX(1)
+    CD = A_CD(1)
+    Z0 = A_Z0(1)
+    CHARN = A_CHARN(1)
+    FMEANWS = A_FMEANWS(1)
+    DLWMEAN = A_DLWMEAN(1)
+!
+  END SUBROUTINE W3SPR4_SCALAR
 
 !>
 !> @brief Calculate mean wave parameters for the use in the source term
@@ -154,7 +227,7 @@ CONTAINS
 !> @author H. L. Tolman
 !> @date   22-Feb-2020
 !>
-  SUBROUTINE W3SPR4 (A, CG, WN, EMEAN, FMEAN, FMEAN1, WNMEAN,     &
+  SUBROUTINE W3SPR4_ARR (A, CG, WN, EMEAN, FMEAN, FMEAN1, WNMEAN,     &
        AMAX, U, UDIR,                                    &
 #ifdef W3_FLX5
        TAUA, TAUADIR, DAIR,                              &
@@ -430,7 +503,7 @@ CONTAINS
     !/
     !/ End of W3SPR4 ----------------------------------------------------- /
     !/
-  END SUBROUTINE W3SPR4
+  END SUBROUTINE W3SPR4_ARR
   !/ ------------------------------------------------------------------- /
 
   !>
@@ -2183,6 +2256,38 @@ CONTAINS
   !/ ------------------------------------------------------------------- /
 
   !>
+  !> @brief Interface to W3SDS4 with scalar values (single spectrum)
+  !> @details See: W3SDS4_ARR
+  SUBROUTINE W3SDS4_SCALAR (A, K, CG, USTAR, USDIR, DEPTH, DAIR, SRHS,    &
+    DDIAG, IX, IY, BRLAMBDA, WCAP_COV, WCAP_THK, WCAP_MNT, DLWMEAN)
+
+    USE W3GDATMD, ONLY: NSPEC, NK
+    IMPLICIT NONE
+    !/
+    !/ ------------------------------------------------------------------- /
+    !/ Parameter list
+    !/
+    INTEGER, OPTIONAL, INTENT(IN) :: IX, IY
+    REAL, INTENT(IN)        :: A(NSPEC), K(NK), CG(NK),        &
+         DEPTH, DAIR, USTAR, USDIR, DLWMEAN
+    REAL, INTENT(OUT)       :: SRHS(NSPEC), DDIAG(NSPEC), BRLAMBDA(NSPEC)
+    REAL, INTENT(OUT)       :: WCAP_COV, WCAP_THK, WCAP_MNT
+    
+    !/ Temporary array versions of INTENT(OUT) parameters
+    REAL :: A_WCAP_COV(1), A_WCAP_THK(1), A_WCAP_MNT(1)
+
+    CALL W3SDS4_ARR(A, K, CG, (/USTAR/), (/USDIR/), (/DEPTH/), (/DAIR/), &
+         SRHS, DDIAG, (/IX/), (/IY/), BRLAMBDA, A_WCAP_COV, A_WCAP_THK, &
+         A_WCAP_MNT, (/DLWMEAN/), (/.TRUE./), 1 )
+
+    !/ Copy temp OUT arrays back to scalars
+    WCAP_COV = A_WCAP_COV(1)
+    WCAP_THK = A_WCAP_THK(1)
+    WCAP_MNT = A_WCAP_MNT(1)
+
+  END SUBROUTINE W3SDS4_SCALAR
+!  
+  !>
   !> @brief Calculate whitecapping source term and diagonal term of derivative.
   !>
   !> @details This codes does either one or the other of
@@ -2213,7 +2318,7 @@ CONTAINS
   !> @author L. Romero
   !> @date   13-Aug-2021
   !>
-  SUBROUTINE W3SDS4 (A, K, CG, USTAR, USDIR, DEPTH, DAIR, SRHS,    &
+  SUBROUTINE W3SDS4_ARR (A, K, CG, USTAR, USDIR, DEPTH, DAIR, SRHS,    &
        DDIAG, IX, IY, BRLAMBDA, WCAP_COV, WCAP_THK, WCAP_MNT, DLWMEAN, &
        MASK, NP )
     !/
@@ -2870,7 +2975,7 @@ CONTAINS
     !/
     !/ End of W3SDS4 ----------------------------------------------------- /
     !/
-  END SUBROUTINE W3SDS4
+  END SUBROUTINE W3SDS4_ARR
 
 
 END MODULE W3SRC4MD
