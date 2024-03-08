@@ -2214,13 +2214,14 @@ CONTAINS
   !> @date   13-Aug-2021
   !>
   SUBROUTINE W3SDS4 (A, K, CG, USTAR, USDIR, DEPTH, DAIR, SRHS,    &
-       DDIAG, IX, IY, BRLAMBDA, WCAP_COV, WCAP_THK, WCAP_MNT, DLWMEAN )
+       DDIAG, IX, IY, BRLAMBDA, WCAP_COV, WCAP_THK, WCAP_MNT, DLWMEAN, &
+       MASK, NP )
     !/
     !/                  +-----------------------------------+
     !/                  | WAVEWATCH III           NOAA/NCEP |
     !/                  ! F. Ardhuin, F. Leckler, L. Romero !
     !/                  |                        FORTRAN 90 |
-    !/                  | Last update :         13-Aug-2021 |
+    !/                  | Last update :         07-Mar-2023 |
     !/                  +-----------------------------------+
     !/
     !/    30-Aug-2010 : Clean up from common ST3-ST4 routine( version 3.14-Ifremer )
@@ -2230,6 +2231,8 @@ CONTAINS
     !/    22-Feb-2020 : Option to use Romero (GRL 2019)    ( version 7.06 )
     !/    13-Aug-2021 : Consider DAIR a variable           ( version 7.14 )
     !/    01-Mar-2023 : Clean up of SDS4                   ( version 7.xx )
+    !/    07-Mar-2023 : Refactored to process multiple sea ( version 7.14 )
+    !/                  points.
     !/
     !  1. Purpose :
     !
@@ -2257,6 +2260,8 @@ CONTAINS
     !       S         R.A.  O   Source term (1-D version).
     !       D         R.A.  O   Diagonal term of derivative.             *)
     !       BRLAMBDA  R.A.  O   Phillips' Lambdas
+    !       MASK      L.A   I   Seapoint computation mask
+    !       NP        Int   I   Number of seapoints
     !     ----------------------------------------------------------------
     !                         *) Stored in 1-D array with dimension NTH*NK
     !
@@ -2321,11 +2326,13 @@ CONTAINS
     !/ ------------------------------------------------------------------- /
     !/ Parameter list
     !/
-    INTEGER, OPTIONAL, INTENT(IN) :: IX, IY
-    REAL, INTENT(IN)        :: A(NSPEC), K(NK), CG(NK),            &
-         DEPTH, DAIR, USTAR, USDIR, DLWMEAN
-    REAL, INTENT(OUT)       :: SRHS(NSPEC), DDIAG(NSPEC), BRLAMBDA(NSPEC)
-    REAL, INTENT(OUT)       :: WCAP_COV, WCAP_THK, WCAP_MNT
+    INTEGER, OPTIONAL, INTENT(IN) :: IX(NP), IY(NP)
+    REAL, INTENT(IN)        :: A(NSPEC, NP), K(NK, NP), CG(NK, NP),        &
+         DEPTH(NP), DAIR(NP), USTAR(NP), USDIR(NP), DLWMEAN(NP)
+    REAL, INTENT(OUT)       :: SRHS(NSPEC,NP), DDIAG(NSPEC,NP), BRLAMBDA(NSPEC,NP)
+    REAL, INTENT(OUT)       :: WCAP_COV(NP), WCAP_THK(NP), WCAP_MNT(NP)
+    LOGICAL, INTENT(IN)     :: MASK(NP)
+    INTEGER, INTENT(IN)     :: NP
     !/
     !/ ------------------------------------------------------------------- /
     !/ Local parameters
@@ -2335,34 +2342,36 @@ CONTAINS
     INTEGER, SAVE           :: IENT = 0
 #endif
     INTEGER                 :: IK, IK1, ITH, IK2, JTH, ITH2,             &
-         IKHS, IKD, SDSNTH, IT, IKM, NKM
-    INTEGER                 :: NSMOOTH(NK)
+         IKHS, IKD, SDSNTH, IT, IKM, NKM, IP
     REAL                    :: C, C2, CUMULWISO, COSWIND, ASUM, SDIAGISO
-    REAL                    :: COEF1, COEF2, COEF4(NK),      &
-         COEF5(NK)
+    REAL                    :: COEF1, COEF2, COEF4(NK), COEF5(NK)
 
     REAL                    :: FACTURB, FACTURB2, DTURB, DVISC, DIAG2, BREAKFRACTION
     REAL                    :: RENEWALFREQ, EPSR
     REAL                    :: S1(NK), E1(NK)
     INTEGER                 :: NTIMES(NK)
-    REAL                    :: GAM, XT
+    REAL                    :: XT
     REAL                    :: DK(NK), HS(NK), KBAR(NK), DCK(NK)
     REAL                    :: EFDF(NK)     ! Energy integrated over a spectral band
     INTEGER                 :: IKSUP(NK)
     REAL                    :: FACSAT, DKHS, FACSTRAINB, FACSTRAINL
-    REAL                    :: BTH0(NK)     !saturation spectrum
     REAL                    :: BTH(NSPEC)   !saturation spectrum
-    REAL                    :: MSSSUM(NK,5),  FACHF
+    REAL                    :: FACHF
     REAL                    :: MSSLONG
     REAL                    :: MSSPCS, MSSPC2, MSSPS2, MSSP, MSSD, MSSTH
     REAL                    :: MICHE, X, KLOC
 #ifdef W3_T0
-    REAL                    :: DOUT(NK,NTH)
+    REAL                    :: DOUT(NK,NTH)   ! TODO: REMOVE NOT USED!
 #endif
     REAL                    :: QB(NK), S2(NK)
     REAL                    :: TSTR, TMAX, DT, T, MFT, DIRFORCUM
-    REAL                    :: PB(NSPEC), PB2(NSPEC), BRM12(NK), BTOVER
+    REAL                    :: PB(NSPEC), PB2(NSPEC), BTOVER
     REAL                    :: KO, LMODULATION(NTH)
+
+    !/ Refactored variables with NP dimension added
+    REAL :: MSSSUM(NK,5,NP)
+    REAL :: BTH0(NK,NP)     !saturation spectrum (TODO: potentially only needs to have NP dim if SSDSC(3) < 0)?
+    REAL :: BRM12(NK,NP)
     !/
     !/ ------------------------------------------------------------------- /
     !/
@@ -2376,24 +2385,20 @@ CONTAINS
     ! 0.  Pre-Initialization to zero out arrays. All arrays should be reset
     !     within the computation, but these are helping with some bugs
     !     found in certain compilers
-    NSMOOTH=0
     S1=0.; E1=0.
-    NTIMES=0;IKSUP=0
-    DK=0.; HS=0.; KBAR=0.; DCK=0.; EFDF=0.
-    BTH0=0.; BTH=0.; DDIAG=0.; SRHS=0.; PB=0.
-    MSSSUM(:,:)=0.
+    IKSUP=0
+    BTH0=0.; DDIAG=0.; SRHS=0.
+    MSSSUM(:,:,:)=0.
+    BRM12(:,:)=0.
 #ifdef W3_T0
-    DOUT=0.
+    DOUT=0.   ! GPU Refactor: TODO - remove, not used
 #endif
-    QB=0.; S2=0.;PB=0.; PB2=0.
-    BRM12(:)=0.
     !
     ! 1.  Initialization and numerical factors
     !
-    FACTURB=SSDSC(5)*USTAR**2/GRAV*DAIR/DWAT
+    !!FACTURB=SSDSC(5)*USTAR**2/GRAV*DAIR/DWAT  ! GPU Refactor; moved into loop
     DIKCUMUL = NINT(SSDSBRF1/(XFR-1.))
     BREAKFRACTION=0.
-    RENEWALFREQ=0.
     IK1=1
 #ifdef W3_IG1
     IK1=NINT(IGPARS(5))+1
@@ -2402,33 +2407,36 @@ CONTAINS
     ! 1.b MSS parameters used for Modulation factors for lambda (Romero )
     !
     IF (SSDSC(8).GT.0.OR.SSDSC(11).GT.0.OR.SSDSC(18).GT.0) THEN
-      DO IK=1,NK
-        MSSP   = 0.
-        MSSPC2 = 0.
-        MSSPS2 = 0.
-        MSSPCS = 0.
-        !
-        ! Sums the contributions to the directional MSS for all angles
-        !
-        DO ITH=1,NTH
-          IS=ITH+(IK-1)*NTH
-          MSSLONG  = K(IK)**SSDSC(20) * A(IS) * DDEN(IK) / CG(IK) ! contribution to MSS
-          MSSPC2 = MSSPC2 +MSSLONG*EC2(ITH)
-          MSSPS2 = MSSPS2 +MSSLONG*ES2(ITH)
-          MSSPCS = MSSPCS +MSSLONG*ESC(ITH)
-          MSSP   = MSSP   +MSSLONG
+      DO IP=1,NP
+        IF(MASK(IP)) CYCLE
+        DO IK=1,NK
+          MSSP   = 0.
+          MSSPC2 = 0.
+          MSSPS2 = 0.
+          MSSPCS = 0.
+          !
+          ! Sums the contributions to the directional MSS for all angles
+          !
+          DO ITH=1,NTH
+            IS=ITH+(IK-1)*NTH
+            MSSLONG  = K(IK,IP)**SSDSC(20) * A(IS,IP) * DDEN(IK) / CG(IK,IP) ! contribution to MSS
+            MSSPC2 = MSSPC2 +MSSLONG*EC2(ITH)
+            MSSPS2 = MSSPS2 +MSSLONG*ES2(ITH)
+            MSSPCS = MSSPCS +MSSLONG*ESC(ITH)
+            MSSP   = MSSP   +MSSLONG
+          END DO
+          MSSSUM  (IK:NK,1,IP) = MSSSUM (IK:NK,1,IP) +MSSP
+          MSSSUM  (IK:NK,3,IP) = MSSSUM (IK:NK,3,IP) +MSSPC2
+          MSSSUM  (IK:NK,4,IP) = MSSSUM (IK:NK,4,IP) +MSSPS2
+          MSSSUM  (IK:NK,5,IP) = MSSSUM (IK:NK,5,IP) +MSSPCS
+          !
+          ! Direction of long wave mss summed up to IK
+          !
+          MSSD=0.5*(ATAN2(2*MSSSUM(IK,5,IP),MSSSUM(IK,3,IP)-MSSSUM(IK,4,IP)))
+          IF (MSSD.LT.0) MSSD = MSSD + PI
+          MSSSUM  (IK,2,IP)  =  MSSD
         END DO
-        MSSSUM  (IK:NK,1) = MSSSUM (IK:NK,1) +MSSP
-        MSSSUM  (IK:NK,3) = MSSSUM (IK:NK,3) +MSSPC2
-        MSSSUM  (IK:NK,4) = MSSSUM (IK:NK,4) +MSSPS2
-        MSSSUM  (IK:NK,5) = MSSSUM (IK:NK,5) +MSSPCS
-        !
-        ! Direction of long wave mss summed up to IK
-        !
-        MSSD=0.5*(ATAN2(2*MSSSUM(IK,5),MSSSUM(IK,3)-MSSSUM(IK,4)))
-        IF (MSSD.LT.0) MSSD = MSSD + PI
-        MSSSUM  (IK,2)  =  MSSD
-      END DO
+      END DO ! IP
     END IF ! SSDSC(8).GT.0) THEN
     !
     ! 2.   Estimation of spontaneous breaking from local saturation
@@ -2443,216 +2451,226 @@ CONTAINS
       !
       ! 2.a.1 Computes saturation
       !
-      BTH(:) = 0.
+      DO IP=1,NP ! GPU Refactor; new IP loop
+        IF(MASK(IP)) CYCLE
 
-      DO  IK=IK1, NK
+        BTH(:) = 0.
 
-        FACSAT=SIG(IK)*K(IK)**3*DTH
-        IS0=(IK-1)*NTH
-        BTH(IS0+1)=0.
-        ASUM = SUM(A(IS0+1:IS0+NTH))
-        BTH0(IK)=ASUM*FACSAT
-        !
-        IF (SSDSDTH.GE.180) THEN  ! integrates around full circle
-          BTH(IS0+1:IS0+NTH)=BTH0(IK)
-        ELSE
-          DO ITH=1,NTH            ! partial integration
-            IS=ITH+(IK-1)*NTH
-            BTH(IS)=DOT_PRODUCT(SATWEIGHTS(:,ITH),  A(IS0+SATINDICES(:,ITH)) ) &
-                 *FACSAT
-          END DO
+        DO IK=IK1, NK
+          FACSAT=SIG(IK)*K(IK,IP)**3*DTH
+          IS0=(IK-1)*NTH
+          BTH(IS0+1)=0.
+          ASUM = SUM(A(IS0+1:IS0+NTH,IP))
+          BTH0(IK,IP)=ASUM*FACSAT
+          !
+          IF (SSDSDTH.GE.180) THEN  ! integrates around full circle
+            BTH(IS0+1:IS0+NTH)=BTH0(IK,IP)
+          ELSE
+            DO ITH=1,NTH            ! partial integration
+              IS=ITH+(IK-1)*NTH
+              BTH(IS)=DOT_PRODUCT(SATWEIGHTS(:,ITH),  A(IS0+SATINDICES(:,ITH),IP) ) &
+                  *FACSAT
+            END DO
 
-          BTH0(IK)=MAXVAL(BTH(IS0+1:IS0+NTH))
-        END IF
+            BTH0(IK,IP)=MAXVAL(BTH(IS0+1:IS0+NTH))
+          END IF
+          !
+        END DO !IK=NK
         !
-      END DO !IK=NK
-      !
-      !  2.a.2  Computes spontaneous breaking dissipation rate
-      !
-      DO  IK=IK1, NK
+        !  2.a.2  Computes spontaneous breaking dissipation rate
         !
-        !  Correction of saturation level for shallow-water kinematics
+        DO IK=IK1, NK
+          !
+          !  Correction of saturation level for shallow-water kinematics
+          !
+          IF (SSDSBM(0).EQ.1) THEN
+            MICHE=1.
+          ELSE
+            X=TANH(MIN(K(IK,IP)*DEPTH(IP),10.))
+            ! Correction of saturation threshold for shallow-water kinematics
+            MICHE=(X*(SSDSBM(1)+X*(SSDSBM(2)+X*(SSDSBM(3)+X*SSDSBM(4)))))**2
+          END IF
+          COEF1=(SSDSBR*MICHE)
+          !
+          !  Computes isotropic part
+          !
+          SDIAGISO = SSDSC(2) * SIG(IK)*SSDSC(6)*(MAX(0.,BTH0(IK,IP)/COEF1-1.))**2
+          !
+          !  Computes anisotropic part and sums isotropic part
+          !
+          COEF2=SSDSC(2) * SIG(IK)*(1-SSDSC(6))/(COEF1*COEF1)
+          DDIAG((IK-1)*NTH+1:IK*NTH,IP) = SDIAGISO + &
+              COEF2*((MAX(0.,BTH((IK-1)*NTH+1:IK*NTH)-COEF1))**SSDSP)
+        END DO ! IK=IK1,NK
         !
-        IF (SSDSBM(0).EQ.1) THEN
-          MICHE=1.
-        ELSE
-          X=TANH(MIN(K(IK)*DEPTH,10.))
-          ! Correction of saturation threshold for shallow-water kinematics
-          MICHE=(X*(SSDSBM(1)+X*(SSDSBM(2)+X*(SSDSBM(3)+X*SSDSBM(4)))))**2
-        END IF
-        COEF1=(SSDSBR*MICHE)
+        ! Computes Breaking probability
         !
-        !  Computes isotropic part
+        PB = (MAX(SQRT(BTH)-EPSR,0.))**2
         !
-        SDIAGISO = SSDSC(2) * SIG(IK)*SSDSC(6)*(MAX(0.,BTH0(IK)/COEF1-1.))**2
+        ! Multiplies by 28.16 = 22.0 * 1.6² * 1/2 with
+        !  22.0 (Banner & al. 2000, figure 6)
+        !  1.6  the coefficient that transforms  SQRT(B) to Banner et al. (2000)'s epsilon
+        !  1/2  factor to correct overestimation of Banner et al. (2000)'s breaking probability due to zero-crossing analysis
         !
-        !  Computes anisotropic part and sums isotropic part
-        !
-        COEF2=SSDSC(2) * SIG(IK)*(1-SSDSC(6))/(COEF1*COEF1)
-        DDIAG((IK-1)*NTH+1:IK*NTH) = SDIAGISO + &
-             COEF2*((MAX(0.,BTH((IK-1)*NTH+1:IK*NTH)-COEF1))**SSDSP)
-      END DO
-      !
-      ! Computes Breaking probability
-      !
-      PB = (MAX(SQRT(BTH)-EPSR,0.))**2
-      !
-      ! Multiplies by 28.16 = 22.0 * 1.6² * 1/2 with
-      !  22.0 (Banner & al. 2000, figure 6)
-      !  1.6  the coefficient that transforms  SQRT(B) to Banner et al. (2000)'s epsilon
-      !  1/2  factor to correct overestimation of Banner et al. (2000)'s breaking probability due to zero-crossing analysis
-      !
-      PB = PB * 28.16
-      ! Compute Lambda = PB* l(k,th)
-      ! with l(k,th)=1/(2*pi²)= the breaking crest density
-      BRLAMBDA = PB / (2.*PI**2.)
-      SRHS = DDIAG * A
+        PB = PB * 28.16
+        ! Compute Lambda = PB* l(k,th)
+        ! with l(k,th)=1/(2*pi²)= the breaking crest density
+        BRLAMBDA(:,IP) = PB / (2.*PI**2.)
+        SRHS(:,IP) = DDIAG(:,IP) * A(:,IP)
+      END DO ! IP
 
       !############################################################################################"
     CASE(2)
       !
       ! 2.b             Computes spontaneous breaking for T500 (Filipot et al. JGR 2010)
       !
-      E1 = 0.
-      HS = 0.
-      SRHS  = 0.
-      DDIAG = 0.
-      PB2  = 0.
-      !
-      ! Computes Wavenumber spectrum E1 integrated over direction and computes dk
-      !
-      DO IK=IK1, NK
-        E1(IK)=0.
-        DO ITH=1,NTH
-          IS=ITH+(IK-1)*NTH
-          E1(IK)=E1(IK)+(A(IS)*SIG(IK))*DTH
+
+      !SRHS  = 0.  ! GPU Refactor: Shouldn't need to re-zero these
+      !DDIAG = 0.  ! GPU Refactor: ditto
+
+      DO IP=1,NP
+        IF(MASK(IP)) CYCLE
+
+        E1 = 0.
+        HS = 0.
+        PB2 = 0.
+        DK = 0.
+        !
+        ! Computes Wavenumber spectrum E1 integrated over direction and computes dk
+        !
+        DO IK=IK1, NK
+          E1(IK)=0.  ! TODO: GPU Refactor - should need to do this. Zeroed above.
+          DO ITH=1,NTH
+            IS=ITH+(IK-1)*NTH
+            E1(IK)=E1(IK)+(A(IS,IP)*SIG(IK))*DTH
+          END DO
+          DK(IK)=DDEN(IK)/(DTH*SIG(IK)*CG(IK,IP))
         END DO
-        DK(IK)=DDEN(IK)/(DTH*SIG(IK)*CG(IK))
-      END DO
-      !
-      ! Gets windows indices of IKTAB
-      !
-      ID=MIN(NINT(DEPTH),NDTAB)
-      IF (ID < 1) THEN
-        ID = 1
-      ELSE IF(ID > NDTAB) THEN
-        ID = NDTAB
-      END IF
-      !
-      ! loop over wave scales
-      !
-      HS=0.
-      EFDF=0.
-      KBAR=0.
-      NKL=0. !number of windows
-      DO IKL=1,NK
-        IKSUP(IKL)=IKTAB(IKL,ID)
-        IF (IKSUP(IKL) .LE. NK) THEN
-          EFDF(IKL) = DOT_PRODUCT(E1(IKL:IKSUP(IKL)-1),DK(IKL:IKSUP(IKL)-1))
-          IF (EFDF(IKL) .NE. 0) THEN
-            KBAR(IKL) = DOT_PRODUCT(K(IKL:IKSUP(IKL)-1)*E1(IKL:IKSUP(IKL)-1), &
-                 DK(IKL:IKSUP(IKL)-1)) / EFDF(IKL)
+        !
+        ! Gets windows indices of IKTAB
+        !
+        ID=MIN(NINT(DEPTH(IP)),NDTAB)
+        IF (ID < 1) THEN
+          ID = 1
+        ELSE IF(ID > NDTAB) THEN
+          ID = NDTAB
+        END IF
+        !
+        ! loop over wave scales
+        !
+        !HS=0. ! GPU Refactor, already zeroed
+        EFDF=0.
+        KBAR=0.
+        NKL=0. !number of windows
+        DO IKL=1,NK
+          IKSUP(IKL)=IKTAB(IKL,ID)
+          IF (IKSUP(IKL) .LE. NK) THEN
+            EFDF(IKL) = DOT_PRODUCT(E1(IKL:IKSUP(IKL)-1),DK(IKL:IKSUP(IKL)-1))
+            IF (EFDF(IKL) .NE. 0) THEN
+              KBAR(IKL) = DOT_PRODUCT(K(IKL:IKSUP(IKL)-1,IP)*E1(IKL:IKSUP(IKL)-1), &
+                  DK(IKL:IKSUP(IKL)-1)) / EFDF(IKL)
+            ELSE
+              KBAR(IKL)=0.
+            END IF
+            ! estimation of Significant wave height of a given scale
+            HS(IKL) = 4*SQRT(EFDF(IKL))
+            NKL = NKL+1
+          END IF
+        END DO
+        !
+        ! Computes Dissipation and breaking probability in each scale
+        !
+        DCK=0.
+        QB =0.
+        DKHS = KHSMAX/NKHS
+        DO IKL=1, NKL
+          IF (HS(IKL) .NE. 0. .AND. KBAR(IKL) .NE. 0.)  THEN
+            ! gets indices for tabulated dissipation DCKI and breaking probability QBI
+            !
+            IKD = FAC_KD2+ANINT(LOG(KBAR(IKL)*DEPTH(IP))/LOG(FAC_KD1))
+            IKHS= 1+ANINT(KBAR(IKL)*HS(IKL)/DKHS)
+            IF (IKD > NKD) THEN    ! Deep water
+              IKD = NKD
+            ELSE IF (IKD < 1) THEN ! Shallow water
+              IKD = 1
+            END IF
+            IF (IKHS > NKHS) THEN
+              IKHS = NKHS
+            ELSE IF (IKHS < 1) THEN
+              IKHS = 1
+            END IF
+            XT = TANH(KBAR(IKL)*DEPTH(IP))
+            !
+            ! Gamma corrected for water depth
+            !
+            !!! GAM=1.0314*(XT**3)-1.9958*(XT**2)+1.5522*XT+0.1885 ! GPU Refactor: Not used
+            !
+            ! Computes the energy dissipated for the scale IKL
+            ! using DCKI which is tabulated in INSIN4
+            !
+            DCK(IKL)=((KBAR(IKL)**(-2.5))*(KBAR(IKL)/(2*PI)))*DCKI(IKHS,IKD)
+            !
+            ! Get the breaking probability for the scale IKL
+            !
+            QB(IKL) = QBI(IKHS,IKD) ! QBI is tabulated in INSIN4
           ELSE
-            KBAR(IKL)=0.
+            DCK(IKL)=0.
+            QB(IKL) =0.
           END IF
-          ! estimation of Significant wave height of a given scale
-          HS(IKL) = 4*SQRT(EFDF(IKL))
-          NKL = NKL+1
-        END IF
-      END DO
-      !
-      ! Computes Dissipation and breaking probability in each scale
-      !
-      DCK=0.
-      QB =0.
-      DKHS = KHSMAX/NKHS
-      DO IKL=1, NKL
-        IF (HS(IKL) .NE. 0. .AND. KBAR(IKL) .NE. 0.)  THEN
-          ! gets indices for tabulated dissipation DCKI and breaking probability QBI
-          !
-          IKD = FAC_KD2+ANINT(LOG(KBAR(IKL)*DEPTH)/LOG(FAC_KD1))
-          IKHS= 1+ANINT(KBAR(IKL)*HS(IKL)/DKHS)
-          IF (IKD > NKD) THEN    ! Deep water
-            IKD = NKD
-          ELSE IF (IKD < 1) THEN ! Shallow water
-            IKD = 1
-          END IF
-          IF (IKHS > NKHS) THEN
-            IKHS = NKHS
-          ELSE IF (IKHS < 1) THEN
-            IKHS = 1
-          END IF
-          XT = TANH(KBAR(IKL)*DEPTH)
-          !
-          ! Gamma corrected for water depth
-          !
-          GAM=1.0314*(XT**3)-1.9958*(XT**2)+1.5522*XT+0.1885
-          !
-          ! Computes the energy dissipated for the scale IKL
-          ! using DCKI which is tabulated in INSIN4
-          !
-          DCK(IKL)=((KBAR(IKL)**(-2.5))*(KBAR(IKL)/(2*PI)))*DCKI(IKHS,IKD)
-          !
-          ! Get the breaking probability for the scale IKL
-          !
-          QB(IKL) = QBI(IKHS,IKD) ! QBI is tabulated in INSIN4
-        ELSE
-          DCK(IKL)=0.
-          QB(IKL) =0.
-        END IF
-      END DO
-      !
-      ! Distributes scale dissipation over the frequency spectrum
-      !
-      S1 = 0.
-      S2 = 0.
-      NTIMES = 0
-      DO IKL=1, NKL
-        IF (EFDF(IKL) .GT. 0.) THEN
-          S1(IKL:IKSUP(IKL))    = S1(IKL:IKSUP(IKL)) + &
-               DCK(IKL)*E1(IKL:IKSUP(IKL)) / EFDF(IKL)
-          S2(IKL:IKSUP(IKL))    = S2(IKL:IKSUP(IKL)) + &
-               QB(IKL) *E1(IKL:IKSUP(IKL)) / EFDF(IKL)
-          NTIMES(IKL:IKSUP(IKL)) = NTIMES(IKL:IKSUP(IKL)) + 1
-        END IF
-      END DO
-      !
-      ! Finish the average
-      !
-      WHERE (NTIMES .GT. 0)
-        S1 = S1 / NTIMES
-        S2 = S2 / NTIMES
-      ELSEWHERE
+        END DO
+        !
+        ! Distributes scale dissipation over the frequency spectrum
+        !
         S1 = 0.
         S2 = 0.
-      END WHERE
-      ! goes back to action for dissipation source term
-      S1(1:NK) = S1(1:NK) / SIG(1:NK)
-      !
-      ! Makes Isotropic distribution
-      !
-      ASUM = 0.
-      DO IK = 1, NK
-        ASUM = (SUM(A(((IK-1)*NTH+1):(IK*NTH)))*DTH)
-        IF (ASUM.GT.1.E-8) THEN
-          FORALL (IS=1+(IK-1)*NTH:IK*NTH) DDIAG(IS)  = S1(IK)/ASUM
-          FORALL (IS=1+(IK-1)*NTH:IK*NTH) PB2(IS) = S2(IK)/ASUM
-        ELSE
-          FORALL (IS=1+(IK-1)*NTH:IK*NTH) DDIAG(IS)  = 0.
-          FORALL (IS=1+(IK-1)*NTH:IK*NTH) PB2(IS) = 0.
-        END IF
-        IF (PB2(1+(IK-1)*NTH).GT.0.001) THEN
-          BTH0(IK) = 2.*SSDSBR
-        ELSE
-          BTH0(IK) = 0.
-        END IF
-      END DO
-      !
-      PB = (1-SSDSC(1))*PB2*A + SSDSC(1)*PB
-      ! Compute Lambda = PB* l(k,th)
-      ! with l(k,th)=1/(2*pi²)= the breaking crest density
-      BRLAMBDA = PB / (2.*PI**2.)
-      SRHS = DDIAG * A
+        NTIMES = 0
+        DO IKL=1, NKL
+          IF (EFDF(IKL) .GT. 0.) THEN
+            S1(IKL:IKSUP(IKL))    = S1(IKL:IKSUP(IKL)) + &
+                DCK(IKL)*E1(IKL:IKSUP(IKL)) / EFDF(IKL)
+            S2(IKL:IKSUP(IKL))    = S2(IKL:IKSUP(IKL)) + &
+                QB(IKL) *E1(IKL:IKSUP(IKL)) / EFDF(IKL)
+            NTIMES(IKL:IKSUP(IKL)) = NTIMES(IKL:IKSUP(IKL)) + 1
+          END IF
+        END DO
+        !
+        ! Finish the average
+        !
+        WHERE (NTIMES .GT. 0)
+          S1 = S1 / NTIMES
+          S2 = S2 / NTIMES
+        ELSEWHERE
+          S1 = 0.
+          S2 = 0.
+        END WHERE
+        ! goes back to action for dissipation source term
+        S1(1:NK) = S1(1:NK) / SIG(1:NK)
+        !
+        ! Makes Isotropic distribution
+        !
+        ASUM = 0.
+        DO IK = 1, NK
+          ASUM = (SUM(A(((IK-1)*NTH+1):(IK*NTH),IP))*DTH)
+          IF (ASUM.GT.1.E-8) THEN
+            FORALL (IS=1+(IK-1)*NTH:IK*NTH) DDIAG(IS,IP) = S1(IK)/ASUM
+            FORALL (IS=1+(IK-1)*NTH:IK*NTH) PB2(IS) = S2(IK)/ASUM
+          ELSE
+            FORALL (IS=1+(IK-1)*NTH:IK*NTH) DDIAG(IS,IP) = 0.
+            FORALL (IS=1+(IK-1)*NTH:IK*NTH) PB2(IS) = 0.
+          END IF
+          IF (PB2(1+(IK-1)*NTH).GT.0.001) THEN
+            BTH0(IK,IP) = 2.*SSDSBR
+          ELSE
+            BTH0(IK,IP) = 0.
+          END IF
+        END DO
+        !
+        PB = (1-SSDSC(1))*PB2*A(:,IP) + SSDSC(1)*PB
+        ! Compute Lambda = PB* l(k,th)
+        ! with l(k,th)=1/(2*pi²)= the breaking crest density
+        BRLAMBDA(:,IP) = PB / (2.*PI**2.)
+        SRHS(:,IP) = DDIAG(:,IP) * A(:,IP)
+      END DO ! IP
       !############################################################################################"
     CASE(3)
       !
@@ -2660,43 +2678,48 @@ CONTAINS
       !
       ! directional saturation I
       ! integrate in azimuth
-      KO=(GRAV/(1E-6+USTAR**2))/(28./SSDSC(16))**2
-      DO IK=1,NK
-        IS0=(IK-1)*NTH
-        KLOC=K(IK)**(2-SSDSC(20)) ! local wavenumber factor, if mss not used.
-        BTH(1:NTH)=MAX(A(IS0+1:IS0+NTH)*SIG(IK)*K(IK)**3,.00000000000001)
-        !
-        DIRFORCUM=DLWMEAN
-        IF (SSDSC(11).GT.0) DIRFORCUM=MSSSUM(IK,2)
+      DO IP=1,NP
+        IF(MASK(IP)) CYCLE
 
-        C=SIG(IK)/K(IK)
-        BTH0(IK)=sum(BTH(1:NTH)*DTH)
-        IF (SSDSC(18).GT.0) THEN ! Applies modulation factor on Lambda
-          DO ITH=1,NTH
-            FACSTRAINL=1.+SSDSC(18)*((MSSSUM(IK,1)*KLOC)**SSDSC(14) *      &   ! Romero
-                 (ECOS(ITH)*COS(DIRFORCUM)+ESIN(ITH)*SIN(DIRFORCUM))**2)
-            LMODULATION(ITH)= FACSTRAINL**SSDSC(19)
-          END DO
-        ELSE
-          LMODULATION(:)= 1.
-        END IF
+        KO=(GRAV/(1E-6+USTAR(IP)**2))/(28./SSDSC(16))**2
+        DO IK=1,NK
+          IS0=(IK-1)*NTH
+          KLOC=K(IK,IP)**(2-SSDSC(20)) ! local wavenumber factor, if mss not used.
+          BTH(1:NTH)=MAX(A(IS0+1:IS0+NTH,IP)*SIG(IK)*K(IK,IP)**3,.00000000000001)
+          !
+          DIRFORCUM=DLWMEAN(IP)
+          IF (SSDSC(11).GT.0) DIRFORCUM=MSSSUM(IK,2,IP)
 
-        ! Lambda
-        BRLAMBDA(IS0+1:IS0+NTH)=SSDSC(9)*EXP(-SSDSBR/BTH(1:NTH))              &
-             *( 1.0+SSDSC(13)*MAX(1.,(K(IK)/KO))**SSDSC(15) ) &
-             /(SSDSC(13)+1)*LMODULATION(1:NTH)
-        ! Breaking strength : generalisation of Duncan's b parameter
-        BTOVER = SQRT(BTH0(IK))-SQRT(SSDSBT)
-        BRM12(IK)=SSDSC(2)*(MAX(0.,BTOVER))**(2.5)/SIG(IK)  ! not function of direction
-        !  For consistency set BRLAMBDA set to zero if b is zero
-        BRLAMBDA(IS0+1:IS0+NTH)= MAX(0.,SIGN(BRLAMBDA(IS0+1:IS0+NTH),BTOVER))
-        !  Source term / sig2  (action dissipation)
-        SRHS(IS0+1:IS0+NTH)= BRM12(IK)/GRAV**2*BRLAMBDA(IS0+1:IS0+NTH)*C**5
-        ! diagonal
-        DDIAG(IS0+1:IS0+NTH) = SRHS(IS0+1:IS0+NTH)*SSDSBR/MAX(1.e-20,BTH(1:NTH))/MAX(1e-20,A(IS0+1:IS0+NTH))  !
-      END DO
-      !   Breaking probability (Is actually the breaking rate)
-      PB = BRLAMBDA *C
+          C=SIG(IK)/K(IK,IP)
+          BTH0(IK,IP)=sum(BTH(1:NTH)*DTH)
+          IF (SSDSC(18).GT.0) THEN ! Applies modulation factor on Lambda
+            DO ITH=1,NTH
+              FACSTRAINL=1.+SSDSC(18)*((MSSSUM(IK,1,IP)*KLOC)**SSDSC(14) *      &   ! Romero
+                  (ECOS(ITH)*COS(DIRFORCUM)+ESIN(ITH)*SIN(DIRFORCUM))**2)
+              LMODULATION(ITH)= FACSTRAINL**SSDSC(19)
+            END DO
+          ELSE
+            LMODULATION(:)= 1.
+          END IF
+
+          ! Lambda
+          BRLAMBDA(IS0+1:IS0+NTH,IP)=SSDSC(9)*EXP(-SSDSBR/BTH(1:NTH))              &
+              *( 1.0+SSDSC(13)*MAX(1.,(K(IK,IP)/KO))**SSDSC(15) ) &
+              /(SSDSC(13)+1)*LMODULATION(1:NTH)
+          ! Breaking strength : generalisation of Duncan's b parameter
+          BTOVER = SQRT(BTH0(IK,IP))-SQRT(SSDSBT)
+          BRM12(IK,IP)=SSDSC(2)*(MAX(0.,BTOVER))**(2.5)/SIG(IK)  ! not function of direction
+          !  For consistency set BRLAMBDA set to zero if b is zero
+          BRLAMBDA(IS0+1:IS0+NTH,IP)= MAX(0.,SIGN(BRLAMBDA(IS0+1:IS0+NTH,IP),BTOVER))
+          !  Source term / sig2  (action dissipation)
+          SRHS(IS0+1:IS0+NTH,IP)= BRM12(IK,IP)/GRAV**2*BRLAMBDA(IS0+1:IS0+NTH,IP)*C**5
+          ! diagonal
+          DDIAG(IS0+1:IS0+NTH,IP) = SRHS(IS0+1:IS0+NTH,IP)*SSDSBR/MAX(1.e-20,BTH(1:NTH))/MAX(1e-20,A(IS0+1:IS0+NTH,IP))  !
+        END DO
+        !   Breaking probability (Is actually the breaking rate)
+
+        !! PB = BRLAMBDA *C  ! GPU Refactor; PB not used outside this case statement
+      END DO ! IP
       !
     END SELECT
     !############################################################################################"
@@ -2710,50 +2733,55 @@ CONTAINS
     ! loop over spectrum
     !
     IF ( (SSDSC(3).NE.0.) .OR. (SSDSC(5).NE.0.) .OR. (SSDSC(21).NE.0.) ) THEN
-      DO  IK=IK1, NK
-        RENEWALFREQ = 0.
-        FACTURB2=-2.*SIG(IK)*K(IK)*FACTURB
-        DVISC=-4.*SSDSC(21)*K(IK)*K(IK)
-        C = SIG(IK)/K(IK) ! phase speed
-        !
-        IF (SSDSC(3).GT.0 .AND. IK.GT.DIKCUMUL) THEN
-          ! this is the cheap isotropic version
-          DO IK2=IK1,IK-DIKCUMUL
-            C2 = SIG(IK2)/K(IK2)
-            IS2=(IK2-1)*NTH
-            CUMULWISO=ABS(C2-C)*DSIP(IK2)/(0.5*C2) * DTH
-            RENEWALFREQ=RENEWALFREQ-CUMULWISO*SUM(BRLAMBDA(IS2+1:IS2+NTH))
-          END DO
-        END IF
+      DO IP=1,NP
+        IF(MASK(IP)) CYCLE
 
-        DO ITH=1,NTH
-          IS=ITH+(IK-1)*NTH
+        DO  IK=IK1, NK
+          RENEWALFREQ = 0.
+          FACTURB=SSDSC(5)*USTAR(IP)**2/GRAV*DAIR(IP)/DWAT  ! GPU Refactor: moved here from section 1
+          FACTURB2=-2.*SIG(IK)*K(IK,IP)*FACTURB
+          DVISC=-4.*SSDSC(21)*K(IK,IP)*K(IK,IP)
+          C = SIG(IK)/K(IK,IP) ! phase speed
           !
-          ! Computes cumulative effect from Breaking probability
-          !
-          IF (SSDSC(3).LT.0 .AND. IK.GT.DIKCUMUL) THEN
-            RENEWALFREQ = 0.
-            ! this is the expensive and largely useless version
+          IF (SSDSC(3).GT.0 .AND. IK.GT.DIKCUMUL) THEN
+            ! this is the cheap isotropic version
             DO IK2=IK1,IK-DIKCUMUL
-              IF (BTH0(IK2).GT.SSDSBR) THEN
-                IS2=(IK2-1)*NTH
-                RENEWALFREQ=RENEWALFREQ+DOT_PRODUCT(CUMULW(IS2+1:IS2+NTH,IS),BRLAMBDA(IS2+1:IS2+NTH))
-              END IF
+              C2 = SIG(IK2)/K(IK2,IP)
+              IS2=(IK2-1)*NTH
+              CUMULWISO=ABS(C2-C)*DSIP(IK2)/(0.5*C2) * DTH
+              RENEWALFREQ=RENEWALFREQ-CUMULWISO*SUM(BRLAMBDA(IS2+1:IS2+NTH,IP))
             END DO
           END IF
-          !
-          ! Computes wave turbulence interaction
-          !
-          COSWIND=(ECOS(ITH)*COS(USDIR)+ESIN(ITH)*SIN(USDIR))
-          DTURB=FACTURB2*MAX(0.,COSWIND)  ! Theory -> stress direction
-          !
-          ! Add effects
-          !
-          DIAG2 = (SSDSC(3)*RENEWALFREQ+DTURB+DVISC)
-          DDIAG(IS) = DDIAG(IS) + DIAG2
-          SRHS(IS)  = SRHS(IS)  + A(IS)* DIAG2
-        END DO
-      END DO
+
+          DO ITH=1,NTH
+            IS=ITH+(IK-1)*NTH
+            !
+            ! Computes cumulative effect from Breaking probability
+            !
+            IF (SSDSC(3).LT.0 .AND. IK.GT.DIKCUMUL) THEN
+              RENEWALFREQ = 0.
+              ! this is the expensive and largely useless version
+              DO IK2=IK1,IK-DIKCUMUL
+                IF (BTH0(IK2,IP).GT.SSDSBR) THEN
+                  IS2=(IK2-1)*NTH
+                  RENEWALFREQ=RENEWALFREQ+DOT_PRODUCT(CUMULW(IS2+1:IS2+NTH,IS),BRLAMBDA(IS2+1:IS2+NTH,IP))
+                END IF
+              END DO
+            END IF
+            !
+            ! Computes wave turbulence interaction
+            !
+            COSWIND=(ECOS(ITH)*COS(USDIR(IP))+ESIN(ITH)*SIN(USDIR(IP)))
+            DTURB=FACTURB2*MAX(0.,COSWIND)  ! Theory -> stress direction
+            !
+            ! Add effects
+            !
+            DIAG2 = (SSDSC(3)*RENEWALFREQ+DTURB+DVISC)
+            DDIAG(IS,IP) = DDIAG(IS,IP) + DIAG2
+            SRHS(IS,IP)  = SRHS(IS,IP)  + A(IS,IP)* DIAG2
+          END DO ! ITH
+        END DO ! IK
+      END DO ! IP
     END IF
     !
     !  COMPUTES WHITECAP PARAMETERS
@@ -2762,71 +2790,76 @@ CONTAINS
       RETURN
     END IF
     !
-    WCAP_COV = 0.
-    WCAP_THK = 0.
-    WCAP_MNT = 0.
-    !
-    ! precomputes integration of Lambda over direction
-    ! times wavelength times a (a=5 in Reul&Chapron JGR 2003) times dk
-    !
-    DO IK=1,MIN(FLOOR(AAIRCMIN),NK)
-      C=SIG(IK)/K(IK)
-      IS0=(IK-1)*NTH
-      COEF4(IK) = C*C*SUM(BRLAMBDA(IS0+1:IS0+NTH))                          &
-           *2.*PI/GRAV*SSDSC(7) * DDEN(IK)/(SIG(IK)*CG(IK))
-      COEF5(IK) = C**3*SUM(BRLAMBDA(IS0+1:IS0+NTH)                           &
-           *BRM12(IK))                       	       &
-           *AAIRGB/GRAV * DDEN(IK)/(SIG(IK)*CG(IK))
-      !        COEF4(IK) = SUM(BRLAMBDA((IK-1)*NTH+1:IK*NTH) * DTH) *(2*PI/K(IK)) *  &
-      !                    SSDSC(7) * DDEN(IK)/(DTH*SIG(IK)*CG(IK))
-      !                   NB: SSDSC(7) is WHITECAPWIDTH
-    END DO
-    ! Need to extrapolate above NK if necessary ... to be added later.
-    DO IK=MIN(FLOOR(AAIRCMIN),NK),NK
-      COEF4(IK)=0.
-      COEF5(IK)=0.
-    END DO
+    ! GPU Refactor - new IP loop
+    DO IP=1,NP
+      IF(MASK(IP)) CYCLE
 
-    !/
-    IF ( FLOGRD(5,7) ) THEN
+      WCAP_COV(IP) = 0.
+      WCAP_THK(IP) = 0.   ! Zero these in loop to keep output B4B
+      WCAP_MNT(IP) = 0.
       !
-      ! Computes the Total WhiteCap Coverage (a=5. ; Reul and Chapron, 2003)
+      ! precomputes integration of Lambda over direction
+      ! times wavelength times a (a=5 in Reul&Chapron JGR 2003) times dk
       !
-      DO IK=IK1,MIN(FLOOR(AAIRCMIN),NK)
-        WCAP_COV = WCAP_COV + COEF4(IK) * (1-WCAP_COV)
-        WCAP_MNT = WCAP_MNT + COEF5(IK)
+      DO IK=1,MIN(FLOOR(AAIRCMIN),NK)
+        C=SIG(IK)/K(IK,IP)
+        IS0=(IK-1)*NTH
+        COEF4(IK) = C*C*SUM(BRLAMBDA(IS0+1:IS0+NTH,IP))                        &
+            *2.*PI/GRAV*SSDSC(7) * DDEN(IK)/(SIG(IK)*CG(IK,IP))
+        COEF5(IK) = C**3*SUM(BRLAMBDA(IS0+1:IS0+NTH,IP)                        &
+            *BRM12(IK,IP))                               &
+            *AAIRGB/GRAV * DDEN(IK)/(SIG(IK)*CG(IK,IP))
+        !        COEF4(IK) = SUM(BRLAMBDA((IK-1)*NTH+1:IK*NTH,IP) * DTH) *(2*PI/K(IK,IP)) *  &
+        !                    SSDSC(7) * DDEN(IK)/(DTH*SIG(IK)*CG(IK,IP))
+        !                   NB: SSDSC(7) is WHITECAPWIDTH
       END DO
-    END IF
-    !/
-    IF ( FLOGRD(5,8) ) THEN
-      !
-      ! Calculates the Mean Foam Thickness for component K(IK) => Fig.3, Reul and Chapron, 2003
-      ! ( Copied from ST4 - not yet tested/validated with Romero 2019 (Lambda model)
-      !
-      DO IK=IK1,NK
-        !    Duration of active breaking (TAU*)
-        TSTR = 0.8 * 2*PI/SIG(IK)
-        !    Time persistence of foam (a=5.)
-        TMAX = 5.  * 2*PI/SIG(IK)
-        DT   = TMAX / 50
-        MFT  = 0.
-        DO IT = 1, 50
-          ! integration over time of foam persistance
-          T = FLOAT(IT) * DT
-          ! Eq. 5 and 6 of Reul and Chapron, 2003
-          IF ( T .LT. TSTR ) THEN
-            MFT = MFT + 0.4 / (K(IK)*TSTR) * T * DT
-          ELSE
-            MFT = MFT + 0.4 / K(IK) * EXP(-1*(T-TSTR)/3.8) * DT
-          END IF
+      ! Need to extrapolate above NK if necessary ... to be added later.
+      DO IK=MIN(FLOOR(AAIRCMIN),NK),NK
+        COEF4(IK)=0.
+        COEF5(IK)=0.
+      END DO
+
+      !/
+      IF ( FLOGRD(5,7) ) THEN
+        !
+        ! Computes the Total WhiteCap Coverage (a=5. ; Reul and Chapron, 2003)
+        !
+        DO IK=IK1,MIN(FLOOR(AAIRCMIN),NK)
+          WCAP_COV(IP) = WCAP_COV(IP) + COEF4(IK) * (1-WCAP_COV(IP))
+          WCAP_MNT(IP) = WCAP_MNT(IP) + COEF5(IK)
         END DO
-        MFT = MFT / TMAX
+      END IF
+      !/
+      IF ( FLOGRD(5,8) ) THEN
         !
-        ! Computes foam-layer thickness (Reul and Chapron, 2003)
+        ! Calculates the Mean Foam Thickness for component K(IK) => Fig.3, Reul and Chapron, 2003
+        ! ( Copied from ST4 - not yet tested/validated with Romero 2019 (Lambda model)
         !
-        WCAP_THK = WCAP_THK + COEF4(IK) * MFT
-      END DO
-    END IF
+        DO IK=IK1,NK
+          !    Duration of active breaking (TAU*)
+          TSTR = 0.8 * 2*PI/SIG(IK)
+          !    Time persistence of foam (a=5.)
+          TMAX = 5.  * 2*PI/SIG(IK)
+          DT   = TMAX / 50
+          MFT  = 0.
+          DO IT = 1, 50
+            ! integration over time of foam persistance
+            T = FLOAT(IT) * DT
+            ! Eq. 5 and 6 of Reul and Chapron, 2003
+            IF ( T .LT. TSTR ) THEN
+              MFT = MFT + 0.4 / (K(IK,IP)*TSTR) * T * DT
+            ELSE
+              MFT = MFT + 0.4 / K(IK,IP) * EXP(-1*(T-TSTR)/3.8) * DT
+            END IF
+          END DO
+          MFT = MFT / TMAX
+          !
+          ! Computes foam-layer thickness (Reul and Chapron, 2003)
+          !
+          WCAP_THK(IP) = WCAP_THK(IP) + COEF4(IK) * MFT
+        END DO
+      END IF
+    END DO ! IP
     !
     ! End of output computing
     !

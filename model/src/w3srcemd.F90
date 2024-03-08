@@ -1697,6 +1697,9 @@ CONTAINS
         ! 2.c Dissipation... except for ST4
         ! 2.c1   as in source term package
         !
+#ifndef W3_ST4
+! GPU refactor - SDS1, SDS2, SDS4 and SDS6 still work in single spectra; need to loop
+! If using ST4, pass full array (see below loop)
         DO CSEA=1,NSEAC
           IF(SRC_MASK(CSEA)) CYCLE
           JSEA = CHUNK0 + CSEA - 1
@@ -1713,22 +1716,32 @@ CONTAINS
           CALL W3SDS3 ( SPEC(:,JSEA), WN1_CHUNK(:,CSEA), CG1_CHUNK(:,CSEA), EMEAN(CSEA), FMEANS(CSEA), WNMEAN(JSEA),  &
              UST_CHUNK(CSEA), USTD_CHUNK(CSEA), DEPTH(CSEA), VSDS(:,CSEA), VDDS(:,CSEA), IX(CSEA), IY(CSEA) )
 #endif
-#ifdef W3_ST4
-! IX/IY not used...
-          CALL W3SDS4 ( SPEC(:,JSEA), WN1_CHUNK(:,CSEA), CG1_CHUNK(:,CSEA), UST_CHUNK(CSEA), USTD_CHUNK(CSEA), DEPTH(CSEA), DAIR_CHUNK(CSEA), VSDS(:,CSEA),   &
-             VDDS(:,CSEA), IX(CSEA), IY(CSEA), BRLAMBDA(:,CSEA), WCAP_COV(JSEA), WCAP_THK(JSEA), WCAP_MNT(JSEA), DLWMEAN(CSEA) )
-#endif
-#if defined(W3_DEBUGSRC) && defined(W3_ST4)
-          IF (IX(CSEA) == DEBUG_NODE) THEN
-            WRITE(740+IAPROC,*) '2 : W3SDS4(min/max/sum)VSDS=', minval(VSDS(:,CSEA)), maxval(VSDS(:,CSEA)), sum(VSDS(:,CSEA))
-            WRITE(740+IAPROC,*) '2 : W3SDS4(min/max/sum)VDDS=', minval(VDDS(:,CSEA)), maxval(VDDS(:,CSEA)), sum(VDDS(:,CSEA))
-          END IF
-#endif
-
 #ifdef W3_ST6
           CALL W3SDS6 ( SPEC(:,JSEA), CG1_CHUNK(:,CSEA), WN1_CHUNK(:,CSEA),  VSDS(:,CSEA), VDDS(:,CSEA) )
 #endif
         END DO ! CSEA; W3SDSx
+! ifndef W3_ST4:
+#endif
+
+#ifdef W3_ST4
+        ! W3SDS4 refactored to recieve array of spectra:
+        CALL W3SDS4 ( SPEC(:,CHUNK0:CHUNKN), WN1_CHUNK(:,1:NSEAC), CG1_CHUNK(:,1:NSEAC), &
+           UST_CHUNK(1:NSEAC), USTD_CHUNK(1:NSEAC), DEPTH(1:NSEAC), DAIR_CHUNK(1:NSEAC), &
+           VSDS(:,1:NSEAC), VDDS(:,1:NSEAC), IX(1:NSEAC), IY(1:NSEAC), BRLAMBDA(:,1:NSEAC), &
+           WCAP_COV(CHUNK0:CHUNKN), WCAP_THK(CHUNK0:CHUNKN), WCAP_MNT(CHUNK0:CHUNKN), &
+           DLWMEAN(1:NSEAC), SRC_MASK(1:NSEAC), NSEAC )
+
+#ifdef W3_DEBUGSRC
+          IF (IX(CSEA) == DEBUG_NODE) THEN
+            DO CSEA=1,NSEAC
+              IF(SRC_MASK(CSEA)) CYCLE
+              WRITE(740+IAPROC,*) '2 : W3SDS4(min/max/sum)VSDS=', minval(VSDS(:,CSEA)), maxval(VSDS(:,CSEA)), sum(VSDS(:,CSEA))
+              WRITE(740+IAPROC,*) '2 : W3SDS4(min/max/sum)VDDS=', minval(VDDS(:,CSEA)), maxval(VDDS(:,CSEA)), sum(VDDS(:,CSEA))
+            END DO
+          END IF
+#endif
+! W3_ST4:
+#endif
         !     
 #ifdef W3_PDLIB
         IF (.NOT. FSSOURCE .or. LSLOC) THEN
