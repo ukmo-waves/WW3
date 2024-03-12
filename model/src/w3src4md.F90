@@ -2339,6 +2339,7 @@ CONTAINS
     !     within the computation, but these are helping with some bugs
     !     found in certain compilers
     S1=0.; E1=0.
+    PB = 0.
     IKSUP=0
     BTH0=0.; DDIAG=0.; SRHS=0.
     MSSSUM(:,:,:)=0.
@@ -2689,7 +2690,7 @@ CONTAINS
       DO IP=1,NP
         IF(MASK(IP)) CYCLE
 
-        DO  IK=IK1, NK
+        DO IK=IK1, NK
           RENEWALFREQ = 0.
           FACTURB=SSDSC(5)*USTAR(IP)**2/GRAV*DAIR(IP)/DWAT  ! GPU Refactor: moved here from section 1
           FACTURB2=-2.*SIG(IK)*K(IK,IP)*FACTURB
