@@ -354,6 +354,7 @@ CONTAINS
     !
     DO IP=1,NP ! GPU Refactor: New IP loop
       IF(MASK(IP)) CYCLE
+      ! GPU Refactor, calculate KDMEAN in this routine
       !X = MAX ( KDCON*KDMEAN(IP) , KDMN )
       X = MAX ( KDCON*(WNMEAN(IP)*DEPTH(IP)) , KDMN )
       X2 = MAX ( -1.E15, SNLS3*X)

@@ -2339,7 +2339,6 @@ CONTAINS
     !     within the computation, but these are helping with some bugs
     !     found in certain compilers
     S1=0.; E1=0.
-    PB = 0.
     IKSUP=0
     BTH0=0.; DDIAG=0.; SRHS=0.
     MSSSUM(:,:,:)=0.
@@ -2489,6 +2488,7 @@ CONTAINS
         HS = 0.
         PB2 = 0.
         DK = 0.
+        PB = 0.
         !
         ! Computes Wavenumber spectrum E1 integrated over direction and computes dk
         !
@@ -2619,7 +2619,7 @@ CONTAINS
           END IF
         END DO
         !
-        PB = (1-SSDSC(1))*PB2*A(:,IP) + SSDSC(1)*PB
+        PB = (1-SSDSC(1))*PB2*A(:,IP) + SSDSC(1)*PB   ! TODO: Second term is always zero (PB=0 here)????
         ! Compute Lambda = PB* l(k,th)
         ! with l(k,th)=1/(2*pi²)= the breaking crest density
         BRLAMBDA(:,IP) = PB / (2.*PI**2.)
@@ -2679,8 +2679,7 @@ CONTAINS
     !############################################################################################"
     !
     !
-    !/ ------------------------------------------------------------------- /
-    !             WAVE-TURBULENCE INTERACTION AND CUMULATIVE EFFECT
+    !/ ------------------------------------------------------------------- / 
     !/ ------------------------------------------------------------------- /
     !
     !
