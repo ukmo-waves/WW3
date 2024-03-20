@@ -1797,13 +1797,17 @@ CONTAINS
         !
         ! 2.d Bottom interactions.
         !
+#ifdef W3_BT1
+        ! GPU Refactor - multi-seapoint version of W3SBT1:
+        CALL W3SBT1 ( SPEC(:,CHUNK0:CHUNKN), CG1_CHUNK(:,1:NSEAC), WN1_CHUNK(:,1:NSEAC), &
+            DEPTH(1:NSEAC), VSBT(:,1:NSEAC), VDBT(:,1:NSEAC), SRC_MASK(1:NSEAC), NSEAC )
+#endif
+
+#ifndef W3_BT1
+        ! Only loop if we are not using W3_BT1 bottom friction:
         DO CSEA=1,NSEAC
           IF(SRC_MASK(CSEA)) CYCLE
           JSEA = CHUNK0 + CSEA - 1
-#ifdef W3_BT1
-          CALL W3SBT1 ( SPEC(:,JSEA), CG1_CHUNK(:,CSEA), WN1_CHUNK(:,CSEA), &
-              DEPTH(CSEA), VSBT(:,CSEA), VDBT(:,CSEA) )
-#endif
 #ifdef W3_BT4
 ! IX,IY not used
           CALL W3SBT4 ( SPEC(:,JSEA), CG1_CHUNK(:,CSEA), WN1_CHUNK(:,CSEA), &
@@ -1817,6 +1821,8 @@ CONTAINS
           CALL W3SBT9 ( SPEC(:,JSEA), DEPTH(CSEA), VSBT(:,CSEA), VDBT(:,CSEA), IX(CSEA), IY(CSEA) )
 #endif
         END DO ! CSEA; W3SBTx
+! ifndef W3_BT1:
+#endif
 !
 #ifdef W3_BS1
           DO CSEA=1,NSEAC
