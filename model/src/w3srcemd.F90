@@ -1589,15 +1589,10 @@ CONTAINS
         !
         ! 2.a Input.
         !
-        DO CSEA=1,NSEAC
-          IF(SRC_MASK(CSEA)) CYCLE
-          JSEA = CHUNK0 + CSEA - 1
 #ifdef W3_LN1
-          CALL W3SLN1 (WN1_CHUNK(:,CSEA), FHIGH(CSEA), UST_CHUNK(CSEA), U10D_CHUNK(CSEA), &
-             VSLN(:,CSEA) )
+        CALL W3SLN1 (WN1_CHUNK(:,1:NSEAC), FHIGH(1:NSEAC), UST_CHUNK(1:NSEAC), U10D_CHUNK(1:NSEAC), &
+            VSLN(:,1:NSEAC), SRC_MASK(1:NSEAC), NSEAC )
 #endif
-        ENDDO ! CSEA loop - W3LNx
-        !
 
 #ifndef W3_ST4
 ! Only SIN4 currently handles multiple points, all others need to be called
