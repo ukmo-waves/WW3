@@ -1764,15 +1764,11 @@ CONTAINS
         IF (.NOT. FSSOURCE .or. LSLOC) THEN
 #endif
 #ifdef W3_DB1
-          DO CSEA=1,NSEAC
-            IF(SRC_MASK(CSEA)) CYCLE
-            JSEA = CHUNK0 + CSEA - 1
-
-            ! Note: LBREAK not used in W3SRCE - can be dummy scalar
-            ! IX only used for DEBUG
-            CALL W3SDB1 ( IX(CSEA), SPEC(:,JSEA), DEPTH(CSEA), EMEAN(CSEA), FMEAN(CSEA), &
-                WNMEAN(JSEA), CG1_CHUNK(:,CSEA), LBREAK, VSDB(:,CSEA), VDDB(:,CSEA) )
-          END DO ! CSEA; W3SDBx
+          ! Note: LBREAK not used in W3SRCE - can be dummy scalar
+          ! IX only used for DEBUG
+          CALL W3SDB1 ( IX(1:NSEAC), SPEC(:,CHUNK0:CHUNKN), DEPTH(1:NSEAC), EMEAN(1:NSEAC), FMEAN(1:NSEAC), &
+              WNMEAN(CHUNK0:CHUNKN), CG1_CHUNK(:,1:NSEAC), LBREAK, VSDB(:,1:NSEAC), VDDB(:,1:NSEAC), &
+              SRC_MASK(1:NSEAC), NSEAC)
 #endif
 #ifdef W3_PDLIB
         ENDIF

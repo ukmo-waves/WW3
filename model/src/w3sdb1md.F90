@@ -87,13 +87,15 @@ CONTAINS
   !> @param[out]   LBREAK
   !> @param[out]   S       Source term (1-D version).
   !> @param[out]   D       Diagonal term of derivative (1-D version).
+  !> @param[in]    MASK    Seapoint/computational mask
+  !> @param[in]    NP      Number of points
   !>
   !> @author J. H. Alves
   !> @author H. L. Tolman
   !> @author A. Roland
   !> @date   08-Jun-2018
   !>
-  SUBROUTINE W3SDB1 (IX, A, DEPTH, EMEAN, FMEAN, WNMEAN, CG, LBREAK, S, D )
+  SUBROUTINE W3SDB1 (IX, A, DEPTH, EMEAN, FMEAN, WNMEAN, CG, LBREAK, S, D, MASK, NP )
     !/
     !/                  +-----------------------------------+
     !/                  | WAVEWATCH III           NOAA/NCEP |
@@ -108,6 +110,7 @@ CONTAINS
     !/    08-Jun-2018 : Add DEBUGDB1.                       ( version 6.04 )
     !/    03-Apr-2019 : Rewrite in terms of energy density (A. Roland,version 6.07)
     !/    03-Apr-2019 : Add Thornton & Guza, 1983          (A. Roland,version 6.07)
+    !/    20-Mar-2024 : Process multiple seapoints          ( version 7.14 )
     !/
     !  1. Purpose :
     !
@@ -149,6 +152,8 @@ CONTAINS
     !       DEPTH   Real  I   Mean water depth.
     !       S       R.A.  O   Source term (1-D version).
     !       D       R.A.  O   Diagonal term of derivative (1-D version).
+    !       MASK    L.A.  I   Seapoint/computational mask
+    !       NP      Int.  I   Number of points
     !     ----------------------------------------------------------------
     !
     !  4. Subroutines used :
@@ -202,18 +207,20 @@ CONTAINS
     !/ ------------------------------------------------------------------- /
     !/ Parameter list
     !/
-    INTEGER, INTENT(IN)     :: IX ! Local grid number
-    REAL, INTENT(IN)        :: A(NSPEC)
-    REAL, INTENT(INOUT)     :: EMEAN, FMEAN, WNMEAN, DEPTH
-    REAL, INTENT(OUT)       :: S(NSPEC), D(NSPEC)
-    REAL, INTENT(IN)        :: CG(NK)
-    LOGICAL, INTENT(OUT)    :: LBREAK
-    INTEGER                 :: ITH, IK, IWB
+    INTEGER, INTENT(IN)     :: IX(NP) ! Local grid number
+    REAL, INTENT(IN)        :: A(NSPEC,NP)
+    REAL, INTENT(INOUT)     :: EMEAN(NP), FMEAN(NP), WNMEAN(NP), DEPTH(NP)
+    REAL, INTENT(OUT)       :: S(NSPEC,NP), D(NSPEC,NP)
+    REAL, INTENT(IN)        :: CG(NK,NP)
+    LOGICAL, INTENT(OUT)    :: LBREAK ! GPU Keeping this as scalar for now as not used!
+    LOGICAL, INTENT(IN)     :: MASK(NP)
+    INTEGER, INTENT(IN)     :: NP
     !/
     !/ ------------------------------------------------------------------- /
     !/ Local parameters
     !/
-    INTEGER                 :: IS
+    INTEGER                 :: IS, IP
+    INTEGER                 :: ITH, IK, IWB
 #ifdef W3_S
     INTEGER, SAVE           :: IENT = 0
 #endif
@@ -231,141 +238,157 @@ CONTAINS
 #endif
     !
     ! 0.  Initialzations ------------------------------------------------- /
-    !     Never touch this 4 lines below ... otherwise my exceptionhandling will not work.
+    !     Never touch this 4 lines below ... otherwise my exception handling will not work.
+    !     Sorry - I had to touch them a bit! Chris Bunney.
     S = 0.
     D = 0.
 
-    THR = DBLE(1.E-15)
-    IF (SUM(A) .LT. THR) RETURN
+    IWB = 1 ! GPU Refactor - this never changes; move outside loop
+    THR = DBLE(1.E-15) ! GPU refactor - constant; moved outside loop
 
-    IWB = 1
-    !
+    ! GPU refactor, new loop over seapoints:
+    DO IP=1,NP
+      IF(MASK(IP)) CYCLE
+      IF (SUM(A(:,IP)) .LT. THR) CYCLE
+      !
 #ifdef W3_T
-    WRITE (NDST,9000) SDBC1, SDBC2, FDONLY
+      WRITE (NDST,9000) SDBC1, SDBC2, FDONLY
 #endif
-    !
-    ! 1.  Integral quantities. AR: make sure mean quantities are computed, need to move upward
-    !
-    ETOT = 0.
-    FMEAN2 = 0.
-    DO IK=1, NK
-      EB(IK) = 0.
-      DO ITH=1, NTH
-        EB(IK) = EB(IK) + A(ITH+(IK-1)*NTH)
-      END DO
-    END DO
-    DO IK=1, NK
-      EB(IK) = EB(IK) * DDEN(IK) / CG(IK)
-      ETOT  = ETOT  + EB(IK)
-    END DO
-    DO IK=1, NK
-      FMEAN2 = FMEAN2 + EB(IK) * SIG(IK)
-    END DO
-    FMEAN2 = FMEAN2 / ETOT * TPIINV
-    !
-    ! 2do compute wlmean
-    !
-    ! 1.a. Maximum wave height
-    ! 1.a.1. Simple limit
-    !
-    IF ( FDONLY ) THEN
-      HM     = DBLE(SDBC2) * DBLE(DEPTH)
-    ELSE
       !
-      ! 1.a.2. Miche style criterion
+      ! 1.  Integral quantities. AR: make sure mean quantities are computed, need to move upward
       !
-      HM     = DBLE(SDBC2) / DBLE(WNMEAN) * TANH ( DBLE(WNMEAN) * MAX(DEPTH,0.) )
-    END IF
-    !
-    !AR: Add Dingemans ...
-    ! 1.b. Hrms and ratio Hrms / Hmax
-    !
-    HRMS = DSQRT (8.d0 * DBLE(EMEAN))
-    IF ( HM .GT. THR) THEN
-      BB     = HRMS * HRMS / ( HM * HM )
-      B      = DSQRT(BB)
-    ELSE
-      BB     = 0.d0
-      B      = 0.d0
-    END IF
-    !
-    ! 2. Fraction of breaking waves -------------------------------------- /
-    ! 2.a. First guess breaking fraction
-    !
-    IF ( B .LE. 0.5d0 ) THEN
-      Q0     = 0.d0
-    ELSE IF ( B .LE. 1.d0 ) THEN
-      Q0     = ( 2.d0 * B - 1.d0 ) ** 2
-    END IF
-    !
-    ! 2.b. Iterate to obtain actual breaking fraction
-    !
-    IF ( B .LE. 0.2d0 ) THEN
-      QB     = 0.d0
-    ELSE IF ( B .LT. 1.d0 ) THEN
-      ARG    = EXP  (( Q0 - 1.d0 ) / BB )
-      QB     = Q0 - BB * ( Q0 - ARG ) / ( BB - ARG )
-      DO IS=1, 3
-        QB     = EXP((QB-1.)/BB)
+      ETOT = 0.
+      FMEAN2 = 0.
+      ! GPU Refactor: TODO: I am sure that several routines calculate these mean values
+      ! separately. Possibly more efficient to move them to W3SRCE and pass in?
+      DO IK=1, NK
+        EB(IK) = 0.
+        DO ITH=1, NTH
+          EB(IK) = EB(IK) + A(ITH+(IK-1)*NTH, IP)
+        END DO
       END DO
-    ELSE
-      QB = 1.0 - THR
-    END IF
-    !
-    ! 3. Estimate the breaking coefficient ------------------------------- /
-    !
-    CBJ  = 0
-    IF (IWB == 1) THEN
-      IF ( ( BB .GT. THR) .AND. ( ABS ( BB - QB ) .GT. THR) ) THEN
-        IF ( BB .LT. 1.0) THEN
-          CBJ = 2 * DBLE(SDBC1) * QB * DBLE(FMEAN) / BB
+      DO IK=1, NK
+        EB(IK) = EB(IK) * DDEN(IK) / CG(IK,IP)
+        ETOT  = ETOT  + EB(IK)
+      END DO
+      DO IK=1, NK
+        FMEAN2 = FMEAN2 + EB(IK) * SIG(IK)
+      END DO
+      FMEAN2 = FMEAN2 / ETOT * TPIINV
+      !
+      ! 2do compute wlmean
+      !
+      ! 1.a. Maximum wave height
+      ! 1.a.1. Simple limit
+      !
+      IF ( FDONLY ) THEN
+        HM = DBLE(SDBC2) * DBLE(DEPTH(IP))
+      ELSE
+        !
+        ! 1.a.2. Miche style criterion
+        !
+        HM = DBLE(SDBC2) / DBLE(WNMEAN(IP)) * TANH ( DBLE(WNMEAN(IP)) * MAX(DEPTH(IP),0.) )
+      END IF
+      !
+      !AR: Add Dingemans ...
+      ! 1.b. Hrms and ratio Hrms / Hmax
+      !
+      HRMS = DSQRT (8.d0 * DBLE(EMEAN(IP)))
+      IF ( HM .GT. THR) THEN
+        BB = HRMS * HRMS / ( HM * HM )
+        B  = DSQRT(BB)
+      ELSE
+        BB = 0.d0
+        B  = 0.d0
+      END IF
+      !
+      ! 2. Fraction of breaking waves -------------------------------------- /
+      ! 2.a. First guess breaking fraction
+      !
+      IF ( B .LE. 0.5d0 ) THEN
+        Q0 = 0.d0
+      ELSE IF ( B .LE. 1.d0 ) THEN
+        Q0 = ( 2.d0 * B - 1.d0 ) ** 2
+      END IF
+      !
+      ! 2.b. Iterate to obtain actual breaking fraction
+      !
+      IF ( B .LE. 0.2d0 ) THEN
+        QB = 0.d0
+      ELSE IF ( B .LT. 1.d0 ) THEN
+        ARG = EXP(( Q0 - 1.d0 ) / BB )
+        QB = Q0 - BB * ( Q0 - ARG ) / ( BB - ARG )
+        DO IS=1, 3
+          QB = EXP((QB-1.)/BB)
+        END DO
+      ELSE
+        QB = 1.0 - THR
+      END IF
+      !
+      ! 3. Estimate the breaking coefficient ------------------------------- /
+      !
+      CBJ = 0
+      IF (IWB == 1) THEN
+        IF ( ( BB .GT. THR) .AND. ( ABS ( BB - QB ) .GT. THR) ) THEN
+          IF ( BB .LT. 1.0) THEN
+            CBJ = 2 * DBLE(SDBC1) * QB * DBLE(FMEAN(IP)) / BB
+          ELSE
+            CBJ = 2 * DBLE(SDBC1) * DBLE(FMEAN(IP)) * BB ! AR: degenerative regime, all waves must be .le. Hmax, we just smoothly let the excessive energy vanish by * BB.
+          END IF
         ELSE
-          CBJ = 2 * DBLE(SDBC1) * DBLE(FMEAN) * BB ! AR: degenerative regime, all waves must be .le. Hmax, we just smoothly let the excessive energy vanish by * BB.
-        END IF
-      ELSE
-        CBJ = 0.d0
+          CBJ = 0.d0
+        ENDIF
+        D(:,IP) = - CBJ
+        S(:,IP) = D(:,IP) * A(:,IP)
+      ELSE IF (IWB == 2) THEN
+        IF (ETOT .GT. THR) THEN
+          HRMS = SQRT(8*EMEAN(IP))
+          FAK  = (1+4./SQRT(PI)*(B*BB+1.5*B)*exp(-BB)-ERF(B))
+          CBJ  = -SDBC1*SQRT(PI)/16.*FMEAN(IP)*HRMS**3/DEPTH(IP)/ETOT
+        ELSE
+          CBJ  = 0.
+        ENDIF
+        D(:,IP) = - CBJ
+        S(:,IP) = D(:,IP) * A(:,IP)
       ENDIF
-      D = - CBJ
-      S = D * A
-    ELSE IF (IWB == 2) THEN
-      IF (ETOT .GT. THR) THEN
-        HRMS = SQRT(8*EMEAN)
-        FAK  = (1+4./SQRT(PI)*(B*BB+1.5*B)*exp(-BB)-ERF(B))
-        CBJ  = -SDBC1*SQRT(PI)/16.*FMEAN*HRMS**3/DEPTH/ETOT
-      ELSE
-        CBJ  = 0.
-      ENDIF
-      D = - CBJ
-      S = D * A
-    ENDIF
 
-    IF (CBJ .GT. 0.) THEN
-      LBREAK = .TRUE.
-    ELSE
-      LBREAK = .FALSE.
-    ENDIF
+      IF (CBJ .GT. 0.) THEN
+        LBREAK = .TRUE.
+      ELSE
+        LBREAK = .FALSE.
+      ENDIF
+    END DO ! IP
 
 #ifdef W3_DEBUGRUN
-    IF (IX == DEBUG_NODE) THEN
-      WRITE(*,'(A200)') 'IX, DEPTH, CBJ, BB, QB, SDBC1, SDBC2, FMEAN, FMEAN2, HS'
-      WRITE(*,'(I10,20F20.10)') IX, DEPTH, CBJ, BB, QB, SDBC1, SDBC2, FMEAN, FMEAN2, 4*SQRT(ETOT)
-    ENDIF
+    DO IP=1,NP
+      IF(MASK(IP)) CYCLE
+      IF (IX(IP) == DEBUG_NODE) THEN
+        WRITE(*,'(A200)') 'IX, DEPTH, CBJ, BB, QB, SDBC1, SDBC2, FMEAN, FMEAN2, HS'
+        WRITE(*,'(I10,20F20.10)') IX, DEPTH(IP), CBJ, BB, QB, SDBC1, SDBC2, FMEAN(IP), FMEAN2, 4*SQRT(ETOT)
+      ENDIF
+    END DO
 #endif
     !
     ! ... Test output of arrays
     !
 #ifdef W3_T0
-    DO IK=1, NK
-      DO ITH=1, NTH
-        DOUT(IK,ITH) = D(ITH+(IK-1)*NTH)
+    DO IP=1,NP
+      IF(MASK(IP)) CYCLE
+      DO IK=1, NK
+        DO ITH=1, NTH
+          DOUT(IK,ITH) = D(ITH+(IK-1)*NTH,IP)
+        END DO
       END DO
+      CALL PRT2DS (NDST, NK, NK, NTH, DOUT, SIG, '  ', 1.,    &
+          0.0, 0.001, 'Diag Sdb', ' ', 'NONAME')
     END DO
-    CALL PRT2DS (NDST, NK, NK, NTH, DOUT, SIG, '  ', 1.,    &
-         0.0, 0.001, 'Diag Sdb', ' ', 'NONAME')
 #endif
     !
 #ifdef W3_T1
-    CALL OUTMAT (NDST, D, NTH, NTH, NK, 'diag Sdb')
+    DO IP=1,NP
+      IF(MASK(IP)) CYCLE
+      CALL OUTMAT (NDST, D(:,IP), NTH, NTH, NK, 'diag Sdb')
+    END DO
 #endif
     !
     RETURN
