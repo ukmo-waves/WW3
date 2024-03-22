@@ -11,6 +11,7 @@ MODULE W3SLN1MD
   !/
   !/    23-Jun-2006 : Origination.                        ( version 3.09 )
   !/    29-May-2009 : Preparing distribution version.     ( version 3.14 )
+  !/    20-Mar-2024 : Process multiple seapoints          ( version 7.14 )
   !/
   !/    Copyright 2009 National Weather Service (NWS),
   !/       National Oceanic and Atmospheric Administration.  All rights
@@ -53,7 +54,7 @@ MODULE W3SLN1MD
   !/
 CONTAINS
   !/ ------------------------------------------------------------------- /
-  SUBROUTINE W3SLN1 (K, FHIGH, USTAR, USDIR, S)
+  SUBROUTINE W3SLN1 (K, FHIGH, USTAR, USDIR, S, MASK, NP)
     !/
     !/                  +-----------------------------------+
     !/                  | WAVEWATCH III           NOAA/NCEP |
@@ -98,6 +99,8 @@ CONTAINS
     !       USTAR   Real  I   Friction velocity.
     !       USDIR   Real  I   Direction of USTAR.
     !       S       R.A.  O   Source term.
+    !       MASK    L.A.  I   Seapoint/computational mask
+    !       NP      Int   I   Number points
     !     ----------------------------------------------------------------
     !                         *) Stored as 1-D array with dimension NTH*NK
     !
@@ -148,13 +151,15 @@ CONTAINS
     !/ ------------------------------------------------------------------- /
     !/ Parameter list
     !/
-    REAL, INTENT(IN)        :: K(NK), FHIGH, USTAR, USDIR
-    REAL, INTENT(OUT)       :: S(NTH,NK)
+    REAL, INTENT(IN)        :: K(NK,NP), FHIGH(NP), USTAR(NP), USDIR(NP)
+    REAL, INTENT(OUT)       :: S(NTH,NK,NP)
+    LOGICAL, INTENT(IN)     :: MASK(NP)
+    INTEGER, INTENT(IN)     :: NP 
     !/
     !/ ------------------------------------------------------------------- /
     !/ Local parameters
     !/
-    INTEGER                 :: ITH, IK
+    INTEGER                 :: ITH, IK, IP
 #ifdef W3_S
     INTEGER, SAVE           :: IENT = 0
 #endif
@@ -169,36 +174,38 @@ CONTAINS
     !
     ! 1.  Set up factors ------------------------------------------------- *
     !
+    DO IP=1,NP
 #ifdef W3_T
-    WRITE (NDST,900) USTAR, USDIR*RADE
+      WRITE (NDST,900) USTAR, USDIR*RADE
 #endif
-    !
-    COSU   = COS(USDIR)
-    SINU   = SIN(USDIR)
-    !
-    DO ITH=1, NTH
-      DIRF(ITH) = MAX ( 0. , (ECOS(ITH)*COSU+ESIN(ITH)*SINU) )**4
-    END DO
-    !
-    FAC    = SLNC1 * USTAR**4
-    FF1    = FSPM * GRAV/(28.*USTAR)
-    FF2    = FSHF * MIN(SIG(NK),FHIGH)
-    FFILT  = MIN ( MAX(FF1,FF2) , 2.*SIG(NK) )
-    DO IK=1, NK
-      RFR    = SIG(IK) / FFILT
-      IF ( RFR .LT. 0.5 ) THEN
-        WNF(IK) = 0.
-      ELSE
-        WNF(IK) = FAC / K(IK) * EXP(-RFR**(-4))
-      END IF
-    END DO
-    !
-    ! 2.  Compose source term -------------------------------------------- *
-    !
-    DO IK=1, NK
-      S(:,IK) = WNF(IK) * DIRF(:)
-    END DO
-    !
+      !
+      COSU = COS(USDIR(IP))
+      SINU = SIN(USDIR(IP))
+      !
+      DO ITH=1, NTH
+        DIRF(ITH) = MAX ( 0. , (ECOS(ITH)*COSU+ESIN(ITH)*SINU) )**4
+      END DO
+      !
+      FAC    = SLNC1 * USTAR(IP)**4
+      FF1    = FSPM * GRAV/(28.*USTAR(IP))
+      FF2    = FSHF * MIN(SIG(NK),FHIGH(IP))
+      FFILT  = MIN ( MAX(FF1,FF2) , 2.*SIG(NK) )
+      DO IK=1, NK
+        RFR    = SIG(IK) / FFILT
+        IF ( RFR .LT. 0.5 ) THEN
+          WNF(IK) = 0.
+        ELSE
+          WNF(IK) = FAC / K(IK,IP) * EXP(-RFR**(-4))
+        END IF
+      END DO
+      !
+      ! 2.  Compose source term -------------------------------------------- *
+      !
+      DO IK=1, NK
+        S(:,IK,IP) = WNF(IK) * DIRF(:)
+      END DO
+      !
+    END DO ! IP
     RETURN
     !
     ! Formats

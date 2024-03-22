@@ -85,7 +85,7 @@ CONTAINS
   !> @author H. L. Tolman
   !> @date   29-May-2009
   !>
-  SUBROUTINE W3SBT1 (A, CG, WN, DEPTH, S, D)
+  SUBROUTINE W3SBT1 (A, CG, WN, DEPTH, S, D, MASK, NP)
     !/
     !/                  +-----------------------------------+
     !/                  | WAVEWATCH III           NOAA/NCEP |
@@ -98,6 +98,7 @@ CONTAINS
     !/    08-Dec-1999 : Upgrade to FORTRAN 90.              ( version 2.00 )
     !/    20-Dec-2004 : Multiple model version.             ( version 3.06 )
     !/    29-May-2009 : Preparing distribution version.     ( version 3.14 )
+    !/    20-Mar-2024 : Process multiple seapoints          ( version 7.14 )
     !/
     !/    Copyright 2009 National Weather Service (NWS),
     !/       National Oceanic and Atmospheric Administration.  All rights
@@ -130,6 +131,8 @@ CONTAINS
     !       DEPTH   Real  I   Mean water depth.
     !       S       R.A.  O   Source term (1-D version).
     !       D       R.A.  O   Diagonal term of derivative (1-D version).
+    !       MASK    L.A.  I   Seapoint/computational mask
+    !       NP      Int   I   Number of points
     !     ----------------------------------------------------------------
     !
     !  4. Subroutines used :
@@ -189,13 +192,15 @@ CONTAINS
     !/ ------------------------------------------------------------------- /
     !/ Parameter list
     !/
-    REAL, INTENT(IN)        :: CG(NK), WN(NK), DEPTH, A(NSPEC)
-    REAL, INTENT(OUT)       :: S(NSPEC), D(NSPEC)
+    REAL, INTENT(IN)        :: CG(NK,NP), WN(NK,NP), DEPTH(NP), A(NSPEC,NP)
+    REAL, INTENT(OUT)       :: S(NSPEC,NP), D(NSPEC,NP)
+    LOGICAL, INTENT(IN)     :: MASK(NP)
+    INTEGER, INTENT(IN)     :: NP
     !/
     !/ ------------------------------------------------------------------- /
     !/ Local parameters
     !/
-    INTEGER                 :: IS, IK, NSCUT
+    INTEGER                 :: IS, IK, NSCUT, IP
 #ifdef W3_S
     INTEGER, SAVE           :: IENT = 0
 #endif
@@ -215,61 +220,71 @@ CONTAINS
     !
     ! 1.  Deep water ===================================================== *
     !
-    IF ( DEPTH*WN(1) .GT. 6 ) THEN
-      !
-      D = 0.
-      S = 0.
-      !
-      ! 2.  Shallow water ================================================== *
-      !
-    ELSE
-      !
-      ! 2.a Set constant
-      !
-      FACTOR = SBTC1 / DEPTH
-      !
+    DO IP=1,NP
+      IF(MASK(IP)) CYCLE
+
+      IF ( DEPTH(IP)*WN(1,IP) .GT. 6 ) THEN
+        !
+        D(:,IP) = 0.
+        S(:,IP) = 0.
+        !
+        ! 2.  Shallow water ================================================== *
+        !
+      ELSE
+        !
+        ! 2.a Set constant
+        !
+        FACTOR = SBTC1 / DEPTH(IP)
+        !
 #ifdef W3_T
-      WRITE (NDST,9000) FACTOR, DEPTH
+        WRITE (NDST,9000) FACTOR, DEPTH(IP)
 #endif
-      !
-      ! 2.b Wavenumber dependent part.
-      !
-      DO IK=1, NK
-        IF ( WN(IK)*DEPTH .GT. 6. ) EXIT
-        CBETA(IK) = FACTOR *                                      &
-             MAX(0., (CG(IK)*WN(IK)/SIG(IK)-0.5) )
-      END DO
-      !
-      ! 2.c Fill diagional matrix
-      !
-      NSCUT  = (IK-1)*NTH
-      !
-      DO IS=1, NSCUT
-        D(IS) = CBETA(MAPWN(IS))
-      END DO
-      !
-      DO IS=NSCUT+1, NSPEC
-        D(IS) = 0.
-      END DO
-      !
-      S = D * A
-      !
-    END IF
+        !
+        ! 2.b Wavenumber dependent part.
+        !
+        DO IK=1, NK
+          IF ( WN(IK,IP)*DEPTH(IP) .GT. 6. ) EXIT
+          CBETA(IK) = FACTOR *                                      &
+              MAX(0., (CG(IK,IP)*WN(IK,IP)/SIG(IK)-0.5) )
+        END DO
+        !
+        ! 2.c Fill diagional matrix
+        !
+        NSCUT = (IK-1)*NTH
+        !
+        DO IS=1, NSCUT
+          D(IS,IP) = CBETA(MAPWN(IS))
+        END DO
+        !
+        DO IS=NSCUT+1, NSPEC
+          D(IS,IP) = 0.
+        END DO
+        !
+        S(:,IP) = D(:,IP) * A(:,IP)
+        !
+      END IF
+    END DO ! IP
     !
     ! ... Test output of arrays
     !
 #ifdef W3_T0
-    DO IK=1, NK
-      DO ITH=1, NTH
-        DOUT(IK,ITH) = D(ITH+(IK-1)*NTH)
+    DO IP=1, NP
+      IF(MASK(IP)) CYCLE
+      DO IK=1, NK
+        DO ITH=1, NTH
+          DOUT(IK,ITH) = D(ITH+(IK-1)*NTH,IP)
+        END DO
       END DO
-    END DO
-    CALL PRT2DS (NDST, NK, NK, NTH, DOUT, SIG(1:), '  ', 1.,    &
-         0.0, 0.001, 'Diag Sbt', ' ', 'NONAME')
+      CALL PRT2DS (NDST, NK, NK, NTH, DOUT, SIG(1:), '  ', 1.,    &
+          0.0, 0.001, 'Diag Sbt', ' ', 'NONAME')
+    END DO ! IP
 #endif
     !
 #ifdef W3_T1
-    CALL OUTMAT (NDST, D, NTH, NTH, NK, 'diag Sbt')
+    DO IP=1, NP
+      IF(MASK(IP)) CYCLE
+      CALL OUTMAT (NDST, D(:,IP), NTH, NTH, NK, 'diag Sbt')
+    END DO
 #endif
     !
     RETURN

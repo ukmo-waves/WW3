@@ -2423,7 +2423,7 @@ CONTAINS
             IF ( FLSRCE(3) ) THEN
 #ifdef W3_NL1
               IF (IQTPE.GT.0) THEN
-                CALL W3SNL1 ( A, CG, WNMEAN*DEPTH,  XNL, DIA )
+                CALL W3SNL1 ( A, CG, WNMEAN, DEPTH, XNL, DIA )
               ELSE
                 CALL W3SNLGQM ( A, CG, WN, DEPTH,  XNL, DIA )
               END IF

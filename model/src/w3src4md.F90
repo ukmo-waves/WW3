@@ -2682,6 +2682,7 @@ CONTAINS
         HS = 0.
         PB2 = 0.
         DK = 0.
+        PB = 0.
         !
         ! Computes Wavenumber spectrum E1 integrated over direction and computes dk
         !
@@ -2812,7 +2813,7 @@ CONTAINS
           END IF
         END DO
         !
-        PB = (1-SSDSC(1))*PB2*A(:,IP) + SSDSC(1)*PB
+        PB = (1-SSDSC(1))*PB2*A(:,IP) + SSDSC(1)*PB   ! TODO: Second term is always zero (PB=0 here)????
         ! Compute Lambda = PB* l(k,th)
         ! with l(k,th)=1/(2*pi²)= the breaking crest density
         BRLAMBDA(:,IP) = PB / (2.*PI**2.)
@@ -2872,8 +2873,7 @@ CONTAINS
     !############################################################################################"
     !
     !
-    !/ ------------------------------------------------------------------- /
-    !             WAVE-TURBULENCE INTERACTION AND CUMULATIVE EFFECT
+    !/ ------------------------------------------------------------------- / 
     !/ ------------------------------------------------------------------- /
     !
     !
@@ -2883,7 +2883,7 @@ CONTAINS
       DO IP=1,NP
         IF(MASK(IP)) CYCLE
 
-        DO  IK=IK1, NK
+        DO IK=IK1, NK
           RENEWALFREQ = 0.
           FACTURB=SSDSC(5)*USTAR(IP)**2/GRAV*DAIR(IP)/DWAT  ! GPU Refactor: moved here from section 1
           FACTURB2=-2.*SIG(IK)*K(IK,IP)*FACTURB

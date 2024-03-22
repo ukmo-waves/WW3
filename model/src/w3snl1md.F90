@@ -111,7 +111,9 @@ CONTAINS
 !> @author H. L. Tolman
 !> @date   06-Jun-2018
 !>
-  SUBROUTINE W3SNL1 (A, CG, KDMEAN, S, D)
+  !SUBROUTINE W3SNL1 (A, CG, KDMEAN, S, D, MASK, NP)
+  SUBROUTINE W3SNL1 (A, CG, WNMEAN, DEPTH, S, D, MASK, NP)
+
     !/
     !/                  +-----------------------------------+
     !/                  | WAVEWATCH III           NOAA/NCEP |
@@ -217,7 +219,9 @@ CONTAINS
     !       A       R.A.  I   Action spectrum A(ISP) as a function of
     !                         direction (rad)  and wavenumber.
     !       CG      R.A.  I   Group velocities (dimension NK).
-    !       KDMEAN  Real  I   Mean relative depth.
+    !      !! KDMEAN  Real  I   Mean relative depth.  - Replaced by DEPTH and WNMEAN
+    !       WNMEAN  R.A.  I   Mean wave number
+    !       DEPTH   R.A.  I   Water depth
     !       S       R.A.  O   Source term.                           *)
     !       D       R.A.  O   Diagonal term of derivative.           *)
     !     ----------------------------------------------------------------
@@ -304,27 +308,39 @@ CONTAINS
     !/ ------------------------------------------------------------------- /
     !/ Parameter list
     !/
-    REAL, INTENT(IN)        :: A(NSPEC), CG(NK), KDMEAN
-    REAL, INTENT(OUT)       :: S(NSPEC), D(NSPEC)
+    REAL, INTENT(IN)        :: A(NSPEC,NP), CG(NK,NP) !, KDMEAN(NP)
+    REAL, INTENT(IN)        :: WNMEAN(NP), DEPTH(NP)  ! GPU Refactor - replaces KDMEAN
+    REAL, INTENT(OUT)       :: S(NSPEC,NP), D(NSPEC,NP)
+    LOGICAL, INTENT(IN)     :: MASK(NP)
+    INTEGER, INTENT(IN)     :: NP
     !/
     !/ ------------------------------------------------------------------- /
     !/ Local parameters
     !/
-    INTEGER                 :: ITH, IFR, ISP
+    INTEGER                 :: ITH, IFR, ISP, IP
 #ifdef W3_S
     INTEGER, SAVE           :: IENT = 0
 #endif
-    REAL                    :: X, X2, CONS, CONX, FACTOR,           &
+    REAL                    :: X, X2, CONX, FACTOR,           &
          E00, EP1, EM1, EP2, EM2,             &
          SA1A, SA1B, SA2A, SA2B
 #ifdef W3_T0
     REAL                    :: SOUT(NK,NFR), DOUT(NK,NFR)
 #endif
-    REAL               ::  UE  (1-NTH:NSPECY), SA1 (1-NTH:NSPECX),  &
-         SA2 (1-NTH:NSPECX), DA1C(1-NTH:NSPECX),  &
-         DA1P(1-NTH:NSPECX), DA1M(1-NTH:NSPECX),  &
-         DA2C(1-NTH:NSPECX), DA2P(1-NTH:NSPECX),  &
-         DA2M(1-NTH:NSPECX), CON (      NSPEC )
+    !/ Redfined locals with extra NP dimension for GPU refactor
+    REAL :: CONS(NP)
+    REAL :: CON (NSPEC,NP)
+    REAL :: UE(1-NTH:NSPECY,NP)
+
+    !/ *GPU Refactor NOTE*: Adding the NP dimension to the arrays below makes
+    !/ then quite large (NSPECX is large). They could have the extra NP dimension
+    !/ removed (reverted to original size), if loops 3 and 4 below can be
+    !/ contained in the same IP loop with good GPU performance (they would all
+    !/ then be thread private and would take up less memory on CPU).
+    REAL :: SA1 (1-NTH:NSPECX,NP), SA2 (1-NTH:NSPECX,NP)
+    REAL :: DA1C(1-NTH:NSPECX,NP), DA1P(1-NTH:NSPECX,NP), &
+            DA1M(1-NTH:NSPECX,NP), DA2C(1-NTH:NSPECX,NP), &
+            DA2P(1-NTH:NSPECX,NP), DA2M(1-NTH:NSPECX,NP)
     !/
     !/ ------------------------------------------------------------------- /
     !/
@@ -336,127 +352,155 @@ CONTAINS
     !
     ! 1.  Calculate prop. constant --------------------------------------- *
     !
-    X      = MAX ( KDCON*KDMEAN , KDMN )
-    X2     = MAX ( -1.E15, SNLS3*X)
-    CONS   = SNLC1 * ( 1. + SNLS1/X * (1.-SNLS2*X) * EXP(X2) )
+    DO IP=1,NP ! GPU Refactor: New IP loop
+      IF(MASK(IP)) CYCLE
+      ! GPU Refactor, calculate KDMEAN in this routine
+      !X = MAX ( KDCON*KDMEAN(IP) , KDMN )
+      X = MAX ( KDCON*(WNMEAN(IP)*DEPTH(IP)) , KDMN )
+      X2 = MAX ( -1.E15, SNLS3*X)
+      CONS(IP) = SNLC1 * ( 1. + SNLS1/X * (1.-SNLS2*X) * EXP(X2) )
+    END DO ! IP
     !
 #ifdef W3_T
-    WRITE (NDST,9000) KDMEAN, CONS
+    DO IP=1,NP
+      IF(MASK(IP)) CYCLE
+      WRITE (NDST,9000) WNMEAN(IP)*DEPTH(IP), CONS(IP)
+    END DO
 #endif
     !
     ! 2.  Prepare auxiliary spectrum and arrays -------------------------- *
     !
-    DO IFR=1, NFR
-      CONX = TPIINV / SIG(IFR) * CG(IFR)
-      DO ITH=1, NTH
-        ISP       = ITH + (IFR-1)*NTH
-        UE (ISP) = A(ISP) / CONX
-        CON(ISP) = CONX
+    DO IP=1,NP
+      IF(MASK(IP)) CYCLE
+      DO IFR=1, NFR
+        CONX = TPIINV / SIG(IFR) * CG(IFR,IP)
+        DO ITH=1, NTH
+          ISP = ITH + (IFR-1)*NTH
+          UE (ISP,IP) = A(ISP,IP) / CONX
+          CON(ISP,IP) = CONX
+        END DO
       END DO
-    END DO
+    END DO ! IP
     !
-    DO IFR=NFR+1, NFRHGH
-      DO ITH=1, NTH
-        ISP      = ITH + (IFR-1)*NTH
-        UE(ISP) = UE(ISP-NTH) * FACHFE
+    DO IP=1,NP
+      IF(MASK(IP)) CYCLE
+      DO IFR=NFR+1, NFRHGH
+        DO ITH=1, NTH
+          ISP = ITH + (IFR-1)*NTH
+          UE(ISP,IP) = UE(ISP-NTH,IP) * FACHFE
+        END DO
       END DO
-    END DO
+    END DO ! IP
     !
-    DO ISP=1-NTH, 0
-      UE  (ISP) = 0.
-      SA1 (ISP) = 0.
-      SA2 (ISP) = 0.
-      DA1C(ISP) = 0.
-      DA1P(ISP) = 0.
-      DA1M(ISP) = 0.
-      DA2C(ISP) = 0.
-      DA2P(ISP) = 0.
-      DA2M(ISP) = 0.
-    END DO
+    DO IP=1,NP
+      DO ISP=1-NTH, 0
+        UE  (ISP,IP) = 0.
+        SA1 (ISP,IP) = 0.
+        SA2 (ISP,IP) = 0.
+        DA1C(ISP,IP) = 0.
+        DA1P(ISP,IP) = 0.
+        DA1M(ISP,IP) = 0.
+        DA2C(ISP,IP) = 0.
+        DA2P(ISP,IP) = 0.
+        DA2M(ISP,IP) = 0.
+      END DO
+    END DO ! IP
     !
     ! 3.  Calculate interactions for extended spectrum ------------------- *
     !
-    DO ISP=1, NSPECX
-      !
-      ! 3.a Energy at interacting bins
-      !
-      E00    =        UE(ISP)
-      EP1    = AWG1 * UE(IP11(ISP)) + AWG2 * UE(IP12(ISP))        &
-           + AWG3 * UE(IP13(ISP)) + AWG4 * UE(IP14(ISP))
-      EM1    = AWG5 * UE(IM11(ISP)) + AWG6 * UE(IM12(ISP))        &
-           + AWG7 * UE(IM13(ISP)) + AWG8 * UE(IM14(ISP))
-      EP2    = AWG1 * UE(IP21(ISP)) + AWG2 * UE(IP22(ISP))        &
-           + AWG3 * UE(IP23(ISP)) + AWG4 * UE(IP24(ISP))
-      EM2    = AWG5 * UE(IM21(ISP)) + AWG6 * UE(IM22(ISP))        &
-           + AWG7 * UE(IM23(ISP)) + AWG8 * UE(IM24(ISP))
-      !
-      ! 3.b Contribution to interactions
-      !
-      FACTOR = CONS * AF11(ISP) * E00
-      !
-      SA1A   = E00 * ( EP1*DAL1 + EM1*DAL2 )
-      SA1B   = SA1A - EP1*EM1*DAL3
-      SA2A   = E00 * ( EP2*DAL1 + EM2*DAL2 )
-      SA2B   = SA2A - EP2*EM2*DAL3
-      !
-      SA1 (ISP) = FACTOR * SA1B
-      SA2 (ISP) = FACTOR * SA2B
-      !
-      DA1C(ISP) = CONS * AF11(ISP) * ( SA1A + SA1B )
-      DA1P(ISP) = FACTOR * ( DAL1*E00 - DAL3*EM1 )
-      DA1M(ISP) = FACTOR * ( DAL2*E00 - DAL3*EP1 )
-      !
-      DA2C(ISP) = CONS * AF11(ISP) * ( SA2A + SA2B )
-      DA2P(ISP) = FACTOR * ( DAL1*E00 - DAL3*EM2 )
-      DA2M(ISP) = FACTOR * ( DAL2*E00 - DAL3*EP2 )
-      !
-    END DO
+    DO IP=1,NP
+      IF(MASK(IP)) CYCLE
+      DO ISP=1, NSPECX
+        !
+        ! 3.a Energy at interacting bins
+        !
+        E00 =        UE(ISP,IP)
+        EP1 = AWG1 * UE(IP11(ISP),IP) + AWG2 * UE(IP12(ISP),IP)        &
+            + AWG3 * UE(IP13(ISP),IP) + AWG4 * UE(IP14(ISP),IP)
+        EM1 = AWG5 * UE(IM11(ISP),IP) + AWG6 * UE(IM12(ISP),IP)        &
+            + AWG7 * UE(IM13(ISP),IP) + AWG8 * UE(IM14(ISP),IP)
+        EP2 = AWG1 * UE(IP21(ISP),IP) + AWG2 * UE(IP22(ISP),IP)        &
+            + AWG3 * UE(IP23(ISP),IP) + AWG4 * UE(IP24(ISP),IP)
+        EM2 = AWG5 * UE(IM21(ISP),IP) + AWG6 * UE(IM22(ISP),IP)        &
+            + AWG7 * UE(IM23(ISP),IP) + AWG8 * UE(IM24(ISP),IP)
+        !
+        ! 3.b Contribution to interactions
+        !
+        FACTOR = CONS(IP) * AF11(ISP) * E00
+        !
+        SA1A   = E00 * ( EP1*DAL1 + EM1*DAL2 )
+        SA1B   = SA1A - EP1*EM1*DAL3
+        SA2A   = E00 * ( EP2*DAL1 + EM2*DAL2 )
+        SA2B   = SA2A - EP2*EM2*DAL3
+        !
+        SA1 (ISP,IP) = FACTOR * SA1B
+        SA2 (ISP,IP) = FACTOR * SA2B
+        !
+        DA1C(ISP,IP) = CONS(IP) * AF11(ISP) * ( SA1A + SA1B )
+        DA1P(ISP,IP) = FACTOR * ( DAL1*E00 - DAL3*EM1 )
+        DA1M(ISP,IP) = FACTOR * ( DAL2*E00 - DAL3*EP1 )
+        !
+        DA2C(ISP,IP) = CONS(IP) * AF11(ISP) * ( SA2A + SA2B )
+        DA2P(ISP,IP) = FACTOR * ( DAL1*E00 - DAL3*EM2 )
+        DA2M(ISP,IP) = FACTOR * ( DAL2*E00 - DAL3*EP2 )
+        !
+      END DO
+    END DO ! IP
     !
     ! 4.  Put source and diagonal term together -------------------------- *
     !
-    DO ISP=1, NSPEC
-      !
-      S(ISP) = CON(ISP) * ( - 2. * ( SA1(ISP) + SA2(ISP) )       &
-           + AWG1 * ( SA1(IC11(ISP)) + SA2(IC12(ISP)) )    &
-           + AWG2 * ( SA1(IC21(ISP)) + SA2(IC22(ISP)) )    &
-           + AWG3 * ( SA1(IC31(ISP)) + SA2(IC32(ISP)) )    &
-           + AWG4 * ( SA1(IC41(ISP)) + SA2(IC42(ISP)) )    &
-           + AWG5 * ( SA1(IC51(ISP)) + SA2(IC52(ISP)) )    &
-           + AWG6 * ( SA1(IC61(ISP)) + SA2(IC62(ISP)) )    &
-           + AWG7 * ( SA1(IC71(ISP)) + SA2(IC72(ISP)) )    &
-           + AWG8 * ( SA1(IC81(ISP)) + SA2(IC82(ISP)) ) )
-      !
-      D(ISP) =  - 2. * ( DA1C(ISP) + DA2C(ISP) )                 &
-           + SWG1 * ( DA1P(IC11(ISP)) + DA2P(IC12(ISP)) )     &
-           + SWG2 * ( DA1P(IC21(ISP)) + DA2P(IC22(ISP)) )     &
-           + SWG3 * ( DA1P(IC31(ISP)) + DA2P(IC32(ISP)) )     &
-           + SWG4 * ( DA1P(IC41(ISP)) + DA2P(IC42(ISP)) )     &
-           + SWG5 * ( DA1M(IC51(ISP)) + DA2M(IC52(ISP)) )     &
-           + SWG6 * ( DA1M(IC61(ISP)) + DA2M(IC62(ISP)) )     &
-           + SWG7 * ( DA1M(IC71(ISP)) + DA2M(IC72(ISP)) )     &
-           + SWG8 * ( DA1M(IC81(ISP)) + DA2M(IC82(ISP)) )
-      !
-    END DO
+    DO IP=1,NP
+      IF(MASK(IP)) CYCLE
+      DO ISP=1, NSPEC
+        !
+        S(ISP,IP) = CON(ISP,IP) * ( - 2. * ( SA1(ISP,IP) + SA2(ISP,IP) )       &
+            + AWG1 * ( SA1(IC11(ISP),IP) + SA2(IC12(ISP),IP) )    &
+            + AWG2 * ( SA1(IC21(ISP),IP) + SA2(IC22(ISP),IP) )    &
+            + AWG3 * ( SA1(IC31(ISP),IP) + SA2(IC32(ISP),IP) )    &
+            + AWG4 * ( SA1(IC41(ISP),IP) + SA2(IC42(ISP),IP) )    &
+            + AWG5 * ( SA1(IC51(ISP),IP) + SA2(IC52(ISP),IP) )    &
+            + AWG6 * ( SA1(IC61(ISP),IP) + SA2(IC62(ISP),IP) )    &
+            + AWG7 * ( SA1(IC71(ISP),IP) + SA2(IC72(ISP),IP) )    &
+            + AWG8 * ( SA1(IC81(ISP),IP) + SA2(IC82(ISP),IP) ) )
+        !
+        D(ISP,IP) = - 2. * ( DA1C(ISP,IP) + DA2C(ISP,IP) )         &
+            + SWG1 * ( DA1P(IC11(ISP),IP) + DA2P(IC12(ISP),IP) )     &
+            + SWG2 * ( DA1P(IC21(ISP),IP) + DA2P(IC22(ISP),IP) )     &
+            + SWG3 * ( DA1P(IC31(ISP),IP) + DA2P(IC32(ISP),IP) )     &
+            + SWG4 * ( DA1P(IC41(ISP),IP) + DA2P(IC42(ISP),IP) )     &
+            + SWG5 * ( DA1M(IC51(ISP),IP) + DA2M(IC52(ISP),IP) )     &
+            + SWG6 * ( DA1M(IC61(ISP),IP) + DA2M(IC62(ISP),IP) )     &
+            + SWG7 * ( DA1M(IC71(ISP),IP) + DA2M(IC72(ISP),IP) )     &
+            + SWG8 * ( DA1M(IC81(ISP),IP) + DA2M(IC82(ISP),IP) )
+        !
+      END DO
+    END DO ! IP
     !
     ! ... Test output :
     !
 #ifdef W3_T0
-    DO IFR=1, NFR
-      DO ITH=1, NTH
-        ISP          = ITH + (IFR-1)*NTH
-        SOUT(IFR,ITH) = S(ISP) * TPI * SIG(IFR) / CG(IFR)
-        DOUT(IFR,ITH) = D(ISP)
+    DO IP=1,NP
+      IF(MASK(IP)) CYCLE
+      DO IFR=1, NFR
+        DO ITH=1, NTH
+          ISP          = ITH + (IFR-1)*NTH
+          SOUT(IFR,ITH) = S(ISP,IP) * TPI * SIG(IFR) / CG(IFR,IP)
+          DOUT(IFR,ITH) = D(ISP,IP)
+        END DO
       END DO
-    END DO
-    CALL PRT2DS (NDST, NK, NK, NTH, SOUT, SIG(1:), '  ', 1.,  &
-         0.0, 0.001, 'Snl(f,t)', ' ', 'NONAME')
-    CALL PRT2DS (NDST, NK, NK, NTH, DOUT, SIG(1:), '  ', 1.,  &
-         0.0, 0.001, 'Diag Snl', ' ', 'NONAME')
+      CALL PRT2DS (NDST, NK, NK, NTH, SOUT, SIG(1:), '  ', 1.,  &
+          0.0, 0.001, 'Snl(f,t)', ' ', 'NONAME')
+      CALL PRT2DS (NDST, NK, NK, NTH, DOUT, SIG(1:), '  ', 1.,  &
+          0.0, 0.001, 'Diag Snl', ' ', 'NONAME')
+    END DO ! IP
 #endif
     !
 #ifdef W3_T1
-    CALL OUTMAT (NDST, S, NTH, NTH, NK, 'Snl')
-    CALL OUTMAT (NDST, D, NTH, NTH, NK, 'Diag Snl')
+    DO IP=1,NP
+      IF(MASK(IP)) CYCLE
+      CALL OUTMAT (NDST, S(:,IP), NTH, NTH, NK, 'Snl')
+      CALL OUTMAT (NDST, D(:,IP), NTH, NTH, NK, 'Diag Snl')
+    END DO
 #endif
     !
     RETURN
