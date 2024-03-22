@@ -261,7 +261,6 @@ CONTAINS
         END DO
         !
         S(:,IP) = D(:,IP) * A(:,IP)
-        PRINT*,'SBT1',IP,SUM(S(:,IP)), SUM(D(:,IP))
         !
       END IF
     END DO ! IP
