@@ -68,6 +68,11 @@ MODULE W3SDB1MD
   !/ ------------------------------------------------------------------- /
   !/
   PUBLIC
+  !
+  INTERFACE W3SDB1
+    MODULE PROCEDURE W3SDB1_MP
+    MODULE PROCEDURE W3SDB1_SP
+  END INTERFACE W3SDB1
   !/
 CONTAINS
   !/ ------------------------------------------------------------------- /
@@ -95,7 +100,34 @@ CONTAINS
   !> @author A. Roland
   !> @date   08-Jun-2018
   !>
-  SUBROUTINE W3SDB1 (IX, A, DEPTH, EMEAN, FMEAN, WNMEAN, CG, LBREAK, S, D, MASK, NP )
+  SUBROUTINE W3SDB1_SP (IX, A, DEPTH, EMEAN, FMEAN, WNMEAN, CG, LBREAK, S, D)
+    USE W3GDATMD, ONLY: NK, NTH
+    IMPLICIT NONE
+    INTEGER, INTENT(IN)     :: IX
+    REAL, INTENT(IN)        :: A(NTH,NK)
+    REAL, INTENT(INOUT)     :: EMEAN, FMEAN, WNMEAN, DEPTH
+    REAL, INTENT(OUT)       :: S(NTH,NK), D(NTH,NK)
+    REAL, INTENT(IN)        :: CG(NK)
+    LOGICAL, INTENT(OUT)    :: LBREAK ! GPU Keeping this as scalar for now as not used!
+
+    REAL:: A_EMEAN(1), A_FMEAN(1), A_WNMEAN(1), A_DEPTH(1)
+
+    A_EMEAN(1) = EMEAN
+    A_FMEAN(1) = FMEAN
+    A_WNMEAN(1) = WNMEAN
+    A_DEPTH(1) = DEPTH
+
+    CALL W3SDB1_MP ((/IX/), A, A_DEPTH, A_EMEAN, A_FMEAN, A_WNMEAN, CG, &
+        LBREAK, S, D, (/.FALSE./), 1)
+
+    EMEAN = A_EMEAN(1)
+    FMEAN = A_FMEAN(1)
+    WNMEAN = A_WNMEAN(1)
+    DEPTH = A_DEPTH(1)
+
+  END SUBROUTINE W3SDB1_SP
+
+  SUBROUTINE W3SDB1_MP (IX, A, DEPTH, EMEAN, FMEAN, WNMEAN, CG, LBREAK, S, D, MASK, NP )
     !/
     !/                  +-----------------------------------+
     !/                  | WAVEWATCH III           NOAA/NCEP |
@@ -401,7 +433,7 @@ CONTAINS
     !/
     !/ End of W3SDB1 ----------------------------------------------------- /
     !/
-  END SUBROUTINE W3SDB1
+  END SUBROUTINE W3SDB1_MP
   !/
   !/
   !/ End of module W3SDB1MD -------------------------------------------- /

@@ -555,17 +555,17 @@ CONTAINS
     TAUWX, TAUWY, TAUWNX, TAUWNY, S, D, LLWS,       &
     IX, IY, BRLAMBDA)
 
-    USE W3GDATMD, ONLY: NK, NSPEC
+    USE W3GDATMD, ONLY: NK, NTH, NSPEC
 
     IMPLICIT NONE
     !/
     !/ ------------------------------------------------------------------- /
     !/ Parameter list
     !/
-    REAL, INTENT(IN)        :: A(NSPEC), BRLAMBDA(NSPEC)
-    REAL, INTENT(IN)        :: CG(NK), K(NSPEC), Z0, U, CD
+    REAL, INTENT(IN)        :: A(NTH,NK), BRLAMBDA(NSPEC)
+    REAL, INTENT(IN)        :: CG(NK), K(NTH,NK), Z0, U, CD
     REAL, INTENT(IN)        :: USTAR, USDIR, AS, DRAT
-    REAL, INTENT(OUT)       :: S(NSPEC), D(NSPEC)
+    REAL, INTENT(OUT)       :: S(NTH,NK), D(NTH,NK)
     REAL, INTENT(OUT)       :: TAUWX, TAUWY, TAUWNX, TAUWNY
     LOGICAL, INTENT(OUT)    :: LLWS(NSPEC)
     INTEGER, INTENT(IN)     :: IX, IY
@@ -2303,16 +2303,16 @@ CONTAINS
   SUBROUTINE W3SDS4_SCALAR (A, K, CG, USTAR, USDIR, DEPTH, DAIR, SRHS,    &
     DDIAG, IX, IY, BRLAMBDA, WCAP_COV, WCAP_THK, WCAP_MNT, DLWMEAN)
 
-    USE W3GDATMD, ONLY: NSPEC, NK
+    USE W3GDATMD, ONLY: NSPEC, NK, NTH
     IMPLICIT NONE
     !/
     !/ ------------------------------------------------------------------- /
     !/ Parameter list
     !/
     INTEGER, OPTIONAL, INTENT(IN) :: IX, IY
-    REAL, INTENT(IN)        :: A(NSPEC), K(NK), CG(NK),        &
+    REAL, INTENT(IN)        :: A(NTH,NK), K(NK), CG(NK),        &
          DEPTH, DAIR, USTAR, USDIR, DLWMEAN
-    REAL, INTENT(OUT)       :: SRHS(NSPEC), DDIAG(NSPEC), BRLAMBDA(NSPEC)
+    REAL, INTENT(OUT)       :: SRHS(NTH,NK), DDIAG(NTH,NK), BRLAMBDA(NSPEC)
     REAL, INTENT(OUT)       :: WCAP_COV, WCAP_THK, WCAP_MNT
     
     !/ Temporary array versions of INTENT(OUT) parameters

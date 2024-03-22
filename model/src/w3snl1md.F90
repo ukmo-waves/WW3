@@ -94,7 +94,24 @@ MODULE W3SNL1MD
   DOUBLE PRECISION, ALLOCATABLE :: TB_V24(:,:,:) , TB_V34(:,:,:) ,        &
        TB_TPM(:,:,:) , TB_TMP(:,:,:) , TB_FAC(:,:,:)
   !/
-CONTAINS
+
+  INTERFACE W3SNL1
+    MODULE PROCEDURE W3SNL1_MP
+    MODULE PROCEDURE W3SNL1_SP
+  END INTERFACE W3SNL1
+  
+  CONTAINS
+
+  SUBROUTINE W3SNL1_SP (A, CG, WNMEAN, DEPTH, S, D)
+    USE W3GDATMD, ONLY: NTH, NK
+    IMPLICIT NONE
+    REAL, INTENT(IN)        :: A(NTH,NK), CG(NK)
+    REAL, INTENT(IN)        :: WNMEAN, DEPTH
+    REAL, INTENT(OUT)       :: S(NTH,NK), D(NTH,NK)
+
+    CALL W3SNL1_MP (A, CG, (/WNMEAN/), (/DEPTH/), S, D, (/.FALSE./), 1)
+
+  END SUBROUTINE W3SNL1_SP
   !/ ------------------------------------------------------------------- /
 
 !>
@@ -112,7 +129,7 @@ CONTAINS
 !> @date   06-Jun-2018
 !>
   !SUBROUTINE W3SNL1 (A, CG, KDMEAN, S, D, MASK, NP)
-  SUBROUTINE W3SNL1 (A, CG, WNMEAN, DEPTH, S, D, MASK, NP)
+  SUBROUTINE W3SNL1_MP (A, CG, WNMEAN, DEPTH, S, D, MASK, NP)
 
     !/
     !/                  +-----------------------------------+
@@ -513,7 +530,7 @@ CONTAINS
     !/
     !/ End of W3SNL1 ----------------------------------------------------- /
     !/
-  END SUBROUTINE W3SNL1
+  END SUBROUTINE W3SNL1_MP
 !/ ------------------------------------------------------------------- /
 !>
 !> @brief Preprocessing for nonlinear interactions (weights).

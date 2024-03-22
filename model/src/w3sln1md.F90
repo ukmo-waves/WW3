@@ -51,10 +51,38 @@ MODULE W3SLN1MD
   !/ ------------------------------------------------------------------- /
   !/
   PUBLIC
+  INTERFACE W3SLN1
+    MODULE PROCEDURE W3SLN1_MP
+    MODULE PROCEDURE W3SLN1_MP_RANK2
+    MODULE PROCEDURE W3SLN1_SP
+  END INTERFACE W3SLN1
   !/
 CONTAINS
+
+  SUBROUTINE W3SLN1_SP (K, FHIGH, USTAR, USDIR, S)
+    USE W3GDATMD, ONLY: NTH, NK
+    IMPLICIT NONE
+    REAL, INTENT(IN)        :: K(NK), FHIGH, USTAR, USDIR
+    REAL, INTENT(OUT)       :: S(NTH,NK)
+
+    CALL W3SLN1_MP(K, (/FHIGH/), (/USTAR/), (/USDIR/), S, (/.FALSE./), 1)
+
+  END SUBROUTINE W3SLN1_SP
+
+  SUBROUTINE W3SLN1_MP_RANK2 (K, FHIGH, USTAR, USDIR, S, MASK, NP)
+    USE W3GDATMD, ONLY: NSPEC, NK
+    IMPLICIT NONE
+    REAL, INTENT(IN)        :: K(NK,NP), FHIGH(NP), USTAR(NP), USDIR(NP)
+    REAL, INTENT(OUT)       :: S(NSPEC,NP)
+    LOGICAL, INTENT(IN)     :: MASK(NP)
+    INTEGER, INTENT(IN)     :: NP
+
+    CALL W3SLN1_MP(K, FHIGH, USTAR, USDIR, S, MASK, NP)
+
+  END SUBROUTINE W3SLN1_MP_RANK2
+
   !/ ------------------------------------------------------------------- /
-  SUBROUTINE W3SLN1 (K, FHIGH, USTAR, USDIR, S, MASK, NP)
+  SUBROUTINE W3SLN1_MP (K, FHIGH, USTAR, USDIR, S, MASK, NP)
     !/
     !/                  +-----------------------------------+
     !/                  | WAVEWATCH III           NOAA/NCEP |
@@ -216,7 +244,7 @@ CONTAINS
     !/
     !/ End of W3SLN1 ----------------------------------------------------- /
     !/
-  END SUBROUTINE W3SLN1
+  END SUBROUTINE W3SLN1_MP
   !/
   !/ End of module INSLN1MD -------------------------------------------- /
   !/

@@ -58,6 +58,11 @@ MODULE W3SBT1MD
   !/
   PUBLIC
   !/
+  INTERFACE W3SBT1
+    MODULE PROCEDURE W3SBT1_SP
+    MODULE PROCEDURE W3SBT1_MP
+  END INTERFACE W3SBT1
+  !/
 CONTAINS
   !/ ------------------------------------------------------------------- /
   !>
@@ -85,7 +90,18 @@ CONTAINS
   !> @author H. L. Tolman
   !> @date   29-May-2009
   !>
-  SUBROUTINE W3SBT1 (A, CG, WN, DEPTH, S, D, MASK, NP)
+  SUBROUTINE W3SBT1_SP (A, CG, WN, DEPTH, S, D)
+    USE W3GDATMD, ONLY: NK, NTH
+    IMPLICIT NONE
+    !
+    REAL, INTENT(IN)        :: CG(NK), WN(NK), DEPTH, A(NTH,NK)
+    REAL, INTENT(OUT)       :: S(NTH,NK), D(NTH,NK)
+
+    CALL W3SBT1_MP (A, CG, WN, (/DEPTH/), S, D, (/.FALSE./), 1)
+
+  END SUBROUTINE W3SBT1_SP
+
+  SUBROUTINE W3SBT1_MP (A, CG, WN, DEPTH, S, D, MASK, NP)
     !/
     !/                  +-----------------------------------+
     !/                  | WAVEWATCH III           NOAA/NCEP |
@@ -297,7 +313,7 @@ CONTAINS
     !/
     !/ End of W3SBT1 ----------------------------------------------------- /
     !/
-  END SUBROUTINE W3SBT1
+  END SUBROUTINE W3SBT1_MP
   !/
   !/ End of module W3SBT1MD -------------------------------------------- /
   !/
