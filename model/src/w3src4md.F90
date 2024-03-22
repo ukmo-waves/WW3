@@ -119,6 +119,7 @@ MODULE W3SRC4MD
 
   INTERFACE W3SPR4
     MODULE PROCEDURE W3SPR4_ARR
+    MODULE PROCEDURE W3SPR4_ARR_RANK2
     MODULE PROCEDURE W3SPR4_SCALAR
   END INTERFACE W3SPR4
 
@@ -192,6 +193,47 @@ CONTAINS
     DLWMEAN = A_DLWMEAN(1)
 !
   END SUBROUTINE W3SPR4_SCALAR
+
+
+  SUBROUTINE W3SPR4_ARR_RANK2 (A, CG, WN, EMEAN, FMEAN, FMEAN1, WNMEAN,     &
+    AMAX, U, UDIR,                                    &
+#ifdef W3_FLX5
+    TAUA, TAUADIR, DAIR,                              &
+#endif
+    USTAR, USDIR,                                     &
+    TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DLWMEAN, &
+    MASK, NP)
+ 
+  !/ ------------------------------------------------------------------- /
+  USE W3GDATMD, ONLY: NK, NTH, NSPEC
+  IMPLICIT NONE
+  !/
+  !/ ------------------------------------------------------------------- /
+  !/ Parameter list
+  !/
+  REAL, INTENT(IN)        :: A(NSPEC,NP), CG(NK,NP), WN(NK,NP), U(NP), UDIR(NP)
+#ifdef W3_FLX5
+  REAL, INTENT(IN)        :: TAUA(NP), TAUADIR(NP), DAIR(NP)
+#endif
+  REAL, INTENT(IN)        :: TAUWX(NP), TAUWY(NP)
+  LOGICAL, INTENT(IN)     :: LLWS(NSPEC,NP)
+  REAL, INTENT(INOUT)     :: USTAR(NP), USDIR(NP)
+  REAL, INTENT(OUT)       :: EMEAN(NP), FMEAN(NP), FMEAN1(NP), WNMEAN(NP), &
+                              AMAX(NP), CD(NP), Z0(NP), CHARN(NP), & 
+                              FMEANWS(NP), DLWMEAN(NP)
+  LOGICAL, INTENT(IN)     :: MASK(NP)
+  INTEGER, INTENT(IN)     :: NP
+
+  CALL W3SPR4_ARR(A, CG, WN, EMEAN, FMEAN, FMEAN1, WNMEAN,     &
+    AMAX, U, UDIR,                                    &
+#ifdef W3_FLX5
+    TAUA, TAUADIR, DAIR,                              &
+#endif
+    USTAR, USDIR,                                     &
+    TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DLWMEAN, &
+    MASK, NP)
+
+  END SUBROUTINE W3SPR4_ARR_RANK2
 
 !>
 !> @brief Calculate mean wave parameters for the use in the source term
