@@ -328,7 +328,7 @@ CONTAINS
     !
     !/ ------------------------------------------------------------------- /
     USE CONSTANTS
-    USE W3GDATMD, ONLY: NFR => NK, NTH, SIG, FACHFE, FACTI1, FACTI2,&
+    USE W3GDATMD, ONLY: NFR => NK, NTH, NSPEC, SIG, FACHFE, FACTI1, FACTI2,&
          NFRMIN, NFRMAX, NFRCUT, NTHMAX, NTHEXP,     &
          NSPMIN, NSPMAX, NSPMX2, FRQ, XSI, NQA,      &
          QST1, QST2, QST3, QST4, QST5, QST6, SNLMSC, &
@@ -346,7 +346,7 @@ CONTAINS
     !/ ------------------------------------------------------------------- /
     !/ Parameter list
     !/
-    REAL, INTENT(IN)   :: A(NTH,NFR), CG(NFR), WN(NFR), DEPTH
+    REAL, INTENT(IN)   :: A(NSPEC), CG(NFR), WN(NFR), DEPTH
     REAL, INTENT(OUT)  :: S(NTH,NFR), D(NTH,NFR)
     !/
     !/ ------------------------------------------------------------------- /
@@ -402,7 +402,7 @@ CONTAINS
     !
     ! 1.b Expanded pseudo spetrum
     !
-    CALL EXPAND ( UE )
+    CALL EXPAND ( A, UE )
     !
     ! 1.c Set up scaling functions
     !
@@ -640,7 +640,7 @@ CONTAINS
     !> @author H. L. Tolman
     !> @date   21-Aug-2009
     !>
-    SUBROUTINE EXPAND ( SPEC )
+    SUBROUTINE EXPAND ( A, SPEC )
       !/
       !/                  +-----------------------------------+
       !/                  | WAVEWATCH-III           NOAA/NCEP |
@@ -670,6 +670,7 @@ CONTAINS
       !/
       !/ Parameter list
       !/
+      REAL, INTENT(IN)        :: A(NTH,NFR)
       REAL, INTENT(OUT)       :: SPEC(1-NTHMAX:NTH+NTHMAX,NFRMIN:NFRMAX)
       !/
       !/ Local parameters

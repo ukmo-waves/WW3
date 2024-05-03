@@ -776,7 +776,7 @@ CONTAINS
     !!
     !!
     USE CONSTANTS, ONLY: TPI
-    USE W3GDATMD,  ONLY: NK,  NTH,  XFR, DTH,  SIG, TH, ECOS, ESIN, &
+    USE W3GDATMD,  ONLY: NK, NTH, NSPEC, XFR, DTH, SIG, TH, ECOS, ESIN, &
          ITSA, IALT
     !!    dimension: SIG(0:NK+1),TH(NTH), ECOS(NSPEC+NTH), ESIN(NSPEC+NTH)
     !!
@@ -791,8 +791,8 @@ CONTAINS
     !!
     !!    Parameter list
     !!    --------------
-    REAL,    INTENT(IN)  :: A(NTH,NK), CG(NK), WN(NK), DEPTH
-    REAL,    INTENT(OUT) :: S(NTH,NK), D(NTH,NK)
+    REAL,    INTENT(IN)  :: A(NSPEC), CG(NK), WN(NK), DEPTH
+    REAL,    INTENT(OUT) :: S(NSPEC), D(NSPEC)
     !!
     LOGICAL, SAVE        :: FIRST_TSA = .TRUE.
     !!    -- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -803,7 +803,7 @@ CONTAINS
 #ifdef W3_S
     INTEGER, SAVE           :: IENT = 0
 #endif
-    integer              :: irng, iang
+    integer              :: irng, iang, ispec
     integer              :: nd3         !* bin # corresp. to ww3 dep
     real                 :: dep         !* depth (m), get it from WW3 DEPTH
     real                 :: wka(NK)     !* from WW3 WN(1:NK) corresp. to "DEPTH"
@@ -848,8 +848,8 @@ CONTAINS
     !!    Initialization of the output arrays
     !!    before calling TSA subroutines.
     !!    -----------------------------------
-    S(:,:) = 0.0
-    D(:,:) = 0.0
+    S(:) = 0.0
+    D(:) = 0.0
     !!ini---
     !!    ------------------------------------------------------------------
     !!    ==================================================================
@@ -1130,7 +1130,8 @@ CONTAINS
     do irng=1,nrng
       fac = twopi*oma(irng)/cga(irng)
       do  iang=1,nang
-        ef2(irng,iang) = A(iang,irng) * fac
+        ispec=iang+(irng-1)*nang
+        ef2(irng,iang) = A(ispec) * fac
       end do
     end do
     !!    ------------------------------------------------------------------
@@ -1391,8 +1392,9 @@ CONTAINS
         do iang=1,nang
           !!        Convert the Norm. (in k) Polar tsa(k,theta) to Polar S(theta,k)
           !!        and  reverse indices back to (iang,irng) as in WW3
-          S(iang,irng) = tsa(irng,iang) * wka(irng)   !* <=============
-          D(iang,irng) = diag(irng,iang)
+          ispec = iang+(irng-1)*nang
+          S(ispec) = tsa(irng,iang) * wka(irng)   !* <=============
+          D(ispec) = diag(irng,iang)
           !!        ---------------------------
         end do
       end do
@@ -1416,8 +1418,9 @@ CONTAINS
         do iang=1,nang
           !!        Convert the Norm. (in k) Polar fbi(k,theta) to Polar S(theta,k)
           !!        and  reverse indices back to (iang,irng) as in WW3
-          S(iang,irng) = fbi(irng,iang) * wka(irng)   !* <=============
-          D(iang,irng) = diag2(irng,iang)
+          ispec = iang+(irng-1)*nang
+          S(ispec) = fbi(irng,iang) * wka(irng)   !* <=============
+          D(ispec) = diag2(irng,iang)
           !!        --------------------------------
         end do
       end do

@@ -175,7 +175,7 @@ CONTAINS
     !/ ------------------------------------------------------------------- /
     !/
     USE CONSTANTS
-    USE W3GDATMD, ONLY: NK, NTH, SIG, TH, IQTPE
+    USE W3GDATMD, ONLY: NK, NTH, NSPEC, SIG, TH, IQTPE
     USE W3ODATMD, ONLY: NDSE, NDST, IAPROC, NAPERR
     USE W3SERVMD, ONLY: EXTCDE
 #ifdef W3_S
@@ -194,13 +194,13 @@ CONTAINS
     !/ ------------------------------------------------------------------- /
     !/ Parameter list
     !/
-    REAL, INTENT(IN)        :: A(NTH,NK), CG(NK), DEPTH
-    REAL, INTENT(OUT)       :: S(NTH,NK), D(NTH,NK)
+    REAL, INTENT(IN)        :: A(NSPEC), CG(NK), DEPTH
+    REAL, INTENT(OUT)       :: S(NSPEC), D(NSPEC)
     !/
     !/ ------------------------------------------------------------------- /
     !/ Local parameters
     !/
-    INTEGER                 :: IK, ITH, IERR = 0
+    INTEGER                 :: IK, ITH, IS, IERR = 0
 #ifdef W3_S
     INTEGER, SAVE           :: IENT = 0
 #endif
@@ -223,7 +223,8 @@ CONTAINS
     !
     DO IK=1, NK
       DO ITH=1, NTH
-        A2(IK,ITH) = A(ITH,IK) / CG(IK)
+        IS = ITH+(IK-1)*NTH
+        A2(IK,ITH) = A(IS) / CG(IK)
       END DO
     END DO
     !
@@ -238,8 +239,9 @@ CONTAINS
     !
     DO IK=1, NK
       DO ITH=1, NTH
-        S(ITH,IK) = S2(IK,ITH) * CG(IK)
-        D(ITH,IK) = D2(IK,ITH)
+        IS = ITH+(IK-1)*NTH
+        S(IS) = S2(IK,ITH) * CG(IK)
+        D(IS) = D2(IK,ITH)
       END DO
     END DO
     !

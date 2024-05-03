@@ -1,4 +1,4 @@
-!> @file
+> @file
 !> @brief Interface module for GKE (resonant & quasi-resonant four-wave
 !>        interactions).
 !>
@@ -201,7 +201,7 @@ CONTAINS
     !/ ------------------------------------------------------------------- /
     !/ Parameter list
     !/
-    REAL, INTENT(IN)        :: A(NTH, NK)         ! N(θ, k)
+    REAL, INTENT(IN)        :: A(NSPEC)           ! N(θ, k)
     REAL, INTENT(IN)        :: CG(NK)             ! Cg(k)
     REAL, INTENT(IN)        :: WN(NK)             ! WN(k)
     REAL, INTENT(IN)        :: FMEAN              ! 1/T_{0, -1}
@@ -209,8 +209,8 @@ CONTAINS
     REAL, INTENT(IN)        :: U10                ! Wind velocity
     REAL, INTENT(IN)        :: UDIR               ! φ (in rad)
     INTEGER, INTENT(IN)     :: JSEA               ! Local sea point count
-    REAL, INTENT(OUT)       :: S(NTH,NK),      &  ! Snl
-         D(NTH,NK),      &  ! Dnl
+    REAL, INTENT(OUT)       :: S(NSPEC),       &  ! Snl
+         D(NSPEC),      &  ! Dnl
          KURT               ! Kurtosis
 
     !/ ------------------------------------------------------------------- /
@@ -315,7 +315,7 @@ CONTAINS
     DO IK = 1, NK
       DO ITH = 1, NTH
         ISPEC = ITH + (IK-1) * NTH
-        Cvk1(ISPEC) = A(ITH, IK) / WN(IK) * GRAV
+        Cvk1(ISPEC) = A(ISPEC) / WN(IK) * GRAV
       END DO
     END DO
     !
@@ -332,7 +332,7 @@ CONTAINS
     DO IK = 1, NK
       DO ITH = 1, NTH
         ISPEC = ITH + (IK-1) * NTH
-        S(ITH, IK) = SNL(ISPEC) * WN(IK) / GRAV
+        S(ISPEC) = SNL(ISPEC) * WN(IK) / GRAV
       END DO
     END DO
     !
@@ -383,8 +383,11 @@ CONTAINS
 
           ! N(θ, k) →  F(f, θ) & S(θ, k) →  S(f, θ)
           DO ITH = 1, NTH
-            A2(:, ITH) = A(ITH, :) * FACTOR
-            S2(:, ITH) = S(ITH, :) * FACTOR
+            DO IK = 1, NK
+              ISPEC = ITH + (IK-1) * NTH
+              A2(IK, ITH) = A(ISPEC) * FACTOR
+              S2(IK, ITH) = S(ISPEC) * FACTOR
+            END DO
           END DO
           ! NaN Check
           IF (HasNaN(NK, NTH, A2) .OR. HasNaN(NK, NTH, S2)) THEN

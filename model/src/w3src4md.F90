@@ -247,7 +247,7 @@ CONTAINS
     !/ ------------------------------------------------------------------- /
     !/ Parameter list
     !/
-    REAL, INTENT(IN)        :: A(NTH,NK), CG(NK), WN(NK), U, UDIR
+    REAL, INTENT(IN)        :: A(NSPEC), CG(NK), WN(NK), U, UDIR
 #ifdef W3_FLX5
     REAL, INTENT(IN)        :: TAUA, TAUADIR, DAIR
 #endif
@@ -296,11 +296,11 @@ CONTAINS
       SIGFAC=SIG(IK)**SSDSC(12) * DDEN(IK) / CG(IK)
       DO ITH=1, NTH
         IS=ITH+(IK-1)*NTH
-        EB(IK) = EB(IK) + A(ITH,IK)
-        ELCS = ELCS + A(ITH,IK)*ECOS(IS)*SIGFAC
-        ELSN = ELSN + A(ITH,IK)*ESIN(IS)*SIGFAC
-        IF (LLWS(IS)) EB2(IK) = EB2(IK) + A(ITH,IK)
-        AMAX   = MAX ( AMAX , A(ITH,IK) )
+        EB(IK) = EB(IK) + A(IS)
+        ELCS = ELCS + A(IS)*ECOS(IS)*SIGFAC
+        ELSN = ELSN + A(IS)*ESIN(IS)*SIGFAC
+        IF (LLWS(IS)) EB2(IK) = EB2(IK) + A(IS)
+        AMAX   = MAX ( AMAX , A(IS) )
       END DO
     END DO
     !

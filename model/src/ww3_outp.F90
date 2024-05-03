@@ -1325,7 +1325,7 @@ CONTAINS
     REAL, SAVE              :: HSMIN  = 0.05
     REAL                    :: WN(NK), CG(NK), R(NK)
     REAL                    :: E(NK,NTH), E1(NK), APM(NK),           &
-         THBND(NK), SPBND(NK), A(NTH,NK),      &
+         THBND(NK), SPBND(NK), A(NSPEC),      &
          WN2(NTH,NK)
     REAL                    :: DIA(NTH,NK), SWN(NK,NTH), SNL(NK,NTH),&
          SDS(NK,NTH), SBT(NK,NTH), SIS(NK,NTH),&
@@ -1652,7 +1652,7 @@ CONTAINS
             FACTOR = TPIINV * CG(IK) / SIG(IK)
             DO ITH=1, NTH
               ISP    = ITH + (IK-1)*NTH
-              A(ITH,IK)   = FACTOR * SPCO(ISP,J)
+              A(ISP) = FACTOR * SPCO(ISP,J)
               WN2(ITH,IK) = WN(IK)
             END DO
           END DO
@@ -1811,7 +1811,8 @@ CONTAINS
           DO IK=1, NK
             FACTOR = TPIINV * CG(IK) / SIG(IK)
             DO ITH=1, NTH
-              A(ITH,IK)   = FACTOR * SPCO(ITH+(IK-1)*NTH,J)
+              ISP    = ITH + (IK-1)*NTH
+              A(ISP) = FACTOR * SPCO(ITH+(IK-1)*NTH,J)
               WN2(ITH,IK) = WN(IK)
             END DO
           END DO

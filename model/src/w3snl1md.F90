@@ -827,11 +827,11 @@ CONTAINS
 
     IMPLICIT NONE
 
-    REAL, intent(in) :: A(NTH,NK), CG(NK), WN(NK)
+    REAL, intent(in) :: A(NSPEC), CG(NK), WN(NK)
     REAL, intent(in) :: DEPTH
     REAL, intent(out) :: TSTOTn(NTH,NK), TSDERn(NTH,NK)
 
-    INTEGER          :: ITH,IK,NT,NF
+    INTEGER          :: ITH,IK,NT,NF,IS
     REAL             :: q_dfac, SATVAL(NK), SUME, ACCVAL, ACCMAX, AMPFAC
     DOUBLE PRECISION :: RAISF, FREQ(NK)
     DOUBLE PRECISION :: TSTOT(NTH,NK) , TSDER(NTH,NK), F(NTH,NK)
@@ -868,7 +868,8 @@ CONTAINS
     DO ITH = 1,NTH
       DO IK = 1,NK
         ! F is the E(f,theta) spectrum ...
-        F(ITH,IK) = DBLE(A(ITH,IK)*SIG(IK))*DBLE(TPI)/DBLE(CG(IK))
+        IS = ITH+(IK-1)*NTH
+        F(ITH,IK) = DBLE(A(IS)*SIG(IK))*DBLE(TPI)/DBLE(CG(IK))
       ENDDO
     ENDDO
     !   CALL INSNLGQM

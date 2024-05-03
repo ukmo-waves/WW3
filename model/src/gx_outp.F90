@@ -803,7 +803,7 @@ CONTAINS
     REAL                    :: HSMIN = 0.05
     REAL                    :: WN(NK), CG(NK), E(NK,NTH), E1(NK),   &
          APM(NK), THBND(NK), SPBND(NK),       &
-         A(NTH,NK), WN2(NTH,NK),WN_R(NK),     &
+         A(NSPEC), WN2(NTH,NK),WN_R(NK),     &
          ALPHA_LIU(NK), CG_ICE(NK), R(NK)
     REAL                    :: DIA(NTH,NK), SWI(NK,NTH), SNL(NK,NTH),&
          SDS(NK,NTH), SBT(NK,NTH), SIS(NK,NTH),&
@@ -1035,7 +1035,7 @@ CONTAINS
           FACTOR = TPIINV * CG(IK) / SIG(IK)
           DO ITH=1, NTH
             ISPEC  = ITH + (IK-1)*NTH
-            A(ITH,IK)   = FACTOR * SPCO(ISPEC,J)
+            A(ISPEC)    = FACTOR * SPCO(ISPEC,J)
             WN2(ITH,IK) = WN(IK)
           END DO
         END DO
