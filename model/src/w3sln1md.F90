@@ -145,6 +145,7 @@ CONTAINS
 #ifdef W3_S
     USE W3SERVMD, ONLY: STRACE
 #endif
+    USE NVTX
     !/
     IMPLICIT NONE
     !/
@@ -174,6 +175,9 @@ CONTAINS
     !
     ! 1.  Set up factors ------------------------------------------------- *
     !
+    !$ACC KERNELS
+    call nvtxStartRange("W3SLN1_Set_up_factors")
+    !$ACC LOOP GANG VECTOR(32) PRIVATE(WNF, DIRF)
     DO IP=1,NP
 #ifdef W3_T
       WRITE (NDST,900) USTAR, USDIR*RADE
@@ -205,7 +209,9 @@ CONTAINS
         S(:,IK,IP) = WNF(IK) * DIRF(:)
       END DO
       !
-    END DO ! IP
+   END DO ! IP
+   call nvtxEndRange
+   !$ACC END KERNELS
     RETURN
     !
     ! Formats

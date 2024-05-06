@@ -303,6 +303,7 @@ CONTAINS
     USE W3ARRYMD, ONLY: OUTMAT
 #endif
     !
+    USE NVTX
     IMPLICIT NONE
     !/
     !/ ------------------------------------------------------------------- /
@@ -352,6 +353,9 @@ CONTAINS
     !
     ! 1.  Calculate prop. constant --------------------------------------- *
     !
+    !$ACC KERNELS
+    call nvtxStartRange("W3SNL1_1")
+    !$ACC LOOP
     DO IP=1,NP ! GPU Refactor: New IP loop
       IF(MASK(IP)) CYCLE
       ! GPU Refactor, calculate KDMEAN in this routine
@@ -359,7 +363,9 @@ CONTAINS
       X = MAX ( KDCON*(WNMEAN(IP)*DEPTH(IP)) , KDMN )
       X2 = MAX ( -1.E15, SNLS3*X)
       CONS(IP) = SNLC1 * ( 1. + SNLS1/X * (1.-SNLS2*X) * EXP(X2) )
-    END DO ! IP
+   END DO ! IP
+   call nvtxEndRange
+    !$ACC END KERNELS
     !
 #ifdef W3_T
     DO IP=1,NP
@@ -370,6 +376,9 @@ CONTAINS
     !
     ! 2.  Prepare auxiliary spectrum and arrays -------------------------- *
     !
+    !$ACC KERNELS
+    call nvtxStartRange("W3SNL1_2_Loop1")
+    !$ACC LOOP
     DO IP=1,NP
       IF(MASK(IP)) CYCLE
       DO IFR=1, NFR
@@ -380,8 +389,11 @@ CONTAINS
           CON(ISP,IP) = CONX
         END DO
       END DO
-    END DO ! IP
-    !
+   END DO ! IP
+   call nvtxEndRange
+   !
+   call nvtxStartRange("W3SNL1_2_Loop2")
+    !$ACC LOOP
     DO IP=1,NP
       IF(MASK(IP)) CYCLE
       DO IFR=NFR+1, NFRHGH
@@ -390,9 +402,12 @@ CONTAINS
           UE(ISP,IP) = UE(ISP-NTH,IP) * FACHFE
         END DO
       END DO
-    END DO ! IP
-    !
-    DO IP=1,NP
+   END DO ! IP
+   call nvtxEndRange
+   !
+   call nvtxStartRange("W3SNL1_2_Loop3")
+   !$ACC LOOP
+   DO IP=1,NP      
       DO ISP=1-NTH, 0
         UE  (ISP,IP) = 0.
         SA1 (ISP,IP) = 0.
@@ -404,10 +419,13 @@ CONTAINS
         DA2P(ISP,IP) = 0.
         DA2M(ISP,IP) = 0.
       END DO
-    END DO ! IP
+   END DO ! IP
+   call nvtxEndRange
     !
     ! 3.  Calculate interactions for extended spectrum ------------------- *
-    !
+   !
+   call nvtxStartRange("W3SNL1_3")
+    !$ACC LOOP
     DO IP=1,NP
       IF(MASK(IP)) CYCLE
       DO ISP=1, NSPECX
@@ -445,10 +463,13 @@ CONTAINS
         DA2M(ISP,IP) = FACTOR * ( DAL2*E00 - DAL3*EP2 )
         !
       END DO
-    END DO ! IP
+   END DO ! IP
+   call nvtxEndRange
     !
     ! 4.  Put source and diagonal term together -------------------------- *
-    !
+   !
+   call nvtxStartRange("W3SNL1_4")
+    !$ACC LOOP
     DO IP=1,NP
       IF(MASK(IP)) CYCLE
       DO ISP=1, NSPEC
@@ -474,7 +495,9 @@ CONTAINS
             + SWG8 * ( DA1M(IC81(ISP),IP) + DA2M(IC82(ISP),IP) )
         !
       END DO
-    END DO ! IP
+   END DO ! IP
+   call nvtxEndRange
+   !$ACC END KERNELS
     !
     ! ... Test output :
     !
@@ -491,7 +514,7 @@ CONTAINS
       CALL PRT2DS (NDST, NK, NK, NTH, SOUT, SIG(1:), '  ', 1.,  &
           0.0, 0.001, 'Snl(f,t)', ' ', 'NONAME')
       CALL PRT2DS (NDST, NK, NK, NTH, DOUT, SIG(1:), '  ', 1.,  &
-          0.0, 0.001, 'Diag Snl', ' ', 'NONAME')
+          0.0, 0.001, 'Diag Snl', ' ', 'NONAME')w3sdb1md
     END DO ! IP
 #endif
     !

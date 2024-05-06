@@ -187,6 +187,8 @@ CONTAINS
     USE W3ARRYMD, ONLY: OUTMAT
 #endif
     !
+    USE NVTX
+    !
     IMPLICIT NONE
     !/
     !/ ------------------------------------------------------------------- /
@@ -220,6 +222,9 @@ CONTAINS
     !
     ! 1.  Deep water ===================================================== *
     !
+    !$ACC KERNELS
+    call nvtxStartRange("W3SBT1_Deep_Water")
+    !$ACC LOOP GANG INDEPENDENT PRIVATE(CBETA)
     DO IP=1,NP
       IF(MASK(IP)) CYCLE
 
@@ -242,6 +247,7 @@ CONTAINS
         !
         ! 2.b Wavenumber dependent part.
         !
+        !$ACC LOOP VECTOR(32)
         DO IK=1, NK
           IF ( WN(IK,IP)*DEPTH(IP) .GT. 6. ) EXIT
           CBETA(IK) = FACTOR *                                      &
@@ -261,9 +267,12 @@ CONTAINS
         END DO
         !
         S(:,IP) = D(:,IP) * A(:,IP)
+        !PRINT*,'SBT1',IP,SUM(S(:,IP)), SUM(D(:,IP))
         !
       END IF
-    END DO ! IP
+   END DO ! IP
+   call nvtxEndRange
+   !$ACC END KERNELS
     !
     ! ... Test output of arrays
     !

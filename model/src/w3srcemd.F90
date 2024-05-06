@@ -2573,8 +2573,8 @@ CONTAINS
         ENDIF
 
 ! Note: Leaving these ACC statements here for now - will be useful for GPU port.
-!$ACC DATA COPYOUT(COMPLETE)
-!$ACC PARALLEL
+!!$ACC DATA COPYOUT(COMPLETE)
+!!$ACC PARALLEL
         ! GPU refactor: Update source mask with seapoints that have completed
         ! timestepping:
         !!WHERE(DTTOT(:NSEAC) .GE. 0.9999*DTG) SRC_MASK(:NSEAC) = .TRUE.
@@ -2588,8 +2588,8 @@ CONTAINS
         END DO
 
         COMPLETE = ALL(SRC_MASK(:NSEAC)) ! GPU Refactor - store in scalar and return
-!$ACC END PARALLEL
-!$ACC END DATA
+!!$ACC END PARALLEL
+!!$ACC END DATA
 
         ! Complete is true if all _active_ points have finished integration loop
         IF(COMPLETE) THEN

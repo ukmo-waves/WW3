@@ -146,9 +146,9 @@ CONTAINS
 !>
   SUBROUTINE W3SPR4 (A, CG, WN, EMEAN, FMEAN, FMEAN1, WNMEAN,     &
        AMAX, U, UDIR,                                    &
-#ifdef W3_FLX5
+       #ifdef W3_FLX5
        TAUA, TAUADIR, DAIR,                              &
-#endif
+       #endif
        USTAR, USDIR,                                     &
        TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DLWMEAN, &
        MASK, NP)
@@ -247,7 +247,7 @@ CONTAINS
     USE W3GDATMD, ONLY: NK, NTH, NSPEC, SIG, DTH, DDEN, WWNMEANP, &
          WWNMEANPTAIL, FTE, FTF, SSTXFTF, SSTXFTWN,&
          SSTXFTFTAIL, SSWELLF, ESIN, ECOS, AAIRCMIN, &
-         AAIRGB, AALPHA, ZZWND, SSDSC
+         AAIRGB, AALPHA, ZZWND, SSDSC, ZZ0MAX, SINTAILPAR
 #ifdef W3_S
     USE W3SERVMD, ONLY: STRACE
 #endif
@@ -259,6 +259,9 @@ CONTAINS
 #ifdef W3_FLX5
     USE W3FLX5MD
 #endif
+    ! NVTX for tracing ranges
+    USE NVTX
+
     IMPLICIT NONE
     !/
     !/ ------------------------------------------------------------------- /
@@ -272,8 +275,8 @@ CONTAINS
     LOGICAL, INTENT(IN)     :: LLWS(NSPEC,NP)
     REAL, INTENT(INOUT)     :: USTAR(NP), USDIR(NP)
     REAL, INTENT(OUT)       :: EMEAN(NP), FMEAN(NP), FMEAN1(NP), WNMEAN(NP), &
-                               AMAX(NP), CD(NP), Z0(NP), CHARN(NP), & 
-                               FMEANWS(NP), DLWMEAN(NP)
+         AMAX(NP), CD(NP), Z0(NP), CHARN(NP), & 
+         FMEANWS(NP), DLWMEAN(NP)
     LOGICAL, INTENT(IN)     :: MASK(NP)
     INTEGER, INTENT(IN)     :: NP
     !/
@@ -286,7 +289,7 @@ CONTAINS
 #endif
 
     REAL :: TAUW, EBAND, EMEANWS,UNZ,            &
-            EB(NK),EB2(NK),ELCS, ELSN, SIGFAC
+         EB(NK),EB2(NK),ELCS, ELSN, SIGFAC
     !/
     !/ ------------------------------------------------------------------- /
     !/
@@ -299,6 +302,7 @@ CONTAINS
     !USTAR(IP) = MAX( 0.0001 , USTAR(IP) )
     !
 
+    !$ACC KERNELS
     ! Zero arrays:
     EMEAN = 0.
     FMEANWS = 0.
@@ -308,98 +312,117 @@ CONTAINS
     AMAX = 0.
     DLWMEAN = 0.
 
+    !write(*,*) " Seapoint loop length = ", NP
+    
+    call nvtxStartRange("SP_Loop_W3SPR4")
     ! Seapoint loop
+    !$ACC LOOP GANG PRIVATE(EB2, EB, ELCS, ELSN, UNZ, IS)  ! 31GB/s, 492us
     DO IP=1,NP
-      ! Don't process point if masked (disabled, or already finished integration)
-      IF(MASK(IP)) CYCLE
 
-      ! Zero local scalars
-      EMEANWS = 0.
-      ELCS = 0.
-      ELSN = 0.
+       ! Don't process point if masked (disabled, or already finished integration)
+       IF(MASK(IP)) CYCLE
 
-      ! Refactor notes: Moved from outside loop
-      ! TODO: UNZ scalar can be factored out in section 5
-      UNZ = MAX( 0.01 , U(IP) )
-      USTAR(IP) = MAX( 0.0001 , USTAR(IP) )
+       ! Zero local scalars
+       EMEANWS = 0.
+       ELCS = 0.
+       ELSN = 0.
 
-      !
-      ! 1.  Integral over directions and maximum --------------------------- *
-      !
-      DO IK=1, NK
-        EB(IK)  = 0.
-        EB2(IK) = 0.
-        SIGFAC=SIG(IK)**SSDSC(12) * DDEN(IK) / CG(IK,IP)
-        DO ITH=1, NTH
-          IS=ITH+(IK-1)*NTH
-          EB(IK) = EB(IK) + A(ITH,IK,IP)
-          ELCS = ELCS + A(ITH,IK,IP)*ECOS(IS)*SIGFAC
-          ELSN = ELSN + A(ITH,IK,IP)*ESIN(IS)*SIGFAC
+       ! Refactor notes: Moved from outside loop
+       ! TODO: UNZ scalar can be factored out in section 5
+       UNZ = MAX( 0.01 , U(IP) )
+       USTAR(IP) = MAX( 0.0001 , USTAR(IP) )
+
+       !
+       ! 1.  Integral over directions and maximum --------------------------- *
+       !
+       !$ACC LOOP SEQ
+       DO IK=1, NK
+          EB(IK)  = 0.
+          EB2(IK) = 0.
+          SIGFAC=SIG(IK)**SSDSC(12) * DDEN(IK) / CG(IK,IP)
+          !$ACC LOOP SEQ
+          DO ITH=1, NTH
+             IS=ITH+(IK-1)*NTH
+             EB(IK) = EB(IK) + A(ITH,IK,IP)
+             ELCS = ELCS + A(ITH,IK,IP)*ECOS(IS)*SIGFAC
+             ELSN = ELSN + A(ITH,IK,IP)*ESIN(IS)*SIGFAC
 #define TEST_W3GDATMD___disabledf
-          IF (LLWS(IS,IP)) EB2(IK) = EB2(IK) + A(ITH,IK,IP)
-          AMAX(IP) = MAX ( AMAX(IP) , A(ITH,IK,IP) )
-        END DO
-      END DO
+             IF (LLWS(IS,IP)) EB2(IK) = EB2(IK) + A(ITH,IK,IP)
+             AMAX(IP) = MAX ( AMAX(IP) , A(ITH,IK,IP) )
+          END DO
+       END DO
 
-      DLWMEAN(IP) = ATAN2(ELSN,ELCS)
-      !
-      ! 2.  Integrate over directions -------------------------------------- *
-      !
-      DO IK=1, NK
-        EB(IK) = EB(IK) * DDEN(IK) / CG(IK,IP)
-        EB2(IK) = EB2(IK) * DDEN(IK) / CG(IK,IP)
-        EMEAN(IP) = EMEAN(IP) + EB(IK)
-        FMEAN(IP) = FMEAN(IP) + EB(IK) / SIG(IK)
-        FMEAN1(IP) = FMEAN1(IP) + EB(IK) * (SIG(IK)**(2.*WWNMEANPTAIL))
-        WNMEAN(IP) = WNMEAN(IP) + EB(IK) * (WN(IK,IP)**WWNMEANP)
-        EMEANWS = EMEANWS + EB2(IK)
-        FMEANWS(IP) = FMEANWS(IP) + EB2(IK) * (SIG(IK)**(2.*WWNMEANPTAIL))
-      END DO
-      !
-      ! 3.  Add tail beyond discrete spectrum and get mean pars ------------ *
-      !     ( DTH * SIG absorbed in FTxx )
-      !
-      EBAND = EB(NK) / DDEN(NK)
-      EMEAN(IP)  = EMEAN(IP)  + EBAND * FTE
-      FMEAN(IP)  = FMEAN(IP)  + EBAND * FTF
-      FMEAN1(IP) = FMEAN1(IP) + EBAND * SSTXFTFTAIL
-      WNMEAN(IP) = WNMEAN(IP) + EBAND * SSTXFTWN
-      EBAND  = EB2(NK) / DDEN(NK)
-      EMEANWS = EMEANWS + EBAND * FTE
-      FMEANWS(IP) = FMEANWS(IP) + EBAND * SSTXFTFTAIL
-      !
-      ! 4.  Final processing
-      !
-      FMEAN(IP) = TPIINV * EMEAN(IP) / MAX ( 1.E-7 , FMEAN(IP) )
-      IF (FMEAN1(IP) .LT. 1.E-7) THEN
-        FMEAN1(IP) = TPIINV * SIG(NK)
-      ELSE
-        FMEAN1(IP) = TPIINV * ( MAX ( 1.E-7, FMEAN1(IP) )              &
-            / MAX ( 1.E-7, EMEAN(IP) ))**(1/(2.*WWNMEANPTAIL))
-      ENDIF
-      WNMEAN(IP) = ( MAX ( 1.E-7, WNMEAN(IP) )                         &
-          / MAX ( 1.E-7, EMEAN(IP) ) )**(1/WWNMEANP)
-      IF (FMEANWS(IP) .LT. 1.E-7 .OR. EMEANWS .LT. 1.E-7) THEN
-        FMEANWS(IP) = TPIINV * SIG(NK)
-      ELSE
-        FMEANWS(IP) = TPIINV * ( MAX ( 1.E-7, FMEANWS(IP) )            &
-            / MAX ( 1.E-7, EMEANWS ))**(1/(2.*WWNMEANPTAIL))
-      END IF
-
+       DLWMEAN(IP) = ATAN2(ELSN,ELCS)
+       !
+       ! 2.  Integrate over directions -------------------------------------- *
+       !
+       !$ACC LOOP SEQ
+       DO IK=1, NK
+          EB(IK) = EB(IK) * DDEN(IK) / CG(IK,IP)
+          EB2(IK) = EB2(IK) * DDEN(IK) / CG(IK,IP)
+          EMEAN(IP) = EMEAN(IP) + EB(IK)
+          FMEAN(IP) = FMEAN(IP) + EB(IK) / SIG(IK)
+          FMEAN1(IP) = FMEAN1(IP) + EB(IK) * (SIG(IK)**(2.*WWNMEANPTAIL))
+          WNMEAN(IP) = WNMEAN(IP) + EB(IK) * (WN(IK,IP)**WWNMEANP)
+          EMEANWS = EMEANWS + EB2(IK)
+          FMEANWS(IP) = FMEANWS(IP) + EB2(IK) * (SIG(IK)**(2.*WWNMEANPTAIL))
+       END DO
+       !
+       ! 3.  Add tail beyond discrete spectrum and get mean pars ------------ *
+       !     ( DTH * SIG absorbed in FTxx )
+       !
+       EBAND = EB(NK) / DDEN(NK)
+       EMEAN(IP)  = EMEAN(IP)  + EBAND * FTE
+       FMEAN(IP)  = FMEAN(IP)  + EBAND * FTF
+       FMEAN1(IP) = FMEAN1(IP) + EBAND * SSTXFTFTAIL
+       WNMEAN(IP) = WNMEAN(IP) + EBAND * SSTXFTWN
+       EBAND  = EB2(NK) / DDEN(NK)
+       EMEANWS = EMEANWS + EBAND * FTE
+       FMEANWS(IP) = FMEANWS(IP) + EBAND * SSTXFTFTAIL
+       !
+       ! 4.  Final processing
+       !
+       FMEAN(IP) = TPIINV * EMEAN(IP) / MAX ( 1.E-7 , FMEAN(IP) )
+       IF (FMEAN1(IP) .LT. 1.E-7) THEN
+          FMEAN1(IP) = TPIINV * SIG(NK)
+       ELSE
+          FMEAN1(IP) = TPIINV * ( MAX ( 1.E-7, FMEAN1(IP) )              &
+               / MAX ( 1.E-7, EMEAN(IP) ))**(1/(2.*WWNMEANPTAIL))
+       ENDIF
+       WNMEAN(IP) = ( MAX ( 1.E-7, WNMEAN(IP) )                         &
+            / MAX ( 1.E-7, EMEAN(IP) ) )**(1/WWNMEANP)
+       IF (FMEANWS(IP) .LT. 1.E-7 .OR. EMEANWS .LT. 1.E-7) THEN
+          FMEANWS(IP) = TPIINV * SIG(NK)
+       ELSE
+          FMEANWS(IP) = TPIINV * ( MAX ( 1.E-7, FMEANWS(IP) )            &
+               / MAX ( 1.E-7, EMEANWS ))**(1/(2.*WWNMEANPTAIL))
+       END IF
+    END DO ! IP
+    call nvtxEndRange
+    !$ACC END KERNELS
       !
       ! 5.  Cd and z0 ----------------------------------------------- *
       !
-      TAUW = SQRT(TAUWX(IP)**2 + TAUWY(IP)**2)
-      !
+    !!$ACC KERNELS
+    call nvtxStartRange("CU_Loop_W3SPR4")
+
+    ! ACC DIRECTIVES REMOVED FOR CALC_USTAR LOOP - MODULE VARIABLES IN CALC_USTAR PREVENT LOOP PARALLELISATION
+
+    DO IP = 1, NP
+       TAUW = SQRT(TAUWX(IP)**2 + TAUWY(IP)**2)
+       !
 #ifdef W3_FLX5
-      CALL W3FLX5 ( ZZWND, U(IP), UDIR(IP), TAUA(IP), TAUADIR(IP),     &
-          DAIR(IP), USTAR(IP), USDIR(IP), Z0(IP), CD(IP), CHARN(IP) )
+       CALL W3FLX5 ( ZZWND, U(IP), UDIR(IP), TAUA(IP), TAUADIR(IP),     &
+            DAIR(IP), USTAR(IP), USDIR(IP), Z0(IP), CD(IP), CHARN(IP) )
 #else
-      CALL CALC_USTAR(U(IP), TAUW, USTAR(IP), Z0(IP), CHARN(IP))
-      UNZ = MAX ( 0.01 , U(IP) )
-      CD(IP) = (USTAR(IP) / UNZ)**2
-      USDIR(IP) = UDIR(IP)
+       CALL CALC_USTAR(U(IP), TAUW, USTAR(IP), Z0(IP), CHARN(IP))
+       UNZ = MAX ( 0.01 , U(IP) )
+       CD(IP) = (USTAR(IP) / UNZ)**2
+       USDIR(IP) = UDIR(IP)
 #endif
+    END DO ! IP
+    call nvtxEndRange
+
       !
       ! 6.  Final test output ---------------------------------------------- *
       !
@@ -407,7 +430,7 @@ CONTAINS
       WRITE (NDST,9060) EMEAN(IP), WNMEAN(IP), TPIINV, USTAR(IP), CD(IP), Z0(IP)
 #endif
       !
-    END DO ! IP
+!    END DO ! IP
 
     RETURN
     !
@@ -567,6 +590,8 @@ CONTAINS
 #ifdef W3_T1
     USE W3ARRYMD, ONLY: OUTMAT
 #endif
+    ! NVTX for marking ranges for nsys tracing
+    USE NVTX
     !
     IMPLICIT NONE
     !/
@@ -640,6 +665,8 @@ CONTAINS
 #ifdef W3_T
     WRITE (NDST,9000) BBETA, USTAR, USDIR*RADE
 #endif
+    CONST1=BBETA/KAPPA**2  ! needed for the tail
+    !CONST0=CONST1*DRAT    ! GPU Refactor - moved into loop below (sec 2)
     !
     ! 1.  Preparations
     !
@@ -652,8 +679,6 @@ CONTAINS
     !
     ! Coupling coefficient times density ratio DRAT
     !
-    CONST1=BBETA/KAPPA**2  ! needed for the tail
-    !CONST0=CONST1*DRAT    ! GPU Refactor - moved into loop below (sec 2)
     !
     ! 1.a  estimation of surface roughness parameters
     !
@@ -668,13 +693,15 @@ CONTAINS
     !
     ! 1.b  estimation of surface orbital velocity and displacement
     !
-
-    DO IP=1, NP ! GPU Refactor: New seapoint loop
+    !$ACC KERNELS
+    call nvtxStartRange("SP_1a_W3SIN4")    
+    !$ACC LOOP GANG
+    DO IP=1, NP ! GPU Refactor: New seapoint loop 1a
       IF(MASK(IP)) CYCLE
 
       UORB(IP) = 0.
       AORB(IP) = 0.
-
+      
       DO IK=1, NK
         EB = 0.
         !EBX = 0.  ! GPU Refactor: Removed; not used
@@ -697,11 +724,14 @@ CONTAINS
       ! GPU Refactor: RE calculation moved to loop below so can be loop private
       !!RE = 4 * UORB(IP) * AORB1(IP) / NU_AIR  ! Reynolds number
     END DO ! IP
-
+    call nvtxEndRange
+    
     !
     ! Defines the swell dissipation based on the "Reynolds number"
     !
-    DO IP=1,NP ! GPU Refactor: New IP loop
+    call nvtxStartRange("SP_1aSwell_W3SIN4")
+    !$ACC LOOP GANG
+    DO IP=1,NP ! GPU Refactor: New IP loop 2
       IF(MASK(IP)) CYCLE
 
       IF (SSWELLF(4).GT.0) THEN
@@ -724,9 +754,11 @@ CONTAINS
         PVISC(IP) = 1.
       END IF
     END DO ! IP
-
+    call nvtxEndRange
     !
-    DO IP = 1,NP
+    call nvtxStartRange("SP_1b_W3SIN4")
+    !$ACC LOOP GANG
+    DO IP = 1,NP ! GPU Sea Point Loop 1b
       IF(MASK(IP)) CYCLE
 
       ! TODO: Move this outside loop - no IP dependent
@@ -749,18 +781,20 @@ CONTAINS
         DELI2 = 1. - DELI1
         FW(IP) = FWTABLE(IND) * DELI2 + FWTABLE(IND+1) * DELI1
       END IF
-    END DO ! IP
+   END DO ! IP
+   call nvtxEndRange
+   
     !
     ! 2.  Diagonal
     !
     ! Here AS is the air-sea temperature difference in degrees. Expression given by
     ! Abdalla & Cavaleri, JGR 2002 for Usigma. For USTARsigma ... I do not see where
     ! I got it from, maybe just made up from drag law ...
-    !
-
-    DO IP=1,NP ! GPU Refactor: New IP Loop
+   !
+    call nvtxStartRange("SP_Diagonal_W3SIN4")
+    !$ACC LOOP GANG
+    DO IP=1,NP ! GPU Refactor: New IP Loop 4 'Diagonal'
       IF(MASK(IP)) CYCLE
-
 
 ! GPU Refactor Note: the W3_STAB3 sections below complicate the code a bit.
 ! If W3_STAB3 is defined, it brings in an extra loop (ISTAB=1,2) and USTAR
@@ -897,8 +931,9 @@ CONTAINS
           END DO
         END DO
       END DO ! IP
-
+      call nvtxEndRange
       !
+      !$ACC END KERNELS
       ! GPU Refactor: TODO: When W3_STAB3 is not usd, DSTAB isn't really 
       ! required and is just a big array that has it's values copied to
       ! D. When NP is large, this is a waste of memory+compute.
@@ -1154,6 +1189,7 @@ CONTAINS
     !/ End of W3SIN4 ----------------------------------------------------- /
     !/
   END SUBROUTINE W3SIN4
+
   !/ ------------------------------------------------------------------- /
 
   !>
@@ -2133,6 +2169,8 @@ CONTAINS
     !
     RETURN
   END SUBROUTINE CALC_USTAR
+
+  
   !/ ------------------------------------------------------------------- /
 
   !>
@@ -2274,6 +2312,8 @@ CONTAINS
     USE W3ARRYMD, ONLY: OUTMAT
 #endif
     !
+    USE NVTX
+    !
     IMPLICIT NONE
     !/
     !/ ------------------------------------------------------------------- /
@@ -2359,9 +2399,14 @@ CONTAINS
     !
     ! 1.b MSS parameters used for Modulation factors for lambda (Romero )
     !
+
     IF (SSDSC(8).GT.0.OR.SSDSC(11).GT.0.OR.SSDSC(18).GT.0) THEN
-      DO IP=1,NP
-        IF(MASK(IP)) CYCLE
+      !$ACC KERNELS
+      call nvtxStartRange("SDS4_1_MSS_Loop") 
+      !$ACC LOOP GANG PRIVATE(PB)
+      DO IP=1,NP ! Loop is parallelizable
+         IF(MASK(IP)) CYCLE
+        !!$ACC LOOP VECTOR(32) PRIVATE(MSSSUM(:,:,IP)) 
         DO IK=1,NK
           MSSP   = 0.
           MSSPC2 = 0.
@@ -2389,7 +2434,9 @@ CONTAINS
           IF (MSSD.LT.0) MSSD = MSSD + PI
           MSSSUM  (IK,2,IP)  =  MSSD
         END DO
-      END DO ! IP
+     END DO ! IP
+     call nvtxEndRange
+     !$ACC END KERNELS
     END IF ! SSDSC(8).GT.0) THEN
     !
     ! 2.   Estimation of spontaneous breaking from local saturation
@@ -2404,11 +2451,24 @@ CONTAINS
       !
       ! 2.a.1 Computes saturation
       !
-      DO IP=1,NP ! GPU Refactor; new IP loop
+      !$ACC KERNELS
+      call nvtxStartRange("SDS4_2_Sat_Loop")
+      ! Loop carried dependence due to exposed use of bth(:) prevents parallelization
+      ! Complex loop carried dependence of bth prevents parallelization
+      ! Parallelization would require privatization of array pb(:)
+      ! Generating NVIDIA GPU code
+      !$ACC LOOP GANG PRIVATE(BTH,PB)
+      DO IP=1,NP ! GPU Refactor; new IP loop ! Loop Not Parallelizable
+         
         IF(MASK(IP)) CYCLE
 
-        BTH(:) = 0.
-
+        BTH(:) = 0. 
+        ! Check results from below!
+        !!No $ACC LOOP here ! Sat_Loop takes 55 mS 
+        !!$ACC LOOP VECTOR INDEPENDENT ! Sat_Loop takes 23 mS
+        
+        !$ACC LOOP VECTOR(32) INDEPENDENT ! Sat_Loop takes 9 mS
+!#if 0
         DO IK=IK1, NK
           FACSAT=SIG(IK)*K(IK,IP)**3*DTH
           IS0=(IK-1)*NTH
@@ -2424,14 +2484,16 @@ CONTAINS
               BTH(IS)=DOT_PRODUCT(SATWEIGHTS(:,ITH),  A(IS0+SATINDICES(:,ITH),IP) ) &
                   *FACSAT
             END DO
-
+!
             BTH0(IK,IP)=MAXVAL(BTH(IS0+1:IS0+NTH))
           END IF
           !
         END DO !IK=NK
+!#endif
         !
         !  2.a.2  Computes spontaneous breaking dissipation rate
         !
+        !$ACC LOOP VECTOR(32) INDEPENDENT
         DO IK=IK1, NK
           !
           !  Correction of saturation level for shallow-water kinematics
@@ -2469,9 +2531,12 @@ CONTAINS
         ! Compute Lambda = PB* l(k,th)
         ! with l(k,th)=1/(2*pi²)= the breaking crest density
         BRLAMBDA(:,IP) = PB / (2.*PI**2.)
+        !BRLAMBDA(:,IP) = 0.0D0
         SRHS(:,IP) = DDIAG(:,IP) * A(:,IP)
+        !SRHS(:,IP) = 0.0d0
       END DO ! IP
-
+      call nvtxEndRange
+      !$ACC END KERNELS
       !############################################################################################"
     CASE(2)
       !
@@ -2479,19 +2544,25 @@ CONTAINS
       !
 
       !SRHS  = 0.  ! GPU Refactor: Shouldn't need to re-zero these
-      !DDIAG = 0.  ! GPU Refactor: ditto
-
-      DO IP=1,NP
+       !DDIAG = 0.  ! GPU Refactor: ditto
+      !$ACC KERNELS 
+       call nvtxStartRange("SDS4_2b_T500_Loop")
+      ! Loop carried dependence due to exposed use of dk(:),efdf(:),dck(:),pb(:) prevents parallelization
+      ! Complex loop carried dependence of pb2,e1 prevents parallelization
+      ! Loop carried dependence due to exposed use of e1(:),iksup(:),hs(:),pb2(:),qb(:),s2(:),s1(:),kbar(:) prevents parallelization
+      ! Complex loop carried dependence of s1,s2,ntimes prevents parallelization
+      !$ACC LOOP GANG PRIVATE(DK,EFDF,DCK,PB,E1,IKSUP,HS,PB2,QB,S2,S1,KBAR,NTIMES) ! AGS TRY VECTOR for performance
+      DO IP=1,NP ! Loop not parallelizable
         IF(MASK(IP)) CYCLE
 
         E1 = 0.
         HS = 0.
         PB2 = 0.
         DK = 0.
-        PB = 0.
         !
         ! Computes Wavenumber spectrum E1 integrated over direction and computes dk
         !
+        ! AGS - IK Loop is ~30, might not fill vector length. Vector 32 might be optimal for this?
         DO IK=IK1, NK
           E1(IK)=0.  ! TODO: GPU Refactor - should need to do this. Zeroed above.
           DO ITH=1,NTH
@@ -2578,7 +2649,7 @@ CONTAINS
         S1 = 0.
         S2 = 0.
         NTIMES = 0
-        DO IKL=1, NKL
+        DO IKL=1, NKL ! SEQ
           IF (EFDF(IKL) .GT. 0.) THEN
             S1(IKL:IKSUP(IKL))    = S1(IKL:IKSUP(IKL)) + &
                 DCK(IKL)*E1(IKL:IKSUP(IKL)) / EFDF(IKL)
@@ -2619,20 +2690,29 @@ CONTAINS
           END IF
         END DO
         !
-        PB = (1-SSDSC(1))*PB2*A(:,IP) + SSDSC(1)*PB   ! TODO: Second term is always zero (PB=0 here)????
+        PB = (1-SSDSC(1))*PB2*A(:,IP) + SSDSC(1)*PB
         ! Compute Lambda = PB* l(k,th)
         ! with l(k,th)=1/(2*pi²)= the breaking crest density
         BRLAMBDA(:,IP) = PB / (2.*PI**2.)
         SRHS(:,IP) = DDIAG(:,IP) * A(:,IP)
-      END DO ! IP
+     END DO ! IP
+     call nvtxEndRange
+     !$ACC END KERNELS
       !############################################################################################"
     CASE(3)
       !
       ! 2c Romero (GRL 2019)
       !
       ! directional saturation I
-      ! integrate in azimuth
-      DO IP=1,NP
+       ! integrate in azimuth
+      !$ACC KERNELS
+      call nvtxStartRange("SDS4_2c_Loop")
+      ! Complex loop carried dependence of bth prevents parallelization
+      ! Loop carried dependence due to exposed use of lmodulation(:),bth(:) prevents parallelization
+      ! Complex loop carried dependence of lmodulation prevents parallelization
+      ! Generating implicit private(ko)
+      !$ACC LOOP GANG VECTOR PRIVATE(lmodulation,bth) ! Possible improvements later
+      DO IP=1,NP !Loop Not Parallelizable
         IF(MASK(IP)) CYCLE
 
         KO=(GRAV/(1E-6+USTAR(IP)**2))/(28./SSDSC(16))**2
@@ -2673,23 +2753,30 @@ CONTAINS
         !   Breaking probability (Is actually the breaking rate)
 
         !! PB = BRLAMBDA *C  ! GPU Refactor; PB not used outside this case statement
-      END DO ! IP
-      !
-    END SELECT
+     END DO ! IP
+     call nvtxEndRange
+     !$ACC END KERNELS
+     !
+  END SELECT
+
     !############################################################################################"
     !
     !
-    !/ ------------------------------------------------------------------- / 
+    !/ ------------------------------------------------------------------- /
+    !             WAVE-TURBULENCE INTERACTION AND CUMULATIVE EFFECT
     !/ ------------------------------------------------------------------- /
     !
     !
     ! loop over spectrum
     !
     IF ( (SSDSC(3).NE.0.) .OR. (SSDSC(5).NE.0.) .OR. (SSDSC(21).NE.0.) ) THEN
-      DO IP=1,NP
+      !$ACC KERNELS
+      call nvtxStartRange("SDS4_Spectrum_Loop")
+      !$ACC LOOP GANG VECTOR
+      DO IP=1,NP ! Loop is parallelizable
         IF(MASK(IP)) CYCLE
 
-        DO IK=IK1, NK
+        DO  IK=IK1, NK
           RENEWALFREQ = 0.
           FACTURB=SSDSC(5)*USTAR(IP)**2/GRAV*DAIR(IP)/DWAT  ! GPU Refactor: moved here from section 1
           FACTURB2=-2.*SIG(IK)*K(IK,IP)*FACTURB
@@ -2734,8 +2821,10 @@ CONTAINS
             SRHS(IS,IP)  = SRHS(IS,IP)  + A(IS,IP)* DIAG2
           END DO ! ITH
         END DO ! IK
-      END DO ! IP
-    END IF
+     END DO ! IP
+     call nvtxEndRange
+     !$ACC END KERNELS
+  END IF
     !
     !  COMPUTES WHITECAP PARAMETERS
     !
@@ -2744,7 +2833,14 @@ CONTAINS
     END IF
     !
     ! GPU Refactor - new IP loop
-    DO IP=1,NP
+    !$ACC KERNELS
+    call nvtxStartRange("SDS4_Final_Loop")
+    ! Complex loop carried dependence of coef4 prevents parallelization
+    ! Loop carried dependence due to exposed use of coef5(:),coef4(:) prevents parallelization
+    ! Complex loop carried dependence of coef5 prevents parallelization
+    ! Generating NVIDIA GPU code
+    !$ACC LOOP GANG PRIVATE(coef4, coef5) REDUCTION(+:wcap_mnt,wcap_cov)
+    DO IP=1,NP ! Loop not parallelizable
       IF(MASK(IP)) CYCLE
 
       WCAP_COV(IP) = 0.
@@ -2776,7 +2872,9 @@ CONTAINS
       IF ( FLOGRD(5,7) ) THEN
         !
         ! Computes the Total WhiteCap Coverage (a=5. ; Reul and Chapron, 2003)
-        !
+         !
+         ! Try forcing the reduction
+        !!$ACC LOOP ! REDUCTION(+:wcap_mnt,wcap_cov) ! try wcap_cov, wcap_mnt as scalars
         DO IK=IK1,MIN(FLOOR(AAIRCMIN),NK)
           WCAP_COV(IP) = WCAP_COV(IP) + COEF4(IK) * (1-WCAP_COV(IP))
           WCAP_MNT(IP) = WCAP_MNT(IP) + COEF5(IK)
@@ -2787,8 +2885,8 @@ CONTAINS
         !
         ! Calculates the Mean Foam Thickness for component K(IK) => Fig.3, Reul and Chapron, 2003
         ! ( Copied from ST4 - not yet tested/validated with Romero 2019 (Lambda model)
-        !
-        DO IK=IK1,NK
+         ! 
+        DO IK=IK1,NK ! try wcap_thk as scalar
           !    Duration of active breaking (TAU*)
           TSTR = 0.8 * 2*PI/SIG(IK)
           !    Time persistence of foam (a=5.)
@@ -2812,7 +2910,9 @@ CONTAINS
           WCAP_THK(IP) = WCAP_THK(IP) + COEF4(IK) * MFT
         END DO
       END IF
-    END DO ! IP
+   END DO ! IP
+   call nvtxEndRange
+   !$ACC END KERNELS
     !
     ! End of output computing
     !

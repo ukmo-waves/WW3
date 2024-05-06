@@ -201,6 +201,7 @@ CONTAINS
 #ifdef W3_T1
     USE W3ARRYMD, ONLY: OUTMAT
 #endif
+    USE NVTX
     !/
     IMPLICIT NONE
     !/
@@ -247,6 +248,9 @@ CONTAINS
     THR = DBLE(1.E-15) ! GPU refactor - constant; moved outside loop
 
     ! GPU refactor, new loop over seapoints:
+    !$ACC KERNELS
+    call nvtxStartRange("W3SDB1_Integral_Q")
+    !$ACC LOOP PRIVATE(Q0,EB)
     DO IP=1,NP
       IF(MASK(IP)) CYCLE
       IF (SUM(A(:,IP)) .LT. THR) CYCLE
@@ -357,8 +361,9 @@ CONTAINS
       ELSE
         LBREAK = .FALSE.
       ENDIF
-    END DO ! IP
-
+   END DO ! IP
+   call nvtxEndRange
+   !$ACC END KERNELS 
 #ifdef W3_DEBUGRUN
     DO IP=1,NP
       IF(MASK(IP)) CYCLE
