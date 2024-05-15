@@ -385,7 +385,7 @@
 !/ST3      USE W3SRC3MD
 !/ST3      USE W3GDATMD, ONLY : ZZWND, FFXFM, FFXPM
 !/ST4      USE W3SRC4MD, ONLY : W3SPR4, W3SIN4, W3SDS4
-!/ST4      USE W3GDATMD, ONLY : ZZWND, FFXFM, FFXPM, FFXFA
+!/ST4      USE W3GDATMD, ONLY : ZZWND, FFXFM, FFXPM, FFXFA, SINTAILPAR
 !/ST6      USE W3SRC6MD
 !/ST6      USE W3SWLDMD, ONLY : W3SWL6
 !/ST6      USE W3GDATMD, ONLY : SWL6S6
@@ -685,10 +685,14 @@
 !/ST3                   AMAX, U10ABS, U10DIR, USTAR, USTDIR,          &
 !/ST3                   TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS)
 !/ST3      TWS = 1./FMEANWS
-!/ST4      TAUWX=0.
-!/ST4      TAUWY=0.
+!/ST4      IF (SINTAILPAR(4).GT.0.5) THEN ! this is designed to keep the bug as an option
+!/ST4        TAUWX=0.
+!/ST4        TAUWY=0.
+!/ST4      END IF
 !/ST4      IF ( IT .eq. 0 ) THEN
 !/ST4          LLWS(:) = .TRUE.
+!/ST4          TAUWX=0.
+!/ST4          TAUWY=0.
 !/ST4          USTAR=0.
 !/ST4          USTDIR=0.
 !/ST4      ELSE
@@ -706,7 +710,7 @@
 !/DEBUGSRC!/ST4          WRITE(740+IAPROC,*) '1: out value ALPHA=', CHARN, ' FMEANWS=', FMEANWS
 !/DEBUGSRC!/ST4        END IF
 
-!/ST4        CALL W3SIN4 ( SPEC, CG1, WN2, U10ABS, USTAR, DRAT, AS,       &
+!/ST4        IF (SINTAILPAR(4).GT.0.5) CALL W3SIN4 ( SPEC, CG1, WN2, U10ABS, USTAR, DRAT, AS,       &
 !/ST4                 U10DIR, Z0, CD, TAUWX, TAUWY, TAUWAX, TAUWAY,       &
 !/ST4                 VSIN, VDIN, LLWS, IX, IY, BRLAMBDA )
 !/ST4        END IF
@@ -1259,6 +1263,11 @@
 !/ST4        CALL W3SIN4 ( SPEC, CG1, WN2, U10ABS, USTAR, DRAT, AS,      &
 !/ST4                      U10DIR, Z0, CD, TAUWX, TAUWY, TAUWAX, TAUWAY, &
 !/ST4                      VSIN, VDIN, LLWS, IX, IY, BRLAMBDA )
+!/ST4        IF (SINTAILPAR(4).LT.0.5) CALL W3SPR4 (SPEC, CG1, WN1, EMEAN, FMEAN, FMEAN1, WNMEAN,&
+!/ST4                   AMAX, U10ABS, U10DIR,                          &
+!/ST4!/FLX5                   TAUA, TAUADIR, DAIR,                     &
+!/ST4                   USTAR, USTDIR,                                 &
+!/ST4                   TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DLWMEAN)
 
 !
 ! 7.  Check if integration complete ---------------------------------- *
