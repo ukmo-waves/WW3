@@ -751,7 +751,7 @@
 !/ST3                                 SDSDELTA1, SDSDELTA2
 !
 !/ST4      INTEGER                 :: SWELLFPAR, SDSISO, SDSBRFDF, SINTABLE,&
-!/ST4                                 TAUBUG
+!/ST4                                 TAUWBUG
 !/ST4      REAL 		   :: SDSBCHOICE
 !/ST4      REAL                    :: ZWND, ALPHA0, Z0MAX, BETAMAX, SINTHP,&
 !/ST4                                 ZALP, Z0RAT, TAUWSHELTER, SWELLF,    &
