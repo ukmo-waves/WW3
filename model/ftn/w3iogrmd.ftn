@@ -1070,29 +1070,39 @@
 !/ST4                ZZWND, AALPHA, ZZ0MAX, BBETA, SSINTHP, ZZALP,    &
 !/ST4                TTAUWSHELTER, SSWELLFPAR, SSWELLF, SSINBR,       &
 !/ST4                ZZ0RAT, SSDSC,                                   &
-!/ST4                SSDSISO, SSDSBR, SSDSBT, SSDSBM, SSDSP,         &
+!/ST4                SSDSISO, SSDSBR, SSDSBT, SSDSBM, SSDSP,          &
 !/ST4                SSDSCOS, SSDSDTH, WWNMEANP, WWNMEANPTAIL,SSTXFTF,&
 !/ST4                SSTXFTFTAIL, SSTXFTWN, SSTXFTF, SSTXFTWN,        &
 !/ST4                SSDSBRF1, SSDSBRF2, SSDSBRFDF,SSDSBCK, SSDSABK,  &
-!/ST4                SSDSPBK, SSDSBINT, FFXPM, FFXFM, FFXFA,   &
-!/ST4                SSDSHCK, DELUST, DELTAIL, DELTAUW,        &
-!/ST4                DELU, DELALP, TAUT, TAUHFT, TAUHFT2,             &
+!/ST4                SSDSPBK, SSDSBINT, FFXPM, FFXFM, FFXFA,          &
+!/ST4                SSDSHCK,                                         &
 !/ST4                IKTAB, DCKI, QBI, SATINDICES, SATWEIGHTS,        &
-!/ST4                DIKCUMUL, CUMULW
+!/ST4                DIKCUMUL, CUMULW, SINTAILPAR, CAPCHNK
+!/ST4          IF (SINTAILPAR(1).GT.0.5) THEN
+!/ST4            WRITE (NDSM) DELUST, DELTAIL, DELTAUW, DELU, DELALP, &
+!/ST4                         TAUT, TAUHFT
+!/ST4            IF (TTAUWSHELTER.GT.0) WRITE (NDSM) TAUHFT2
+!/ST4          END IF
 !/ST4        ELSE
 !/ST4          READ (NDSM,END=801,ERR=802,IOSTAT=IERR)                &
 !/ST4                ZZWND, AALPHA, ZZ0MAX, BBETA, SSINTHP, ZZALP,    &
 !/ST4                TTAUWSHELTER, SSWELLFPAR, SSWELLF, SSINBR,       &
 !/ST4                ZZ0RAT, SSDSC,                                   &
-!/ST4                SSDSISO, SSDSBR, SSDSBT, SSDSBM, SSDSP,         &
+!/ST4                SSDSISO, SSDSBR, SSDSBT, SSDSBM, SSDSP,          &
 !/ST4                SSDSCOS, SSDSDTH, WWNMEANP, WWNMEANPTAIL,SSTXFTF,&
 !/ST4                SSTXFTFTAIL, SSTXFTWN, SSTXFTF, SSTXFTWN,        &
 !/ST4                SSDSBRF1, SSDSBRF2, SSDSBRFDF,SSDSBCK, SSDSABK,  &
-!/ST4                SSDSPBK, SSDSBINT, FFXPM, FFXFM, FFXFA,   &
-!/ST4                 SSDSHCK, DELUST, DELTAIL, DELTAUW,        &
-!/ST4                DELU, DELALP, TAUT, TAUHFT, TAUHFT2,             &
+!/ST4                SSDSPBK, SSDSBINT, FFXPM, FFXFM, FFXFA,          &
+!/ST4                SSDSHCK,                                         &
 !/ST4                IKTAB, DCKI, QBI, SATINDICES, SATWEIGHTS,        &
-!/ST4                DIKCUMUL, CUMULW
+!/ST4                DIKCUMUL, CUMULW, SINTAILPAR, CAPCHNK
+!/ST4          IF (SINTAILPAR(1).GT.0.5) THEN
+!/ST4            CALL INSIN4(.FALSE.)
+!/ST4            READ (NDSM,END=801,ERR=802,IOSTAT=IERR)              &
+!/ST4                 DELUST, DELTAIL, DELTAUW, DELU, DELALP,  &
+!/ST4                 TAUT, TAUHFT
+!/ST4            IF (TTAUWSHELTER.GT.0) READ(NDSM,END=801,ERR=802,IOSTAT=IERR) TAUHFT2
+!/ST4          END IF
 !/ST4        END IF
 !
 !/DEBUGIOGR     WRITE(740+IAPROC,*) 'W3IOGR, step 18'

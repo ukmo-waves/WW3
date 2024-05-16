@@ -801,11 +801,12 @@
 !/ST4        REAL,     POINTER     :: DCKI(:,:), SATWEIGHTS(:,:),CUMULW(:,:),QBI(:,:)
 !/ST4        REAL                  :: AALPHA, BBETA, ZZ0MAX, ZZ0RAT, ZZALP,&
 !/ST4                                 SSINTHP, TTAUWSHELTER, SSWELLF(1:7), &
-!/ST4                                 SSDSC(1:21), SSDSBR,                 &
+!/ST4                                 SSDSC(1:21), SSDSBR, SINTAILPAR(1:5),&
 !/ST4                                 SSDSP, WWNMEANP, SSTXFTF, SSTXFTWN,  &
 !/ST4                                 FFXPM, FFXFM, FFXFA,   &
 !/ST4                                 SSDSBRF1, SSDSBRF2, SSDSBINT,SSDSBCK,&
-!/ST4                                 SSDSHCK, SSDSABK, SSDSPBK, SSINBR
+!/ST4                                 SSDSHCK, SSDSABK, SSDSPBK, SSINBR,   &
+!/ST4                                 CAPCHNK(1:10)
 !/ST4        REAL                  :: ZZWND
 !/ST4        REAL                  :: SSDSCOS, SSDSDTH, SSDSBT, SSDSBM(0:4)
 !
@@ -1101,9 +1102,10 @@
 !/ST4                                 FFXFM, FFXPM, SSDSBRF1, SSDSBRF2,    &
 !/ST4                                 SSDSBINT, SSDSBCK, SSDSHCK, SSDSABK, &
 !/ST4                                 SSDSPBK, SSINBR,SSINTHP,TTAUWSHELTER,&
-!/ST4                                 SSWELLF(:), SSDSC(:), SSDSBR,        &
+!/ST4                                 SINTAILPAR(:), SSWELLF(:), SSDSC(:), SSDSBR,  &
 !/ST4                                 SSDSP, WWNMEANP, SSTXFTF, SSTXFTWN,  &
-!/ST4                                 SSDSBT, SSDSCOS, SSDSDTH, SSDSBM(:)
+!/ST4                                 SSDSBT, SSDSCOS, SSDSDTH, SSDSBM(:), &
+!/ST4                                 CAPCHNK(:)
 !/ST6      REAL, POINTER           :: SIN6A0, SDS6A1, SDS6A2, SWL6B1, &
 !/ST6                                 SIN6WS, SIN6FC
 !/ST6      INTEGER, POINTER        :: SDS6P1, SDS6P2
@@ -1770,12 +1772,18 @@
 !/ST4                 MPARS(IMOD)%SRCPS%QBI(NKHS,NKD),   &
 !/ST4                 STAT=ISTAT                         )
 !/ST4      CHECK_ALLOC_STATUS ( ISTAT )
+!/ST4      MPARS(IMOD)%SRCPS%IKTAB(:,:)=0.
+!/ST4      MPARS(IMOD)%SRCPS%DCKI(:,:)=0.
+!/ST4      MPARS(IMOD)%SRCPS%QBI(:,:)=0.
 !/ST4      SDSNTH  = MTH/2-1 !MIN(NINT(SSDSDTH/(DTH*RADE)),MTH/2-1)
 !/ST4      ALLOCATE( MPARS(IMOD)%SRCPS%SATINDICES(2*SDSNTH+1,MTH), &
 !/ST4                MPARS(IMOD)%SRCPS%SATWEIGHTS(2*SDSNTH+1,MTH), &
 !/ST4                MPARS(IMOD)%SRCPS%CUMULW(MSPEC,MSPEC),        &
 !/ST4                 STAT=ISTAT                                   )
 !/ST4      CHECK_ALLOC_STATUS ( ISTAT )
+!/ST4      MPARS(IMOD)%SRCPS%SATINDICES(:,:)=0.
+!/ST4      MPARS(IMOD)%SRCPS%SATWEIGHTS(:,:)=0.
+!/ST4      MPARS(IMOD)%SRCPS%CUMULW(:,:)=0.
 !
       SGRDS(IMOD)%SINIT  = .TRUE.
 #if defined(TEST_W3GDATMD) || defined(TEST_W3GDATMD_W3DIMS)
@@ -2287,6 +2295,8 @@
 !/ST4      ZZ0RAT   => MPARS(IMOD)%SRCPS%ZZ0RAT
 !/ST4      ZZALP    => MPARS(IMOD)%SRCPS%ZZALP
 !/ST4      TTAUWSHELTER  => MPARS(IMOD)%SRCPS%TTAUWSHELTER
+!/ST4      SINTAILPAR  => MPARS(IMOD)%SRCPS%SINTAILPAR
+!/ST4      CAPCHNK  => MPARS(IMOD)%SRCPS%CAPCHNK
 !/ST4      SSWELLFPAR  => MPARS(IMOD)%SRCPS%SSWELLFPAR
 !/ST4      SSWELLF  => MPARS(IMOD)%SRCPS%SSWELLF
 !/ST4      SSDSC    => MPARS(IMOD)%SRCPS%SSDSC

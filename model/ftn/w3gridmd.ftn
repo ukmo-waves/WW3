@@ -750,7 +750,8 @@
 !/ST3      REAL                    :: STXFTFTAIL, SDSC1,                   &
 !/ST3                                 SDSDELTA1, SDSDELTA2
 !
-!/ST4      INTEGER                 :: SWELLFPAR, SDSISO, SDSBRFDF
+!/ST4      INTEGER                 :: SWELLFPAR, SDSISO, SDSBRFDF, SINTABLE,&
+!/ST4                                 TAUWBUG
 !/ST4      REAL 		   :: SDSBCHOICE
 !/ST4      REAL                    :: ZWND, ALPHA0, Z0MAX, BETAMAX, SINTHP,&
 !/ST4                                 ZALP, Z0RAT, TAUWSHELTER, SWELLF,    &
@@ -766,7 +767,11 @@
 !/ST4                                 SDSBRF1,                             &
 !/ST4                                 SDSBM0, SDSBM1, SDSBM2, SDSBM3,      &
 !/ST4                                 SDSBM4, SDSFACMTF, SDSCUMP,  SDSNUW, &
-!/ST4                                 SDSL, SDSMWD, SDSMWPOW, SPMSS, SDSNMTF
+!/ST4                                 SDSL, SDSMWD, SDSMWPOW, SPMSS, SDSNMTF, &
+!/ST4                                 SINTAIL1, SINTAIL2,                  &
+!/ST4                                 CUMSIGP, VISCSTRESS,                 &
+!/ST4                                 CAPCHA, CHAMIN, CHA0, UCAP, SIGMAUCAP
+
 !
 !/ST6      REAL                    :: SINA0, SINWS, SINFC,                 &
 !/ST6                                 SDSA1, SDSA2, SWLB1
@@ -855,7 +860,10 @@
 !/ST4      NAMELIST /SIN4/ ZWND, ALPHA0, Z0MAX, BETAMAX, SINTHP, ZALP, &
 !/ST4                      TAUWSHELTER, SWELLFPAR, SWELLF,                 &
 !/ST4                      SWELLF2, SWELLF3, SWELLF4, SWELLF5, SWELLF6,    &
-!/ST4                      SWELLF7, Z0RAT, SINBR
+!/ST4                      SWELLF7, Z0RAT, SINBR, SINTABLE, SINTAIL1,      &
+!/ST4                      SINTAIL2, TAUWBUG, VISCSTRESS,                  &
+!/ST4                      CAPCHA, CHAMIN, CHA0, UCAP, SIGMAUCAP
+
 !/NL1      NAMELIST /SNL1/ LAMBDA, NLPROP, KDCONV, KDMIN,                  &
 !/NL1                      SNLCS1, SNLCS2, SNLCS3
 !/NL2      NAMELIST /SNL2/ IQTYPE, TAILNL, NDEPTH
@@ -875,7 +883,7 @@
 !/ST4                      SDSC5, SDSC6, SDSBR, SDSBT, SDSP, SDSISO,       &
 !/ST4                      SDSBCK, SDSABK, SDSPBK, SDSBINT, SDSHCK,        &
 !/ST4                      SDSDTH, SDSCOS, SDSBRF1, SDSBRFDF,  SDSNUW,     &
-!/ST4                      SDSBM0, SDSBM1, SDSBM2, SDSBM3, SDSBM4,         &
+!/ST4                      SDSBM0, SDSBM1, SDSBM2, SDSBM3, SDSBM4, CUMSIGP,&
 !/ST4                      WHITECAPWIDTH, WHITECAPDUR, SDSMWD, SDSMWPOW, SDKOF
 
 !/ST6      NAMELIST /SIN6/ SINA0, SINWS, SINFC
@@ -1429,6 +1437,18 @@
 !/ST4      TAUWSHELTER = 0.3
 !/ST4      ZALP   = 0.006
 !/ST4      SINBR   = 0.
+!/ST4      SINTABLE = 1
+!/ST4      SINTAIL1 = 0. !  TAUWSHELTER FOR TAIL (no table)
+!/ST4      SINTAIL2 = 0. !  additional peak in capillary range
+!/ST4      TAUWBUG  = 1  !  TAUWBUG is 1 is the bug is kept:
+!/ST4      !  initializes TAUWX/Y to zero in W3SRCE
+!/ST4      VISCSTRESS =0
+!/ST4      CAPCHA   = 0.     ! =1 indicates capping of drag is active
+!/ST4      CHAMIN   = 0.0001 !
+!/ST4      CHA0     = ALPHA0 ! initial value for charnock
+!/ST4      UCAP     = 30.    ! U10 threshold from which drag capping is applied
+!/ST4      SIGMAUCAP = 10.   ! Width for reduction of drag beyond UCAP
+
 !
 !/ST6      SINA0  = 0.09
 !/ST6      SINWS  = 32.0
@@ -1498,6 +1518,16 @@
 !/ST4      SSWELLF(6) = SWELLF6
 !/ST4      SSWELLF(7) = SWELLF7
 !/ST4      SSWELLFPAR = SWELLFPAR
+!/ST4      SINTAILPAR(1) = FLOAT(SINTABLE)
+!/ST4      SINTAILPAR(2) = SINTAIL1
+!/ST4      SINTAILPAR(3) = SINTAIL2
+!/ST4      SINTAILPAR(4) = FLOAT(TAUWBUG)
+!/ST4      SINTAILPAR(5) = VISCSTRESS
+!/ST4      CAPCHNK(1) = CAPCHA
+!/ST4      CAPCHNK(2) = CHAMIN
+!/ST4      CAPCHNK(3) = CHA0
+!/ST4      CAPCHNK(4) = UCAP
+!/ST4      CAPCHNK(5) = SIGMAUCAP
 !
 !/ST6      CALL READNL ( NDSS, 'SIN6', STATUS )
 !/ST6      WRITE (NDSO,920) STATUS
@@ -1745,8 +1775,9 @@
 !/ST4      SDSBINT   = 0.3
 !/ST4      SDSHCK    = 1.5
 !/ST4      WHITECAPWIDTH = 0.3
-!/ST4      SDSSTRAIN = 0.       
 !/ST4      SDSFACMTF =  400    ! MTF factor for Lambda , Romero (2019)
+!/ST4      CUMSIGP   = 0.
+!/ST4      SDSSTRAIN = 0.
 !/ST4      SDSSTRAINA = 15.
 !/ST4      SDSSTRAIN2 = 0.
 !/ST4      WHITECAPDUR   = 0.56 ! breaking duration factor 
@@ -1831,7 +1862,7 @@
 !/ST4      SSDSC(9)   = SDSL
 !/ST4      SSDSC(10)  = SDSSTRAINA*NTH/360. ! angle Aor enhanced straining
 !/ST4      SSDSC(11)  = SDSSTRAIN2  ! straining constant for directional part 
-!/ST4      SSDSC(12)  = SDSBT
+!/ST4      SSDSC(12)  = CUMSIGP
 !/ST4      SSDSC(13)  = SDSMWD
 !/ST4      SSDSC(14)  = SPMSS
 !/ST4      SSDSC(15)  = SDSMWPOW 
@@ -2694,7 +2725,8 @@
 !/ST3            SWELLF
 !/ST4          WRITE (NDSO,2920) ZWND, ALPHA0, Z0MAX, BETAMAX, SINTHP, ZALP,   &
 !/ST4            TAUWSHELTER, SWELLFPAR, SWELLF, SWELLF2, SWELLF3, SWELLF4, &
-!/ST4            SWELLF5, SWELLF6, SWELLF7, Z0RAT, SINBR
+!/ST4            SWELLF5, SWELLF6, SWELLF7, Z0RAT, SINBR, SINTABLE, TAUWBUG, &
+!/ST4            VISCSTRESS, SINTAIL1, SINTAIL2, CAPCHA, CHAMIN, CHA0, UCAP, SIGMAUCAP
 !/ST6          WRITE (NDSO,2920) SINA0, SINWS, SINFC
 !/NL1          WRITE (NDSO,2922) LAMBDA, NLPROP, KDCONV, KDMIN,       &
 !/NL1                            SNLCS1, SNLCS2, SNLCS3
@@ -5577,7 +5609,12 @@
 !/ST4              '        SWELLF =',F8.5,', SWELLF2 =',F8.5,             &
 !/ST4              ', SWELLF3 =',F8.5,', SWELLF4 =',F9.1,','/              &
 !/ST4              '        SWELLF5 =',F8.5,', SWELLF6 =',F8.5,            &
-!/ST4              ', SWELLF7 =',F12.2,', Z0RAT =',F8.5,', SINBR =',F8.5,'  /')
+!/ST4              ', SWELLF7 =',F12.2,', Z0RAT =',F8.5,', SINBR =',F8.5,','/  &
+!/ST4              '        SINTABLE =',I2,', TAUWBUG =',I2,               &
+!/ST4              ', VISCSTRESS =',F8.5,', SINTAIL1 =',F8.5,', SINTAIL2 =',F8.5,',' / &
+!/ST4              ', CAPCHA =',F8.5,', CHAMIN =',F8.5,', CHA0 =',F8.5,', UCAP =',F5.1,', SIGMAUCAP =', &
+!/ST4              F5.1,'  /')
+
 !
 !/ST6  920 FORMAT (/'  Wind input (Donelan et al, 2006) ',A/       &
 !/ST6         ' --------------------------------------------------')
