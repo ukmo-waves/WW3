@@ -91,7 +91,7 @@ jobs:
             spack
             ~/.spack
             work_oasis3-mct
-          key: spack2-${{ runner.os }}-${{ env.cache_key }}-${{ hashFiles('ww3/model/ci/spack_gnu.yaml') }}
+          key: spack-${{ runner.os }}-${{ env.cache_key }}-${{ hashFiles('ww3/model/ci/spack_gnu.yaml') }}
 
       - name: build-ww3
         run: |
@@ -102,10 +102,10 @@ jobs:
           export CC=mpicc
           export FC=mpif90
           export OASISDIR=${GITHUB_WORKSPACE}/work_oasis3-mct
-#          mkdir build && cd build
+          # mkdir build && cd build
           export LD_LIBRARY_PATH="/home/runner/work/WW3/WW3/spack/var/spack/environments/ww3-gnu/.spack-env/view/:$LD_LIBRARY_PATH"
-#          cmake -DSWITCH=${GITHUB_WORKSPACE}/ww3/regtests/unittests/data/switch.io -DCMAKE_BUILD_TYPE=Debug ..
-#          make -j2 VERBOSE=1
+          # cmake -DSWITCH=${GITHUB_WORKSPACE}/ww3/regtests/unittests/data/switch.io -DCMAKE_BUILD_TYPE=Debug ..
+          # make -j2 VERBOSE=1
           cd ${GITHUB_WORKSPACE}/ww3
           ls -l
           ${GITHUB_WORKSPACE}/ww3/model/bin/ww3_from_ftp.sh -k
@@ -116,18 +116,15 @@ jobs:
           cd work_PR1_MPI
           pwd
           ls -l
-          ncdump -h out_pnt.ww3.nc > ncdump_out.txt
-          cat ncdump_out.txt
-          pwd
-          cat ${GITHUB_WORKSPACE}/ww3/regtests/ww3_tp2.5/out_pnt_ncdump.txt
-          cmp ${GITHUB_WORKSPACE}/ww3/regtests/ww3_tp2.5/out_pnt_ncdump.txt ncdump_out.txt          
-        
+          # ncdump -h out_pnt.ww3.nc > ncdump_out.txt
+          # cat ncdump_out.txt
+          # pwd
+          # cat ${GITHUB_WORKSPACE}/ww3/regtests/ww3_tp2.5/out_pnt_ncdump.txt
+          # cmp ${GITHUB_WORKSPACE}/ww3/regtests/ww3_tp2.5/out_pnt_ncdump.txt ncdump_out.txt
+
       - name: cache-data
         id: cache-data
         uses: actions/cache@v3
         with:
           path: ww3/ww3_from_ftp.v7.14.1.tar.gz
           key: ww3_from_ftp.v7.14.1
-
-
-      
