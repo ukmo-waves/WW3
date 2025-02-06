@@ -59,6 +59,7 @@ MODULE W3METAMD
     MODULE PROCEDURE META_LIST_APPEND_R !< Append a REAL value
     MODULE PROCEDURE META_LIST_APPEND_I !< Append an INTEGER value
     MODULE PROCEDURE META_LIST_APPEND_C !< Append a CHARACTER value
+    MODULE PROCEDURE META_LIST_APPEND_D !< Append a DOUBLE value
   END INTERFACE META_LIST_APPEND
 
 CONTAINS
@@ -240,6 +241,35 @@ CONTAINS
     CALL META_LIST_APPEND(LIST, META)
 
   END SUBROUTINE META_LIST_APPEND_R
+
+
+  !/ ------------------------------------------------------------------- /
+  !> @brief Append DOUBLE value attribute to list
+  !>
+  !> @param[in,out] LIST     The list to append to
+  !> @param[in]     ATTNAME  The attribute name
+  !> @param[in]     DVAL     The attribute value (DOUBLE)
+  !>
+  !> @author Kit Stokes
+  !/ ------------------------------------------------------------------- /
+  SUBROUTINE META_LIST_APPEND_D(LIST, ATTNAME, DVAL)
+
+    IMPLICIT NONE
+
+    TYPE(META_LIST_T), INTENT(INOUT) :: LIST
+    CHARACTER(*), INTENT(IN)         :: ATTNAME
+    DOUBLE, INTENT(IN)               :: DVAL
+    !/ ------------------------------------------------------------------- /
+    !/ Local parameters
+    !/
+    TYPE(META_PAIR_T) :: META
+
+    META%ATTNAME = ATTNAME
+    WRITE(META%ATTVAL,*) DVAL
+    META%TYPE = 'd'
+    CALL META_LIST_APPEND(LIST, META)
+
+  END SUBROUTINE META_LIST_APPEND_D
 
 
   !/ ------------------------------------------------------------------- /
