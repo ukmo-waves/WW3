@@ -46,8 +46,8 @@
 !>    attribute. This extra attribute can take an optional "type"
 !>    keyworkd to specify the variable tpye of the metadata. If
 !>    no type is supplied, it defaults to a characer type. Valid
-!>    types are one of ["c", "r", "i"] for character/string,
-!>    real/float or integer values respectively.
+!>    types are one of ["c", "r", "i", "d"] for character/string,
+!>    real/float, integer, or double values respectively.
 !>
 !>    Global meta data can be specified with a special "META global" line:
 !>
@@ -1031,7 +1031,7 @@ CONTAINS
   !>    or EOF is found. Splits meta pairs on the = character.
   !>
   !>    Note - the "extra" metadata pair can also provide a variable
-  !>    type ("c", "i", or "r"; for character, int or real respectively)
+  !>    type ("c", "i", "r", or "d"; for character, int, real, or double respectively)
   !>
   !> @param[in]      NDMI  Unit number of metadata input file
   !> @param[out]     META  Pointer to META type
@@ -1063,7 +1063,7 @@ CONTAINS
     !     or EOF is found. Splits meta pairs on the = character.
     !
     !     Note - the "extra" metadata pair can also provide a variable
-    !     type ("c", "i", or "r"; for character, int or real respectively)
+    !     type ("c", "i", "r", or "d"; for character, int, real, or double respectively)
     !
     !  3. Parameters :
     !
@@ -1211,8 +1211,8 @@ CONTAINS
   !>
   !>    It is important to quote strings if they contain spaces.
   !>
-  !>    Valid types are "c" "r/f", and "i" for character, real/float and
-  !>     integer values.
+  !>    Valid types are "c" "r/f", "i", and "d" for character, real/float,
+  !>     integer, and double values respectively.
   !>
   !> @param[in]   BUF       Input string to process
   !> @param[in]   ILINE     Line number (for error reporting)
@@ -1247,8 +1247,8 @@ CONTAINS
     !
     !     It is important to quote strings if they contain spaces.
     !
-    !     Valid types are "c" "r/f", and "i" for character, real/float and
-    !     integer values.
+    !     Valid types are "c" "r/f", "i", and "d" for character, real/float
+    !     integer, and double values respectively.
 
     !  3. Parameters :
     !
@@ -1295,6 +1295,13 @@ CONTAINS
         CALL EXTCDE(10)
       ENDIF
 
+    CASE("d")
+      READ(attv, *, iostat=ierr) d
+      IF(ierr .ne. 0) THEN
+        WRITE(NDSE, 8001) "DOUBLE", TRIM(FN_META), ILINE, TRIM(ATTV)
+        CALL EXTCDE(10)
+      ENDIF
+
     CASE("c")
       ! Always ok.
 
@@ -1325,7 +1332,7 @@ CONTAINS
   !>    or EOF is found. Splits meta pairs on the `=` character.
   !>
   !>    Freeform metadata pairs can also provide a variable type
-  !>    ("c", "i", or "r"; for character, int or real respectively).
+  !>    ("c", "i", "r", or "d"; for character, int, real, or double respectively).
   !>    String values with spaces should be quoted.
   !>
   !> @param[in]      NDMI      Unit number of metadata input file
@@ -1357,7 +1364,7 @@ CONTAINS
     !     or EOF is found. Splits meta pairs on the = character.
     !
     !     Freeform metadata pairs can also provide a variable type
-    !     ("c", "i", or "r"; for character, int or real respectively).
+    !     ("c", "i", "r", or "d"; for character, int, real, or double respectively).
     !     String values with spaces should be quoted.
     !
     !  3. Parameters :
