@@ -3412,10 +3412,10 @@ CONTAINS
             IRET = NF90_PUT_ATT(NCID, VARID(6), 'valid_min', 1)
             IRET = NF90_PUT_ATT(NCID, VARID(6), 'valid_max', 256)
           ELSE
-            ! Regirdded regular SMC grid - use lon/lat dimensions:
-            IRET = NF90_DEF_VAR(NCID, 'longitude', NF90_FLOAT, DIMID(2), VARID(1))
+            ! Regridded regular SMC grid - use lon/lat dimensions:
+            IRET = NF90_DEF_VAR(NCID, 'longitude', NF90_DOUBLE, DIMID(2), VARID(1))
             call CHECK_ERR(IRET)
-            IRET = NF90_DEF_VAR(NCID, 'latitude', NF90_FLOAT, DIMID(3), VARID(2))
+            IRET = NF90_DEF_VAR(NCID, 'latitude', NF90_DOUBLE, DIMID(3), VARID(2))
             call CHECK_ERR(IRET)
           ENDIF
 #endif
