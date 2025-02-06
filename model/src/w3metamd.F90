@@ -258,7 +258,8 @@ CONTAINS
 
     TYPE(META_LIST_T), INTENT(INOUT) :: LIST
     CHARACTER(*), INTENT(IN)         :: ATTNAME
-    DOUBLE, INTENT(IN)               :: DVAL
+    INTEGER, PARAMETER               :: dp = SELECTED_REAL_KIND(15)  
+    REAL(dp), INTENT(IN)             :: DVAL
     !/ ------------------------------------------------------------------- /
     !/ Local parameters
     !/

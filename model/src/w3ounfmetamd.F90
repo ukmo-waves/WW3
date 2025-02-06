@@ -1271,6 +1271,8 @@ CONTAINS
     !
     REAL :: R
     INTEGER :: I, IERR
+    INTEGER, PARAMETER :: dp = SELECTED_REAL_KIND(15)
+    REAL(dp) :: D    
 
     ! Get attribute and type (default to "c" if no type set)
     ATT_TYPE = 'c'
