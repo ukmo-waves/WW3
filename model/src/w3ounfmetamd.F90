@@ -2361,6 +2361,11 @@ CONTAINS
         ERR = NF90_PUT_ATT(NCID, VARID, P%ATTNAME, RVAL)
         IF(ERR /= NF90_NOERR) RETURN
 
+      CASE('d')
+        READ(P%ATTVAL, *) DVAL
+        ERR = NF90_PUT_ATT(NCID, VARID, P%ATTNAME, DVAL)
+        IF(ERR /= NF90_NOERR) RETURN
+
       CASE('c')
         ERR = NF90_PUT_ATT(NCID, VARID, P%ATTNAME,    &
              P%ATTVAL)
