@@ -2210,8 +2210,8 @@ CONTAINS
                   IF(.NOT.ALLOCATED(smccy)) ALLOCATE(smccy(SMCNOUT))
                 ELSE
                   ! Regular gridded file
-                  IF(.NOT.ALLOCATED(lon)) ALLOCATE(lon(NXO))
-                  IF(.NOT.ALLOCATED(lat)) ALLOCATE(lat(NYO))
+                  IF(.NOT.ALLOCATED(dbllon)) ALLOCATE(dbllon(NXO))
+                  IF(.NOT.ALLOCATED(dbllat)) ALLOCATE(dbllat(NYO))
 #endif
 #ifdef W3_RTD
                   ! Intermediate EQUatorial lat/lon arrays for de-rotation
