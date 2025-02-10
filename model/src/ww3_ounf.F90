@@ -2303,7 +2303,9 @@ CONTAINS
                   !LON(1) = X0D
                   !LAT(1) = Y0D
                   DO i=1,NXO
-                    lon(i)=DBLE(X0D+SXD*DBLE(i-1))
+                    lon(i)=REAL(X0D+SXD*DBLE(i-1))
+                    ! KS: Regridded SMC data - use double precision
+                    dbllon(i)=DBLE(X0D+SXD*DBLE(i-1))
 #endif
 #ifdef W3_RTD
                     LON2DEQ(i,:) = lon(i)
@@ -2311,7 +2313,9 @@ CONTAINS
 #ifdef W3_SMC
                   END DO
                   DO i=1,NYO
-                    lat(i)=DBLE(Y0D+SYD*DBLE(i-1))
+                    lat(i)=REAL(Y0D+SYD*DBLE(i-1))
+                    ! KS: Regridded SMC data - use double precision
+                    dbllat(i)=DBLE(Y0D+SYD*DBLE(i-1))
 #endif
 #ifdef W3_RTD
                     LAT2DEQ(:,i) = lat(i)
@@ -2350,10 +2354,10 @@ CONTAINS
                 !LON(1) = X0D
                 !LAT(1) = Y0D
                 DO I=1,NX
-                  LON(I)=DBLE(X0D+SXD*DBLE(I-1))
+                  LON(I)=REAL(X0D+SXD*DBLE(I-1))
                 END DO
                 DO I=1,NY
-                  LAT(I)=DBLE(Y0D+SYD*DBLE(I-1))
+                  LAT(I)=REAL(Y0D+SYD*DBLE(I-1))
                 END DO
 #ifdef W3_RTD
                 IF ( RTDL ) THEN
@@ -2475,15 +2479,21 @@ CONTAINS
             IF (GTYPE.EQ.RLGTYPE .OR. GTYPE.EQ.SMCTYPE) THEN
               IF(SMCGRD) THEN ! CB: shelter original code from SMC grid
 #ifdef W3_SMC
-                IRET=NF90_PUT_VAR(NCID,VARID(1),LON(:))
-                CALL CHECK_ERR(IRET)
-                IRET=NF90_PUT_VAR(NCID,VARID(2),LAT(:))
-                CALL CHECK_ERR(IRET)
                 IF(SMCOTYPE .EQ. 1) THEN
+                  IRET=NF90_PUT_VAR(NCID,VARID(1),LON(:))
+                  CALL CHECK_ERR(IRET)
+                  IRET=NF90_PUT_VAR(NCID,VARID(2),LAT(:))
+                  CALL CHECK_ERR(IRET)
+
                   ! For type 1 SCM file also put lat/lons and cell sizes:
                   IRET=NF90_PUT_VAR(NCID,VARID(5),SMCCX)
                   CALL CHECK_ERR(IRET)
                   IRET=NF90_PUT_VAR(NCID,VARID(6),SMCCY)
+                  CALL CHECK_ERR(IRET)
+                ELSE ! KS: Regridded SMC data - use double precision
+                  IRET=NF90_PUT_VAR(NCID,VARID(1),dbllon(:))
+                  CALL CHECK_ERR(IRET)
+                  IRET=NF90_PUT_VAR(NCID,VARID(2),dbllat(:))
                   CALL CHECK_ERR(IRET)
                 ENDIF
 #endif
