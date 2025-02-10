@@ -2210,6 +2210,8 @@ CONTAINS
                   IF(.NOT.ALLOCATED(smccy)) ALLOCATE(smccy(SMCNOUT))
                 ELSE
                   ! Regular gridded file
+                  IF(.NOT.ALLOCATED(lon)) ALLOCATE(lon(NXO))
+                  IF(.NOT.ALLOCATED(lat)) ALLOCATE(lat(NYO))
                   IF(.NOT.ALLOCATED(dbllon)) ALLOCATE(dbllon(NXO))
                   IF(.NOT.ALLOCATED(dbllat)) ALLOCATE(dbllat(NYO))
 #endif
@@ -2478,18 +2480,17 @@ CONTAINS
             IF (GTYPE.EQ.RLGTYPE .OR. GTYPE.EQ.SMCTYPE) THEN
               IF(SMCGRD) THEN ! CB: shelter original code from SMC grid
 #ifdef W3_SMC
+                IRET=NF90_PUT_VAR(NCID,VARID(1),LON(:))
+                CALL CHECK_ERR(IRET)
+                IRET=NF90_PUT_VAR(NCID,VARID(2),LAT(:))
+                CALL CHECK_ERR(IRET)
                 IF(SMCOTYPE .EQ. 1) THEN
-                  IRET=NF90_PUT_VAR(NCID,VARID(1),LON(:))
-                  CALL CHECK_ERR(IRET)
-                  IRET=NF90_PUT_VAR(NCID,VARID(2),LAT(:))
-                  CALL CHECK_ERR(IRET)
-
                   ! For type 1 SCM file also put lat/lons and cell sizes:
                   IRET=NF90_PUT_VAR(NCID,VARID(5),SMCCX)
                   CALL CHECK_ERR(IRET)
                   IRET=NF90_PUT_VAR(NCID,VARID(6),SMCCY)
                   CALL CHECK_ERR(IRET)
-                ELSE ! KS: Regridded SMC data - use double precision
+                ELSE ! KS: For regridded SMC data, change from real to double precision
                   IRET=NF90_PUT_VAR(NCID,VARID(1),dbllon(:))
                   CALL CHECK_ERR(IRET)
                   IRET=NF90_PUT_VAR(NCID,VARID(2),dbllat(:))
