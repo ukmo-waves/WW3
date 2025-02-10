@@ -1002,7 +1002,9 @@ CONTAINS
     REAL, PARAMETER            :: LOG2=LOG(2.)
 #endif
     !
-    REAL,DIMENSION(:),  ALLOCATABLE    :: LON, LAT, FREQ
+    !REAL,DIMENSION(:),  ALLOCATABLE    :: LON, LAT, FREQ
+    REAL,DIMENSION(:),  ALLOCATABLE    :: FREQ
+    DOUBLE PRECISION,DIMENSION(:),  ALLOCATABLE    :: LON, LAT
     REAL,DIMENSION(:,:),  ALLOCATABLE  :: LON2D, LAT2D, ANGLD2D
 #ifdef W3_RTD
     REAL,DIMENSION(:,:),  ALLOCATABLE  :: LON2DEQ, LAT2DEQ
@@ -2297,8 +2299,11 @@ CONTAINS
                   SYD=DBLE(0.000001d0*DNINT(1d6*(DBLE(DYO)) ))
                   X0D=DBLE(0.000001d0*DNINT(1d6*(DBLE(SXO)) ))
                   Y0D=DBLE(0.000001d0*DNINT(1d6*(DBLE(SYO)) ))
+
+                  !LON(1) = X0D
+                  !LAT(1) = Y0D
                   DO i=1,NXO
-                    lon(i)=REAL(X0D+SXD*DBLE(i-1))
+                    lon(i)=DBLE(X0D+SXD*DBLE(i-1))
 #endif
 #ifdef W3_RTD
                     LON2DEQ(i,:) = lon(i)
@@ -2306,7 +2311,7 @@ CONTAINS
 #ifdef W3_SMC
                   END DO
                   DO i=1,NYO
-                    lat(i)=REAL(Y0D+SYD*DBLE(i-1))
+                    lat(i)=DBLE(Y0D+SYD*DBLE(i-1))
 #endif
 #ifdef W3_RTD
                     LAT2DEQ(:,i) = lat(i)
@@ -2341,11 +2346,14 @@ CONTAINS
                 SYD=DBLE(0.000001d0*DNINT(1d6*(DBLE(SY)) ))
                 X0D=DBLE(0.000001d0*DNINT(1d6*(DBLE(X0)) ))
                 Y0D=DBLE(0.000001d0*DNINT(1d6*(DBLE(Y0)) ))
+
+                !LON(1) = X0D
+                !LAT(1) = Y0D
                 DO I=1,NX
-                  LON(I)=REAL(X0D+SXD*DBLE(I-1))
+                  LON(I)=DBLE(X0D+SXD*DBLE(I-1))
                 END DO
                 DO I=1,NY
-                  LAT(I)=REAL(Y0D+SYD*DBLE(I-1))
+                  LAT(I)=DBLE(Y0D+SYD*DBLE(I-1))
                 END DO
 #ifdef W3_RTD
                 IF ( RTDL ) THEN

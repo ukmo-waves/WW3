@@ -1320,7 +1320,7 @@ CONTAINS
          '  => ', A /)
     !
 8002 FORMAT (/' *** WAVEWATCH III ERROR IN W3OUNFMETA : '/           &
-         '     ATTRIBUTE TYPE SHOULD BE ONE OF [c,i,r] '/       &
+         '     ATTRIBUTE TYPE SHOULD BE ONE OF [c,i,r,d] '/       &
          '     FILENAME = ', A /                                &
          '     LINE NO =', I5 /                                 &
          '  => ', A /)

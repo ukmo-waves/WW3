@@ -43,7 +43,7 @@ MODULE W3METAMD
   TYPE META_PAIR_T
     CHARACTER(LEN=64)  :: ATTNAME = UNSETC  !< Attribute name
     CHARACTER(LEN=120) :: ATTVAL = UNSETC   !< Attribute value
-    CHARACTER          :: TYPE = 'c'        !< Attribute type (c,i,f/r)
+    CHARACTER          :: TYPE = 'c'        !< Attribute type (c,i,f/r,d)
     TYPE(META_PAIR_T), POINTER  :: NEXT     !< Pointer to next node
   END TYPE META_PAIR_T
 
