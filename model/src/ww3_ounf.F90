@@ -1003,7 +1003,6 @@ CONTAINS
 #endif
     !
     REAL,DIMENSION(:),  ALLOCATABLE    :: LON, LAT, FREQ
-    DOUBLE PRECISION,DIMENSION(:),  ALLOCATABLE    :: DBLLON, DBLLAT 
     REAL,DIMENSION(:,:),  ALLOCATABLE  :: LON2D, LAT2D, ANGLD2D
 #ifdef W3_RTD
     REAL,DIMENSION(:,:),  ALLOCATABLE  :: LON2DEQ, LAT2DEQ
@@ -2212,8 +2211,6 @@ CONTAINS
                   ! Regular gridded file
                   IF(.NOT.ALLOCATED(lon)) ALLOCATE(lon(NXO))
                   IF(.NOT.ALLOCATED(lat)) ALLOCATE(lat(NYO))
-                  IF(.NOT.ALLOCATED(dbllon)) ALLOCATE(dbllon(NXO))
-                  IF(.NOT.ALLOCATED(dbllat)) ALLOCATE(dbllat(NYO))
 #endif
 #ifdef W3_RTD
                   ! Intermediate EQUatorial lat/lon arrays for de-rotation
@@ -2296,17 +2293,13 @@ CONTAINS
 #ifdef W3_SMC
                 ELSE
                   ! CB: Regridded SMC data
-                  SXD=DBLE(0.000001d0*DNINT(1d6*(DBLE(DXO)) ))
-                  SYD=DBLE(0.000001d0*DNINT(1d6*(DBLE(DYO)) ))
-                  X0D=DBLE(0.000001d0*DNINT(1d6*(DBLE(SXO)) ))
-                  Y0D=DBLE(0.000001d0*DNINT(1d6*(DBLE(SYO)) ))
+                  SXD=DBLE(0.00000001d0*DNINT(1d8*(DBLE(DXO)) ))
+                  SYD=DBLE(0.00000001d0*DNINT(1d8*(DBLE(DYO)) ))
+                  X0D=DBLE(0.00000001d0*DNINT(1d8*(DBLE(SXO)) ))
+                  Y0D=DBLE(0.00000001d0*DNINT(1d8*(DBLE(SYO)) ))
 
-                  !LON(1) = X0D
-                  !LAT(1) = Y0D
                   DO i=1,NXO
                     lon(i)=REAL(X0D+SXD*DBLE(i-1))
-                    ! KS: Regridded SMC data - use double precision
-                    dbllon(i)=DBLE(X0D+SXD*DBLE(i-1))
 #endif
 #ifdef W3_RTD
                     LON2DEQ(i,:) = lon(i)
@@ -2315,8 +2308,6 @@ CONTAINS
                   END DO
                   DO i=1,NYO
                     lat(i)=REAL(Y0D+SYD*DBLE(i-1))
-                    ! KS: Regridded SMC data - use double precision
-                    dbllat(i)=DBLE(Y0D+SYD*DBLE(i-1))
 #endif
 #ifdef W3_RTD
                     LAT2DEQ(:,i) = lat(i)
@@ -2347,13 +2338,11 @@ CONTAINS
                 ENDIF ! SMCOTYPE
 #endif
               ELSE ! SMCGRD
-                SXD=DBLE(0.000001d0*DNINT(1d6*(DBLE(SX)) ))
-                SYD=DBLE(0.000001d0*DNINT(1d6*(DBLE(SY)) ))
-                X0D=DBLE(0.000001d0*DNINT(1d6*(DBLE(X0)) ))
-                Y0D=DBLE(0.000001d0*DNINT(1d6*(DBLE(Y0)) ))
+                SXD=DBLE(0.00000001d0*DNINT(1d8*(DBLE(SX)) ))
+                SYD=DBLE(0.00000001d0*DNINT(1d8*(DBLE(SY)) ))
+                X0D=DBLE(0.00000001d0*DNINT(1d8*(DBLE(X0)) ))
+                Y0D=DBLE(0.00000001d0*DNINT(1d8*(DBLE(Y0)) ))
 
-                !LON(1) = X0D
-                !LAT(1) = Y0D
                 DO I=1,NX
                   LON(I)=REAL(X0D+SXD*DBLE(I-1))
                 END DO
@@ -2489,11 +2478,6 @@ CONTAINS
                   IRET=NF90_PUT_VAR(NCID,VARID(5),SMCCX)
                   CALL CHECK_ERR(IRET)
                   IRET=NF90_PUT_VAR(NCID,VARID(6),SMCCY)
-                  CALL CHECK_ERR(IRET)
-                ELSE ! KS: For regridded SMC data, change from real to double precision
-                  IRET=NF90_PUT_VAR(NCID,VARID(1),dbllon(:))
-                  CALL CHECK_ERR(IRET)
-                  IRET=NF90_PUT_VAR(NCID,VARID(2),dbllat(:))
                   CALL CHECK_ERR(IRET)
                 ENDIF
 #endif
@@ -3406,9 +3390,9 @@ CONTAINS
 #ifdef W3_SMC
           IF(SMCOTYPE .EQ. 1) THEN
             ! Flat SMC grid - use seapoint dimension:
-            IRET = NF90_DEF_VAR(NCID, 'longitude', NF90_FLOAT, DIMID(2), VARID(1))
+            IRET = NF90_DEF_VAR(NCID, 'longitude', NF90_DOUBLE, DIMID(2), VARID(1))
             CALL CHECK_ERR(IRET)
-            IRET = NF90_DEF_VAR(NCID, 'latitude', NF90_FLOAT, DIMID(2), VARID(2))
+            IRET = NF90_DEF_VAR(NCID, 'latitude', NF90_DOUBLE, DIMID(2), VARID(2))
             CALL CHECK_ERR(IRET)
 
             ! Latitude and longitude are auxililary variables in type 1 sea point

@@ -1271,8 +1271,6 @@ CONTAINS
     !
     REAL :: R
     INTEGER :: I, IERR
-    !INTEGER, PARAMETER :: dp = SELECTED_REAL_KIND(15)
-    !REAL(dp) :: D    
     DOUBLE PRECISION :: D
 
     ! Get attribute and type (default to "c" if no type set)
@@ -2338,8 +2336,6 @@ CONTAINS
     !/
     INTEGER :: I, IVAL
     REAL    :: RVAL
-    !INTEGER, PARAMETER :: dp = SELECTED_REAL_KIND(15)
-    !REAL(dp) :: DVAL
     DOUBLE PRECISION :: DVAL
     TYPE(META_PAIR_T), POINTER :: P
 
