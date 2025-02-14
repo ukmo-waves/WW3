@@ -2135,10 +2135,10 @@
 !/RTD                                  ANGLD2D(:,1), POLAT, POLON, RTDNY*RTDNX)
 !/SMC                  ELSE
 !/SMC                    ! CB: Regridded SMC data
-!/SMC                    SXD=DBLE(0.000001d0*DNINT(1d6*(DBLE(DXO)) ))
-!/SMC                    SYD=DBLE(0.000001d0*DNINT(1d6*(DBLE(DYO)) ))
-!/SMC                    X0D=DBLE(0.000001d0*DNINT(1d6*(DBLE(SXO)) ))
-!/SMC                    Y0D=DBLE(0.000001d0*DNINT(1d6*(DBLE(SYO)) ))
+!/SMC                    SXD=DBLE(0.00000001d0*DNINT(1d8*(DBLE(DXO)) ))
+!/SMC                    SYD=DBLE(0.00000001d0*DNINT(1d8*(DBLE(DYO)) ))
+!/SMC                    X0D=DBLE(0.00000001d0*DNINT(1d8*(DBLE(SXO)) ))
+!/SMC                    Y0D=DBLE(0.00000001d0*DNINT(1d8*(DBLE(SYO)) ))
 !/SMC                    DO i=1,NXO
 !/SMC                      lon(i)=REAL(X0D+SXD*DBLE(i-1))
 !/RTD                      LON2DEQ(i,:) = lon(i)
@@ -3350,9 +3350,9 @@
           IF (SMCGRD) THEN
 !/SMC            IF(SMCOTYPE .EQ. 1) THEN
 !/SMC              ! Flat SMC grid - use seapoint dimension:
-!/SMC              IRET = NF90_DEF_VAR(NCID, 'longitude', NF90_FLOAT, DIMID(2), VARID(1))
+!/SMC              IRET = NF90_DEF_VAR(NCID, 'longitude', NF90_DOUBLE, DIMID(2), VARID(1))
 !/SMC              CALL CHECK_ERR(IRET)
-!/SMC              IRET = NF90_DEF_VAR(NCID, 'latitude', NF90_FLOAT, DIMID(2), VARID(2))
+!/SMC              IRET = NF90_DEF_VAR(NCID, 'latitude', NF90_DOUBLE, DIMID(2), VARID(2))
 !/SMC              CALL CHECK_ERR(IRET)
 !/SMC
 !/SMC              ! Latitude and longitude are auxililary variables in type 1 sea point
@@ -3374,10 +3374,10 @@
 !/SMC              IRET = NF90_PUT_ATT(NCID, VARID(6), 'valid_min', 1)
 !/SMC              IRET = NF90_PUT_ATT(NCID, VARID(6), 'valid_max', 256)
 !/SMC            ELSE
-!/SMC              ! Regirdded regular SMC grid - use lon/lat dimensions:
-!/SMC              IRET = NF90_DEF_VAR(NCID, 'longitude', NF90_FLOAT, DIMID(2), VARID(1))
+!/SMC              ! Regridded regular SMC grid - use lon/lat dimensions:
+!/SMC              IRET = NF90_DEF_VAR(NCID, 'longitude', NF90_DOUBLE, DIMID(2), VARID(1))
 !/SMC              call CHECK_ERR(IRET)
-!/SMC              IRET = NF90_DEF_VAR(NCID, 'latitude', NF90_FLOAT, DIMID(3), VARID(2))
+!/SMC              IRET = NF90_DEF_VAR(NCID, 'latitude', NF90_DOUBLE, DIMID(3), VARID(2))
 !/SMC              call CHECK_ERR(IRET)
 !/SMC            ENDIF
           ELSE
