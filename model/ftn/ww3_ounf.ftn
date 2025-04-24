@@ -2138,10 +2138,10 @@
 !/RTD                                  ANGLD2D(:,1), POLAT, POLON, RTDNY*RTDNX)
 !/SMC                  ELSE
 !/SMC                    ! CB: Regridded SMC data
-!/SMC                    SXD=DBLE(0.00000001d0*DNINT(1d8*(DBLE(DXO)) ))
-!/SMC                    SYD=DBLE(0.00000001d0*DNINT(1d8*(DBLE(DYO)) ))
-!/SMC                    X0D=DBLE(0.00000001d0*DNINT(1d8*(DBLE(SXO)) ))
-!/SMC                    Y0D=DBLE(0.00000001d0*DNINT(1d8*(DBLE(SYO)) ))
+!/SMC                    SXD=DBLE(0.00000000000001d0*DNINT(1d14*(DBLE(DXO)) ))
+!/SMC                    SYD=DBLE(0.00000000000001d0*DNINT(1d14*(DBLE(DYO)) ))
+!/SMC                    X0D=DBLE(0.00000000000001d0*DNINT(1d14*(DBLE(SXO)) ))
+!/SMC                    Y0D=DBLE(0.00000000000001d0*DNINT(1d14*(DBLE(SYO)) ))
 
 !/SMC                    DO i=1,NXO
 !/SMC                      lon(i)=REAL(X0D+SXD*DBLE(i-1))
