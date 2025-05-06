@@ -196,6 +196,35 @@ OpenMP threads. Further increase of OpenMP threads seems no much effect.  The
 combined hybrid and multi-grid parallelization may extend the computer usage
 to over 100 nodes for the 3 Great Lake sub-grids in \emph{mww3\_test\_09}.
 
+Following the ongoing manual porting efforts at the Met Office, a switch has been 
+created for using an initial OpenACC parallelism of the SMC grid. This converts the 
+w3psmcmd.F90 module file and function calls to be able to target a GPU for 
+acceleration. Primarily this has been used with the nvfortran compiler to success 
+after being built on Isambard using the \emph{cmake\_build\_isambard.sh}
+script with Met Office specifications. Contact Chris Bunney 
+(\url{christopher.bunney@metoffice.gov.uk}) for details surrounding the Isambard 
+Implementation. 
+
+For optimal performance on GPU there is a range of changes to function calls, 
+array declarations and nested subroutine calls, which are all managed by the 
+switch. Since the GPU will deallocate arrays once they leave scope, local arrays 
+are hoisted to be in the module scope of w3wavemd.F90, and hence resident on 
+the GPU for longer. For GPU parallelism using OpenACC, data transfers and 
+parallelism specifications are applied implicitly where possible. For ease of 
+application, the SMC propagation subroutines are inlined so that the implicit 
+optimisations are correctly defined and maintain valid model output without more 
+intrusive coding changes. 
+
+The current implementation of the GPU switch has some limitations, this switch 
+only targets the multi-resolution grids and has not yet been adapted to the case 
+of \emph{NRLv .EQ. 1}. This expansion would not be difficult but requires further 
+inlining and similar changes to the code, which have not yet been tested properly.
+It is also worth noting that the performance of the current implementation is not
+at its full potential. This is due to the majority of the code still being 
+processed on the CPU, and only a small section actively ported to the GPU. We are 
+viewing the progress so far as a proof of concept and an initial step on determing
+the best way to integrate GPU acceleration into the current parallelisation options.
+
 It is recommended to read the smc\_docs/SMC\_Grid\_Guide.pdf or the
 conference paper \citep{tol:LiS17} at conference web page: 
 http://www.waveworkshop.org/15thWaves/

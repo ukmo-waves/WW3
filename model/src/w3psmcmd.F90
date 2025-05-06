@@ -133,7 +133,14 @@ CONTAINS
   !> @author Jian-Guo Li
   !> @date 18 Apr 2018
   !>
+#ifdef W3_GPU
+  !/LS GPU Code uses hoisted arrays and functional call. 
+  SUBROUTINE W3PSMC (ISP,DTG,VQ,FCNt,AFCN,BCNt,UCFL,VCFL,CQ,CQA,   &
+                     ULCFLX,VLCFLY,FUMD,FUDIFX,FVMD,FVDIFY, CXTOT, &
+                     CYTOT, AUN, AVN)
+#else
   SUBROUTINE W3PSMC ( ISP, DTG, VQ )
+#endif
     !/
     !/                  +------------------------------------+
     !/                  | Spherical Multiple-Cell (SMC) grid |
@@ -255,7 +262,7 @@ CONTAINS
          IJKVFc5, IJKVFc6,IJKUFc5,IJKUFc6,            &
          NLvCel, NLvUFc, NLvVFc, NRLv, MRFct,         &
          DTCFL, CLATS, DTMS, CTRNX, CTRNY
-    USE W3GDATMD, ONLY: NGLO, ANGARC, ARCTC
+    USE W3GDATMD, ONLY: NGLO, ANGARC, ARCTC, CLATF
     USE W3WDATMD, ONLY: TIME
     USE W3ADATMD, ONLY: CG, WN, U10, CX, CY, ATRNX, ATRNY, ITIME
     !
@@ -295,12 +302,25 @@ CONTAINS
     REAL                    :: PCArea, ARCTH
     LOGICAL                 :: YFIRST
     !/
+#ifdef W3_GPU
+    !/LS Inlined SMC functions require additional variables
+    INTEGER ::  ij
+    REAL    :: CNST, CNST0, CNST1, CNST2, CNST3, CNST4, CNST5, CNST6,  &
+               CNST7, CNST8, CNST9
+    !/LS GPU ported code using functions via subroutine call to avoid 
+    !/LS automatic work arrays. 
+    REAL, DIMENSION(-9:NCel), INTENT(INOUT) :: FCNt, AFCN, BCNt, UCFL, VCFL, CQ, &
+                              CQA, CXTOT, CYTOT
+    REAL, DIMENSION(-9:NSEA), INTENT(INOUT) :: AUN, AVN
+    REAL, DIMENSION(NUFc), INTENT(INOUT) ::  FUMD, FUDIFX, ULCFLX
+    REAL, DIMENSION(NVFc), INTENT(INOUT) ::  FVMD, FVDIFY, VLCFLY
+#else
     !/ Automatic work arrays
-    !
     REAL, Dimension(-9:NCel) ::  FCNt, AFCN, BCNt, UCFL, VCFL, CQ,  &
          CQA, CXTOT, CYTOT
     REAL, Dimension(   NUFc) ::  FUMD, FUDIFX, ULCFLX
     REAL, Dimension(   NVFc) ::  FVMD, FVDIFY, VLCFLY
+#endif
     !/
     !/ ------------------------------------------------------------------- /
     !/
@@ -394,12 +414,49 @@ CONTAINS
     WRITE (NDST,9010)
 #endif
     !
+#ifdef W3_GPU
+    !/LS Explicit initialisation for hoisted arrays.
+    !$ACC KERNELS
+    DO ISEA=1,NUFc
+      ULCFLX(ISEA) = 0.0
+      FUMD(ISEA) = 0.0
+      FUDIFX(ISEA) = 0.0
+    ENDDO
+    !$ACC END KERNELS
+
+    !$ACC KERNELS
+    DO ISEA=1,NVFc
+      VLCFLY(ISEA) = 0.0
+      FVMD(ISEA) = 0.0
+      FVDIFY(ISEA) = 0.0
+    ENDDO
+    !$ACC END KERNELS
+
+    !$ACC KERNELS
+    DO ISEA=-9,NCel
+      CQ(ISEA) = 0.0
+      CQA(ISEA) = 0.0
+      UCFL(ISEA) = 0.0
+      VCFL(ISEA) = 0.0
+      FCNt(ISEA) = 0.0
+      AFCN(ISEA) = 0.0
+      BCNt(ISEA) = 0.0
+      CXTOT(ISEA) = 0.0
+      CYTOT(ISEA) = 0.0
+      AUN(ISEA) = 0.0
+      AVN(ISEA) = 0.0
+    ENDDO
+    !$ACC END KERNELS
+#else
     ULCFLX = 0.
     VLCFLY = 0.
-
+#endif
     !Li    Pass spectral element VQ to CQ and define size-1 cell CFL
 #ifdef W3_OMPG
     !$OMP Parallel DO Private(ISEA)
+#elif W3_GPU
+    !$ACC KERNELS
+    !$ACC LOOP INDEPENDENT
 #endif
     DO ISEA=1, NSEA
       !Li  Transported variable is divided by CG as in WW3.
@@ -409,12 +466,17 @@ CONTAINS
     END DO
 #ifdef W3_OMPG
     !$OMP END Parallel DO
+#elif W3_GPU
+    !$ACC END KERNELS
 #endif
 
     !Li  Add current components if any to wave velocity.
     IF ( FLCUR ) THEN
 #ifdef W3_OMPG
       !$OMP Parallel DO Private(ISEA)
+#elif W3_GPU
+      !$ACC KERNELS
+      !$ACC LOOP INDEPENDENT
 #endif
       DO ISEA=1, NSEA
         CXTOT(ISEA) = (CGCOS * CG(IK,ISEA) + CX(ISEA))
@@ -422,11 +484,16 @@ CONTAINS
       ENDDO
 #ifdef W3_OMPG
       !$OMP END Parallel DO
+#elif W3_GPU
+      !$ACC END KERNELS
 #endif
     ELSE
       !Li   No current case use group speed only.
 #ifdef W3_OMPG
       !$OMP Parallel DO Private(ISEA)
+#elif W3_GPU
+      !$ACC KERNELS
+      !$ACC LOOP INDEPENDENT
 #endif
       DO ISEA=1, NSEA
         CXTOT(ISEA) =  CGCOS * CG(IK,ISEA)
@@ -434,6 +501,8 @@ CONTAINS
       END DO
 #ifdef W3_OMPG
       !$OMP END Parallel DO
+#elif W3_GPU
+      !$ACC END KERNELS
 #endif
       !Li   End of IF( FLCUR ) block.
     ENDIF
@@ -441,6 +510,10 @@ CONTAINS
     !Li   Arctic cell velocity components need to be rotated
     !Li   back to local east referenence system for propagation.
     IF( ARCTC ) THEN
+#ifdef W3_GPU
+      !$ACC KERNELS
+      !$ACC LOOP INDEPENDENT
+#endif
       DO ISEA=NGLO+1, NSEA
         ARCTH = ANGARC(ISEA-NGLO)*DERA
         CXC = CXTOT(ISEA)*COS(ARCTH) + CYTOT(ISEA)*SIN(ARCTH)
@@ -453,12 +526,18 @@ CONTAINS
       !Li   V-component is reset to zero for Polar cell as direction
       !Li   is undefined there.
       CYTOT(NSEA) = 0.0
+#ifdef W3_GPU
+      !$ACC END KERNELS
+#endif
     ENDIF
 
 
     !Li     Convert velocity components into CFL factors.
 #ifdef W3_OMPG
     !$OMP Parallel DO Private(ISEA)
+#elif W3_GPU
+    !$ACC KERNELS
+    !$ACC LOOP INDEPENDENT
 #endif
     DO ISEA=1, NSEA
       UCFL(ISEA) = DTLDX*CXTOT(ISEA)/CLATS(ISEA)
@@ -466,21 +545,31 @@ CONTAINS
     ENDDO
 #ifdef W3_OMPG
     !$OMP END Parallel DO
+#elif W3_GPU
+    !$ACC END KERNELS
 #endif
 
     !Li  Initialise boundary cell CQ and Velocity values.
+#ifndef W3_GPU
     CQ(-9:0)=0.0
     UCFL(-9:0)=0.0
     VCFL(-9:0)=0.0
+#endif
     !
     ! 3.  Loop over frequency-dependent sub-steps -------------------------*
     !
     DO ITLOC=1, NTLOC
       !
       !     Initialise net flux arrays.
+#ifdef W3_GPU
+      !$ACC KERNELS
+#endif      
       FCNt(-9:NCel) = 0.0
       AFCN(-9:NCel) = 0.0
       BCNt(-9:NCel) = 0.0
+#ifdef W3_GPU
+      !$ACC END KERNELS
+#endif      
       !
       !     Single-resolution SMC grid uses regular grid advection with
       !     partial blocking enabled when NRLv = 1
@@ -684,16 +773,105 @@ CONTAINS
               jvf=NLvVFc(LL)
               !
               !  Use 3rd order UNO3 scheme.  JGLi03Sep2015
+#ifdef W3_GPU 
+              !$ACC KERNELS
+              IF( FUNO3 ) THEN
+!/LS The SMCxUNO3 routine is inlined to facilitate the OpenACC implicit directives.
+                CNST0=DNND*FMR*FMR*2.0
+!$ACC LOOP INDEPENDENT PRIVATE(i, ij, K, L, M, N, &
+!$ACC CNST,CNST1,CNST2,CNST3,CNST4,CNST5,CNST6,CNST7,CNST8,CNST9)
+                DO i=iuf, juf
+                  K=IJKUFc(4,i)
+                  L=IJKUFc(5,i)
+                  M=IJKUFc(6,i)
+                  N=IJKUFc(7,i)
+                  CNST2=FLOAT( IJKCel3(L) )
+                  CNST3=FLOAT( IJKCel3(M) )
+                  CNST5=(CQ(M)-CQ(L))/( CNST2 + CNST3 )
+                  CNST6=0.5*( UCFL(L)+UCFL(M) )*FMR
+                  ULCFLX(i) = CNST6
+                  CNST8 = FLOAT( IJKUFc(3,i) )
+                  ij= MAX(L, M)
+                  IF(CNST6 >= 0.0)  THEN
+                    IF( M .LE. 0) ULCFLX(i) = UCFL(L)*FMR
+                    CNST1=FLOAT( IJKCel3(K) )
+                    CNST4=(CQ(L)-CQ(K))/( CNST2 + CNST1 )
+                    CNST7 = CNST5 - CNST4 
+                    CNST9 = 2.0/( CNST3+CNST2+CNST2+CNST1 )
+                    IF( Abs(CNST7) .LT. 0.6*CNST9*Abs(CQ(M)-CQ(K)) ) THEN
+                      CNST= CNST5 - ( CNST3+ULCFLX(i) )*CNST7*CNST9/1.5 
+                    ELSE IF( DBLE(CNST4)*DBLE(CNST5) .GT. 0.d0 ) THEN 
+                      CNST=Sign(2.0, CNST5)*min( Abs(CNST4), Abs(CNST5) )
+                    ELSE
+                      CNST=Sign(1.0, CNST5)*min( Abs(CNST4), Abs(CNST5) )
+                    ENDIF
+                    FUMD(i)=(CQ(L) + CNST*(CNST2 - ULCFLX(i)))*CNST8
+                  ELSE
+                    IF( L .LE. 0) ULCFLX(i) = UCFL(M)*FMR
+                    CNST1=FLOAT( IJKCel3(N) )
+                    CNST4=(CQ(N)-CQ(M))/( CNST1 + CNST3 )
+                    CNST7 = CNST4 - CNST5 
+                    CNST9 = 2.0/( CNST2+CNST3+CNST3+CNST1 )
+                    IF( Abs(CNST7) .LT. 0.6*CNST9*Abs(CQ(N)-CQ(L)) ) THEN
+                      CNST= CNST5 + ( CNST2-ULCFLX(i) )*CNST7*CNST9/1.5 
+                    ELSE IF( DBLE(CNST4)*DBLE(CNST5) .GT. 0.d0 ) THEN 
+                      CNST=Sign(2.0, CNST5)*min( Abs(CNST4), Abs(CNST5) )
+                    ELSE
+                      CNST=Sign(1.0, CNST5)*min( Abs(CNST4), Abs(CNST5) )
+                    ENDIF 
+                    FUMD(i)=(CQ(M) - CNST*(CNST3+ULCFLX(i)))*CNST8
+                  ENDIF
+                  FUDIFX(i)=CNST0*CNST5*CNST8/( CLATS( ij )*CLATS( ij ) )
+                END DO
+               ELSE
+!/ LS The SMCxUNO2 routine is inlined to facilitate the OpenACC implicit directives.
+                 CNST0=DNND*FMR*FMR
+!$ACC LOOP INDEPENDENT PRIVATE(i, ij,K, L, M, N)& 
+!$ACC Private(CNST,CNST1,CNST2,CNST3,CNST4,CNST5,CNST6,CNST8,CNST9)
+                 DO i=iuf, juf
+                    K=IJKUFc(4,i)
+                    L=IJKUFc(5,i)
+                    M=IJKUFc(6,i)
+                    N=IJKUFc(7,i)
+                    CNST2=FLOAT( IJKCel3(L) )
+                    CNST3=FLOAT( IJKCel3(M) )
+                    CNST5=(CQ(M)-CQ(L))/( CNST2 + CNST3 )
+                    CNST6=0.5*( UCFL(L)+UCFL(M) )*FMR
+                    ULCFLX(i) = CNST6
+                    CNST8 = FLOAT( IJKUFc(3,i) )
+                    ij= MAX(L, M)
+                    CNST9 = 2.0/( CLATS( ij )*CLATS( ij ) )
+                    IF(CNST6 >= 0.0)  THEN
+                      IF( M .LE. 0) ULCFLX(i) = UCFL(L)*FMR
+                      CNST1=FLOAT( IJKCel3(K) )
+                      CNST4=(CQ(L)-CQ(K))/( CNST2 + CNST1 )
+                      CNST=Sign(1.0, CNST5)*min( Abs(CNST4), Abs(CNST5) )
+                      FUMD(i)=(CQ(L) + CNST*(CNST2 - ULCFLX(i)))*CNST8
+                    ELSE
+                      IF( L .LE. 0) ULCFLX(i) = UCFL(M)*FMR
+                      CNST1=FLOAT( IJKCel3(N) )
+                      CNST4=(CQ(N)-CQ(M))/( CNST1 + CNST3 )
+                      CNST=Sign(1.0, CNST5)*min( Abs(CNST4), Abs(CNST5) )
+                      FUMD(i)=(CQ(M) - CNST*(CNST3+ULCFLX(i)))*CNST8
+                    ENDIF
+                    FUDIFX(i)=DNND*FMR*FMR*CNST5*CNST8*CNST9
+                  END DO
+                ENDIF
+              !$ACC END KERNELS
+#else
               IF( FUNO3 ) THEN
                 CALL SMCxUNO3(iuf, juf, CQ, UCFL, ULCFLX, DNND, FUMD, FUDIFX, FMR)
               ELSE
                 !  Call SMCxUNO2 to calculate finest level (size-1) MFx value
                 CALL SMCxUNO2(iuf, juf, CQ, UCFL, ULCFLX, DNND, FUMD, FUDIFX, FMR)
               ENDIF
-
+#endif
               !  Store fineset level conservative flux in FCNt advective one in AFCN
 #ifdef W3_OMPG
               !$OMP Parallel DO Private(i, L, M, FUTRN)
+#elif W3_GPU
+              !$ACC KERNELS
+              !$ACC LOOP INDEPENDENT PRIVATE(i, L, M, FUTRN)
 #endif
               DO i=iuf, juf
                 L=IJKUFc5(i)
@@ -707,21 +885,29 @@ CONTAINS
                   IF( (CTRNX(M)+CTRNX(L)) .GE. 1.96 )  THEN
 #ifdef W3_OMPG
                     !$OMP ATOMIC
+#elif W3_GPU
+                    !$ACC ATOMIC
 #endif
                     FCNt(L) = FCNt(L) - FUTRN
                   ELSE IF( ULCFLX(i) .GE. 0.0 ) THEN
 #ifdef W3_OMPG
                     !$OMP ATOMIC
+#elif W3_GPU
+                    !$ACC ATOMIC
 #endif
                     FCNt(L) = FCNt(L) - FUTRN*CTRNX(L)
                   ELSE
 #ifdef W3_OMPG
                     !$OMP ATOMIC
+#elif W3_GPU
+                    !$ACC ATOMIC
 #endif
                     FCNt(L) = FCNt(L) - FUTRN*CTRNX(L)*CTRNX(M)
                   ENDIF
 #ifdef W3_OMPG
                   !$OMP ATOMIC
+#elif W3_GPU
+                    !$ACC ATOMIC
 #endif
                   ! ChrisB: Re-arranged the RHS term below to make it
                   ! valid for OMP ATMOIC directive.
@@ -732,25 +918,32 @@ CONTAINS
                   IF( (CTRNX(M)+CTRNX(L)) .GE. 1.96 )  THEN
 #ifdef W3_OMPG
                     !$OMP ATOMIC
+#elif W3_GPU
+                    !$ACC ATOMIC
 #endif
                     FCNt(M) = FCNt(M) + FUTRN
                   ELSE IF( ULCFLX(i) .GE. 0.0 ) THEN
 #ifdef W3_OMPG
                     !$OMP ATOMIC
+#elif W3_GPU
+                    !$ACC ATOMIC
 #endif
                     FCNt(M) = FCNt(M) + FUTRN*CTRNX(M)*CTRNX(L)
                   ELSE
 #ifdef W3_OMPG
                     !$OMP ATOMIC
+#elif W3_GPU
+                    !$ACC ATOMIC
 #endif
                     FCNt(M) = FCNt(M) + FUTRN*CTRNX(M)
                   ENDIF
 #ifdef W3_OMPG
                   !$OMP ATOMIC
+#elif W3_GPU
+                  !$ACC ATOMIC
 #endif
                   AFCN(M) = AFCN(M) + (FUMD(i)*UCFL(M)*FMR - FUDIFX(i))
                 ENDIF
-                !! !$OMP END CRITICAL
               ENDDO
 #ifdef W3_OMPG
               !$OMP END Parallel DO
@@ -761,6 +954,8 @@ CONTAINS
               !  Also divided by another cell x-size as UCFL is in size-1 unit.
 #ifdef W3_OMPG
               !$OMP Parallel DO Private(n)
+#elif W3_GPU
+              !$ACC LOOP INDEPENDENT
 #endif
               DO n=icl, jcl
                 CQA(n)=CQ(n) + FCNt(n)/FLOAT( IJKCel3(n)*IJKCel4(n) )
@@ -770,19 +965,121 @@ CONTAINS
               ENDDO
 #ifdef W3_OMPG
               !$OMP END Parallel DO
+#elif W3_GPU
+              !$ACC END KERNELS
 #endif
               !
               !  Use 3rd order UNO3 scheme.  JGLi03Sep2015
+#ifdef W3_GPU 
+              !  Code inline to facilitate GPU port
+              !$ACC KERNELS
+              IF( FUNO3 ) THEN
+!/LS The SMCyUNO3 routine is inlined to facilitate the OpenACC implicit directives.
+                CNST0=DSSD*FMR*FMR*2.0
+!$ACC LOOP INDEPENDENT PRIVATE(j, k, L, M, N, & 
+!$ACC CNST,CNST1,CNST2,CNST3,CNST4,CNST5,CNST6,CNST7,CNST8,CNST9)
+                DO j=ivf, jvf
+                  K=IJKVFc(4,j)
+                  L=IJKVFc(5,j)
+                  M=IJKVFc(6,j)
+                  N=IJKVFc(7,j)
+                  CNST2=FLOAT( IJKCel4(L) )
+                  CNST3=FLOAT( IJKCel4(M) )
+                  CNST5=(CQ(M)-CQ(L))/( CNST2 + CNST3 )
+                  CNST6=0.5*( VCFL(L)+VCFL(M) )*FMR
+                  VLCFLY(j) = CNST6
+                  CNST8=CLATF(j)*FLOAT( IJKVFc(3,j) )
+                  IF(CNST6 >= 0.0)  THEN
+                    IF( M .LE. 0 ) THEN
+                       VLCFLY(j) = VCFL(L)*FMR
+                       CNST3   = CNST2
+                    ENDIF
+                    CNST1=FLOAT( IJKCel4(K) )
+                    CNST4=(CQ(L)-CQ(K))/( CNST2 + CNST1 )
+                    CNST7 = CNST5 - CNST4 
+                    CNST9 = 2.0/( CNST3+CNST2+CNST2+CNST1 )
+                    IF( Abs(CNST7) .LT. 0.6*CNST9*Abs(CQ(M)-CQ(K)) ) THEN
+                        CNST= CNST5 - ( CNST3+VLCFLY(j) )*CNST7*CNST9/1.5 
+                    ELSE IF( DBLE(CNST4)*DBLE(CNST5) .GT. 0.d0 ) THEN
+                        CNST=Sign(2.0, CNST5)*min( Abs(CNST4), Abs(CNST5) )
+                    ELSE
+                        CNST=Sign(1.0, CNST5)*min( Abs(CNST4), Abs(CNST5) )
+                    ENDIF
+                    FVMD(j)=( CQ(L) + CNST*(CNST2 - VLCFLY(j)) )*CNST8
+                  ELSE
+                    IF( L .LE. 0 ) THEN
+                        VLCFLY(j) = VCFL(M)*FMR
+                        CNST2   = CNST3
+                    ENDIF
+                    CNST1=FLOAT( IJKCel4(N) )
+                    CNST4=(CQ(N)-CQ(M))/( CNST1 + CNST3 )
+                    CNST7 = CNST4 - CNST5
+                    CNST9 = 2.0/( CNST2+CNST3+CNST3+CNST1 )
+                    IF( Abs(CNST7) .LT. 0.6*CNST9*Abs(CQ(N)-CQ(L)) ) THEN
+                        CNST= CNST5 + ( CNST2-VLCFLY(j) )*CNST7*CNST9/1.5 
+                    ELSE IF( DBLE(CNST4)*DBLE(CNST5) .GT. 0.d0 ) THEN
+                        CNST=Sign(2.0, CNST5)*min( Abs(CNST4), Abs(CNST5) )
+                    ELSE
+                        CNST=Sign(1.0, CNST5)*min( Abs(CNST4), Abs(CNST5) )
+                    ENDIF
+                    FVMD(j)=( CQ(M) - CNST*(CNST3 + VLCFLY(j)) )*CNST8
+                  ENDIF
+                  FVDIFY(j)=CNST0*CNST5*CNST8
+                 END DO
+              ELSE
+!/LS The SMCyUNO2 routine is inlined to facilitate the OpenACC implicit directives.
+                CNST0=DSSD*FMR*FMR*2.0
+!$ACC LOOP INDEPENDENT PRIVATE(j, K, L, M, N )&
+!$ACC Private(CNST,CNST1,CNST2,CNST3,CNST4,CNST5,CNST6,CNST8)
+                DO j=ivf, jvf
+                  K=IJKVFc(4,j)
+                  L=IJKVFc(5,j)
+                  M=IJKVFc(6,j)
+                  N=IJKVFc(7,j)
+                  CNST2=FLOAT( IJKCel4(L) )
+                  CNST3=FLOAT( IJKCel4(M) )
+                  CNST5=(CQ(M)-CQ(L))/( CNST2 + CNST3 )
+                  CNST6=0.5*( VCFL(L)+VCFL(M) )*FMR
+                  VLCFLY(j) = CNST6
+                  CNST8=CLATF(j)*FLOAT( IJKVFc(3,j) )
+                  IF(CNST6 >= 0.0)  THEN
+                    IF( M .LE. 0 ) THEN
+                       VLCFLY(j) = VCFL(L)*FMR
+                       CNST3   = CNST2
+                    ENDIF
+                    CNST1=FLOAT( IJKCel4(K) )
+                    CNST4=(CQ(L)-CQ(K))/( CNST2 + CNST1 )
+                    CNST=Sign(1.0, CNST5)*min( Abs(CNST4), Abs(CNST5) )
+                    FVMD(j)=( CQ(L) + CNST*(CNST2 - VLCFLY(j)) )*CNST8
+                  ELSE
+                    IF( L .LE. 0 ) THEN
+                        VLCFLY(j) = VCFL(M)*FMR
+                        CNST2   = CNST3
+                    ENDIF
+                    CNST1=FLOAT( IJKCel4(N) )
+                    CNST4=(CQ(N)-CQ(M))/( CNST1 + CNST3 )
+                    CNST=Sign(1.0, CNST5)*min( Abs(CNST4), Abs(CNST5) )
+                    FVMD(j)=( CQ(M) - CNST*(CNST3 + VLCFLY(j)) )*CNST8
+                  ENDIF
+                  FVDIFY(j)=CNST0*CNST5*CNST8
+                END DO
+              ENDIF
+              !$ACC END KERNELS
+#else
               IF( FUNO3 ) THEN
                 CALL SMCyUNO3(ivf, jvf, CQ, VCFL, VLCFLY, DSSD, FVMD, FVDIFY, FMR)
               ELSE
                 !  Call SMCyUNO2 to calculate MFy value
                 CALL SMCyUNO2(ivf, jvf, CQ, VCFL, VLCFLY, DSSD, FVMD, FVDIFY, FMR)
               ENDIF
+#endif    
               !
               !  Store conservative flux in BCNt
 #ifdef W3_OMPG
               !$OMP Parallel DO Private(j, L, M, FVTRN)
+#elif W3_GPU
+              !$ACC KERNELS
+              !$ACC LOOP INDEPENDENT PRIVATE(j, L, M, FVTRN)
 #endif
               DO j=ivf, jvf
                 L=IJKVFc5(j)
@@ -796,16 +1093,22 @@ CONTAINS
                   IF( (CTRNY(M)+CTRNY(L)) .GE. 1.96 )  THEN
 #ifdef W3_OMPG
                     !$OMP ATOMIC
+#elif W3_GPU
+                    !$ACC ATOMIC
 #endif
                     BCNt(L) = BCNt(L) - FVTRN
                   ELSE IF( VLCFLY(j) .GE. 0.0 )  THEN
 #ifdef W3_OMPG
                     !$OMP ATOMIC
+#elif W3_GPU
+                    !$ACC ATOMIC
 #endif
                     BCNt(L) = BCNt(L) - FVTRN*CTRNY(L)
                   ELSE
 #ifdef W3_OMPG
                     !$OMP ATOMIC
+#elif W3_GPU
+                    !$ACC ATOMIC
 #endif
                     BCNt(L) = BCNt(L) - FVTRN*CTRNY(L)*CTRNY(M)
                   ENDIF
@@ -815,16 +1118,22 @@ CONTAINS
                   IF( (CTRNY(M)+CTRNY(L)) .GE. 1.96 )  THEN
 #ifdef W3_OMPG
                     !$OMP ATOMIC
+#elif W3_GPU
+                    !$ACC ATOMIC
 #endif
                     BCNt(M) = BCNt(M) + FVTRN
                   ELSE IF( VLCFLY(j) .GE. 0.0 )  THEN
 #ifdef W3_OMPG
                     !$OMP ATOMIC
+#elif W3_GPU
+                    !$ACC ATOMIC
 #endif
                     BCNt(M) = BCNt(M) + FVTRN*CTRNY(M)*CTRNY(L)
                   ELSE
 #ifdef W3_OMPG
                     !$OMP ATOMIC
+#elif W3_GPU
+                    !$ACC ATOMIC
 #endif
                     BCNt(M) = BCNt(M) + FVTRN*CTRNY(M)
                   ENDIF
@@ -841,6 +1150,8 @@ CONTAINS
               !! One cosine factor is also needed to be divided for SMC grid.
 #ifdef W3_OMPG
               !$OMP Parallel DO Private(n)
+#elif W3_GPU
+              !$ACC LOOP INDEPENDENT
 #endif
               DO n=icl, jcl
                 CQ(n)=CQA(n) + BCNt(n)/( CLATS(n)*            &
@@ -849,6 +1160,8 @@ CONTAINS
               ENDDO
 #ifdef W3_OMPG
               !$OMP END Parallel DO
+#elif W3_GPU
+              !$ACC END KERNELS
 #endif
               !Li  Polar cell needs a special area factor, multi-level case.
               IF( ARCTC .AND. jcl .EQ. NSEA ) THEN
@@ -879,30 +1192,88 @@ CONTAINS
           RD1    = 0.
           RD2    = 1.
         END IF
+#ifdef W3_GPU
+        !$ACC KERNELS
+        !$ACC LOOP INDEPENDENT
+#endif
         DO IBI=1, NBI
           ISEA     = ISBPI(IBI)
           CQ(ISEA) = (RD1*BBPI0(ISP,IBI) + RD2*BBPIN(ISP,IBI))   &
                /CG(IK,ISEA)
         END DO
+#ifdef W3_GPU
+        !$ACC END KERNELS
+#endif
       ENDIF
       !
       !!    End of ITLOC DO
     ENDDO
 
     !  Average with 1-2-1 scheme.  JGLi20Aug2015
-    IF(FVERG) CALL SMCAverg(CQ)
+    IF ( FVERG ) THEN
+#ifdef W3_GPU
+!/ LS The SMCAverg routine is inlined to facilitate the OpenACC implicit directives.
+      !$ACC KERNELS
+      AUN = 0.
+      AVN = 0.
+      CNST0 = CQ(NSEA)
+      !$ACC LOOP INDEPENDENT PRIVATE(i, L, M, CNST5)
+      DO i=1, NUFc
+        L=IJKUFc5(i)
+        M=IJKUFc6(i)
+        CNST5=Real( IJKUFc(3,i) )*(CQ(M)+CQ(L))
+        IF( L > 0 ) THEN
+          !$ACC ATOMIC
+          AUN(L) = AUN(L) + CNST5
+        ENDIF
+        IF( M > 0 ) THEN
+          !$ACC ATOMIC
+          AUN(M) = AUN(M) + CNST5
+         ENDIF
+      END DO
+      !$ACC LOOP INDEPENDENT PRIVATE(j, L, M, CNST6)
+      DO j=1, NVFc
+        L=IJKVFc5(j)
+        M=IJKVFc6(j)
+        CNST6=Real( IJKVfc(3,j) )*(CQ(M)+CQ(L))
+        IF( L > 0 ) THEN
+          !$ACC ATOMIC
+          AVN(L) = AVN(L) + CNST6
+        ENDIF
+        IF( M > 0 ) THEN
+          !$ACC ATOMIC
+          AVN(M) = AVN(M) + CNST6
+        ENDIF
+      END DO
+      !$ACC LOOP INDEPENDENT PRIVATE(n, CNST3, CNST4)
+      DO n=1, NSEA
+        CNST3=0.125/Real( IJKCel3(n) )
+        CNST4=0.125/Real( IJKCel4(n) )
+        CQ(n)= AUN(n)*CNST4 + AVN(n)*CNST3
+       END DO
+      IF( ARCTC ) CQ(NSEA) = CNST0
+      !$ACC END KERNELS
+#else
+      CALL SMCAverg(CQ)
+#endif
+    ENDIF
 
     !
     ! 4.  Store results in VQ in proper format --------------------------- *
     !
 #ifdef W3_OMPG
     !$OMP Parallel DO Private(ISEA)
+#elif W3_GPU
+    !$ACC KERNELS
+    !$ACC LOOP INDEPENDENT
 #endif
     DO ISEA=1, NSEA
       VQ(ISEA) =  MAX ( 0. , CQ(ISEA)*CG(IK,ISEA) )
     END DO
 #ifdef W3_OMPG
     !$OMP END Parallel DO
+#elif W3_GPU
+    !$ACC END KERNELS
 #endif
     !
     RETURN
@@ -3315,9 +3686,16 @@ CONTAINS
     ! 1.  Shared memory version ------------------------------------------ /
     !
 #ifdef W3_SHRD
+#ifdef W3_GPU
+!$ACC KERNELS      
+!$ACC LOOP INDEPENDENT
+#endif
     DO ISEA=1, NSEA
       FIELD(ISEA) = A(ISPEC,ISEA)
     END DO
+#ifdef W3_GPU
+!$ACC END KERNELS      
+#endif
     !
     RETURN
 #endif
@@ -3547,10 +3925,17 @@ CONTAINS
     ! 1.  Shared memory version ------------------------------------------ *
     !
 #ifdef W3_SHRD
+#ifdef W3_GPU
+!$ACC KERNELS      
+!$ACC LOOP INDEPENDENT
+#endif
     DO ISEA=1, NSEA
       IXY           = MAPSF(ISEA,3)
       IF ( MAPSTA(IXY) .GE. 1 ) A(ISPEC,ISEA) = FIELD(ISEA)
     END DO
+#ifdef W3_GPU
+!$ACC END KERNELS      
+#endif
     !
     RETURN
 #endif

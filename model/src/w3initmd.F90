@@ -448,6 +448,21 @@ CONTAINS
 #ifdef W3_UOST
     USE W3UOSTMD, ONLY: UOST_SETGRID
 #endif
+#ifdef W3_GPU
+    USE W3GDATMD, ONLY: NK, NTH, DTH, XFR, ESIN, ECOS, SIG, NX, NY,  &
+         NSEA, SX, SY, MAPSF, FUNO3, FVERG,           &
+         IJKCel, IJKUFc, IJKVFc, NCel, NUFc, NVFc,    &
+         IJKCel3, IJKCel4,                            &
+         IJKVFc5, IJKVFc6,IJKUFc5,IJKUFc6,            &
+         NLvCel, NLvUFc, NLvVFc, NRLv, MRFct,         &
+         DTCFL, CLATS, DTMS, CTRNX, CTRNY
+    USE W3GDATMD, ONLY: NGLO, ANGARC, ARCTC, CLATF
+    USE W3ADATMD, ONLY: CG, WN, U10, CX, CY, ATRNX, ATRNY, ITIME
+    !
+    USE W3IDATMD, ONLY: FLCUR
+    USE W3ODATMD, ONLY: NDSE, NDST, FLBPI, NBI, TBPI0, TBPIN,       &
+         ISBPI, BBPI0, BBPIN
+#endif
     !/
 #ifdef W3_MPI
     INCLUDE "mpif.h"
@@ -1518,6 +1533,23 @@ CONTAINS
 #endif
     !
     ! 8.  Final MPI set up ----------------------------------------------- /
+#ifdef W3_GPU
+!/LS SMC Grid - GDAT
+!$ACC ENTER DATA COPYIN(NK, NTH, DTH, XFR, ESIN, ECOS, SIG, NX, NY) &
+!$ACC            COPYIN(NSEA, SX, SY, MAPSF, FUNO3, FVERG, IJKCel ) &
+!$ACC            COPYIN(IJKUFc, IJKVFc, NCel, NUFc, NVFc, IJKCel3 ) &
+!$ACC            COPYIN(IJKCel4, IJKVFc5, IJKVFc6,IJKUFc5,IJKUFc6 ) &
+!$ACC            COPYIN(NLvCel, NLvUFc, NLvVFc, NRLv, MRFct, DTCFL) &
+!$ACC            COPYIN(CLATS, DTMS, CTRNX, CTRNY, NGLO, ANGARC   ) &
+!$ACC            COPYIN(ARCTC, CLATF)
+!/LS SMC Grid - ADAT
+!$ACC ENTER DATA COPYIN(CG, WN, U10, CX, CY, ATRNX, ATRNY, ITIME)
+!/LS SMC Grid - IDAT
+!$ACC ENTER DATA COPYIN(FLCUR)
+!/LS SMC Grid - ODAT
+!$ACC ENTER DATA COPYIN(NDSE, NDST, FLBPI, NBI, TBPI0, TBPIN)&
+!$ACC            COPYIN(ISBPI, BBPI0, BBPIN)
+#endif
     !
 #ifdef W3_MPI
     CALL W3MPII ( IMOD )

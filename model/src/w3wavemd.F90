@@ -601,6 +601,14 @@ CONTAINS
     REAL                    :: BACANGL
 #endif
     integer :: memunit
+#ifdef W3_GPU
+    !/LS Hoisted automatic arrays from W3PSMC
+    REAL, ALLOCATABLE, DIMENSION(:) ::  FCNt, AFCN, BCNt, UCFL, VCFL, &
+                          CQ, CQA, CXTOT, CYTOT, AUN, AVN
+    REAL, ALLOCATABLE, DIMENSION(:) :: ULCFLX, FUMD, FUDIFX
+    REAL, ALLOCATABLE, DIMENSION(:) :: VLCFLY, FVMD, FVDIFY
+!$ACC DECLARE CREATE(TAUWX, TAUWY, FIELD)
+#endif
     !/ ------------------------------------------------------------------- /
     ! 0.  Initializations
     !
@@ -627,6 +635,14 @@ CONTAINS
 
     !
     ALLOCATE(TAUWX(NSEAL), TAUWY(NSEAL))
+#ifdef W3_GPU
+    IF ( .NOT. ALLOCATED(FCNt) ) THEN 
+       ALLOCATE(FCNt(-9:NCel), AFCN(-9:NCel), BCNt(-9:NCel), UCFL(-9:NCel), VCFL(-9:NCel),&
+                CQ(-9:NCel), CQA(-9:NCel), CXTOT(-9:NCel), CYTOT(-9:NCel), AUN(-9:NSEA),  &
+                AVN(-9:NSEA), FUMD(NUFc), FUDIFX(NUFc), ULCFLX(NUFc), FVMD(NVFc),         &
+                FVDIFY(NVFc), VLCFLY(NVFc))
+   END IF
+#endif
 #ifdef W3_REFRX
     ALLOCATE(CIK(NSEAL))
 #endif
@@ -684,6 +700,9 @@ CONTAINS
       ALLOCATE ( FIELD(1-NY:NY*(NX+2)) )
     ENDIF
     !
+#ifdef W3_GPU
+!$ACC ENTER DATA COPYIN(FIELD)
+#endif
     LOCAL   = IAPROC .LE. NAPROC
     UGDTUPDATE = .FALSE.
     IF (FLAGLL) THEN
@@ -1881,7 +1900,13 @@ CONTAINS
                     IX = 1
 #ifdef W3_SMC
                     !!Li   Propagation on SMC grid uses UNO2 scheme.
+#ifdef W3_GPU
+                    CALL W3PSMC (ISPEC,DTG,FIELD,FCNt,AFCN,BCNt,UCFL,VCFL,CQ,   &
+                                 CQA,ULCFLX,VLCFLY,FUMD,FUDIFX,FVMD,FVDIFY,CXTOT,&
+                                 CYTOT, AUN, AVN)
+#else
                     CALL W3PSMC ( ISPEC, DTG, FIELD )
+#endif
 #endif
                     !
                   ELSE IF (GTYPE .EQ. UNGTYPE) THEN
@@ -2163,7 +2188,6 @@ CONTAINS
             !$OMP&                  REFLEC,REFLED,D50,PSIC,TMP1,TMP2,TMP3,TMP4)
             !$OMP DO SCHEDULE (DYNAMIC,1)
 #endif
-
             !
             DO JSEA=1, NSEAL
               CALL INIT_GET_ISEA(ISEA, JSEA)
@@ -2828,6 +2852,12 @@ CONTAINS
     !
     DEALLOCATE(FIELD)
     DEALLOCATE(TAUWX, TAUWY)
+#ifdef W3_GPU
+    IF ( ALLOCATED(FCNt) ) THEN 
+       DEALLOCATE(FCNt, AFCN, BCNt, UCFL, VCFL, CQ, CQA, CXTOT, CYTOT, AUN, AVN, &
+                  FUMD, FUDIFX, ULCFLX, FVMD, FVDIFY, VLCFLY)
+   END IF
+#endif
     !
     call print_memcheck(memunit, 'memcheck_____:'//' WW3_WAVE END W3WAVE')
     !
