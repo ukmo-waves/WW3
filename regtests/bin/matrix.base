@@ -263,6 +263,10 @@
       echo "$rtst -s PR2_UNO -w work_PR2_UNO              $ww3 ww3_tp2.2" >> matrix.body
       echo "$rtst -s PR2_UNO -w work_PR2_UNO              $ww3 ww3_tp2.3" >> matrix.body
       echo "$rtst -s PR2_UNO -w work_PR2_UNO              $ww3 ww3_tp2.4" >> matrix.body
+      echo "$rtst -s PR2_UNO_GPU -w work_PR2_UNO_GPU      $ww3 ww3_tp2.1" >> matrix.body
+      echo "$rtst -s PR2_UNO_GPU -w work_PR2_UNO_GPU      $ww3 ww3_tp2.2" >> matrix.body
+      echo "$rtst -s PR2_UNO_GPU -w work_PR2_UNO_GPU      $ww3 ww3_tp2.3" >> matrix.body
+      echo "$rtst -s PR2_UNO_GPU -w work_PR2_UNO_GPU      $ww3 ww3_tp2.4" >> matrix.body
       echo "$rtst -s PR2_UNO -w work_PR2_UNO_curv -g curv $ww3 ww3_tp2.4" >> matrix.body
       echo "$rtst -s PR2_UNO -w work_PR2_UNO              $ww3 ww3_tp2.5" >> matrix.body
       echo "$rtst -s PR2_UNO -w work_PR2_UNO_a    -g a    $ww3 ww3_tp2.9" >> matrix.body
@@ -312,6 +316,10 @@
       echo "$rtst -s PR2_UNO_MPI  -w work_PR2_UNO_MPI              -f -p $mpi -n $np $ww3 ww3_tp2.2" >> matrix.body
       echo "$rtst -s PR2_UNO_MPI  -w work_PR2_UNO_MPI              -f -p $mpi -n $np $ww3 ww3_tp2.3" >> matrix.body
       echo "$rtst -s PR2_UNO_MPI  -w work_PR2_UNO_MPI              -f -p $mpi -n $np $ww3 ww3_tp2.4" >> matrix.body
+      echo "$rtst -s PR2_UNO_MPI_GPU -w work_PR2_UNO_MPI_GPU       -f -p $mpi -n $np $ww3 ww3_tp2.1" >> matrix.body
+      echo "$rtst -s PR2_UNO_MPI_GPU -w work_PR2_UNO_MPI_GPU       -f -p $mpi -n $np $ww3 ww3_tp2.2" >> matrix.body
+      echo "$rtst -s PR2_UNO_MPI_GPU -w work_PR2_UNO_MPI_GPU       -f -p $mpi -n $np $ww3 ww3_tp2.3" >> matrix.body
+      echo "$rtst -s PR2_UNO_MPI_GPU -w work_PR2_UNO_MPI_GPU       -f -p $mpi -n $np $ww3 ww3_tp2.4" >> matrix.body
       echo "$rtst -s PR2_UNO_MPI  -w work_PR2_UNO_curv_MPI -g curv -f -p $mpi -n $np $ww3 ww3_tp2.4" >> matrix.body
       echo "$rtst -s PR2_UNO_MPI  -w work_PR2_UNO_MPI              -f -p $mpi -n $np $ww3 ww3_tp2.5" >> matrix.body
       echo "$rtst -s PR2_UNO_MPI  -w work_PR2_UNO_a_MPI    -g a    -f -p $mpi -n $np $ww3 ww3_tp2.9" >> matrix.body
