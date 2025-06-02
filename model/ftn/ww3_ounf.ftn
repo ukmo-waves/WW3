@@ -931,6 +931,7 @@
       REAL,DIMENSION(:),  ALLOCATABLE    :: LON, LAT, FREQ
       REAL,DIMENSION(:,:),  ALLOCATABLE  :: LON2D, LAT2D, ANGLD2D
 !/RTD      REAL,DIMENSION(:,:),  ALLOCATABLE  :: LON2DEQ, LAT2DEQ
+!/SMC      DOUBLE PRECISION,DIMENSION(:),  ALLOCATABLE    :: LONRGRD, LATRGRD
       ! Make the below allocatable to avoid stack overflow on some machines 
       REAL, ALLOCATABLE       :: X1(:,:), X2(:,:), XX(:,:), XY(:,:),   &
                                  XK(:,:,:), XXK(:,:,:), XYK(:,:,:),    & 
@@ -2069,6 +2070,8 @@
 !/SMC                     ! Regular gridded file
 !/SMC                     IF(.NOT.ALLOCATED(lon)) ALLOCATE(lon(NXO))
 !/SMC                     IF(.NOT.ALLOCATED(lat)) ALLOCATE(lat(NYO))
+!/SMC                     IF(.NOT.ALLOCATED(LONRGRD)) ALLOCATE(LONRGRD(NXO))
+!/SMC                     IF(.NOT.ALLOCATED(LATRGRD)) ALLOCATE(LATRGRD(NYO))
 !/RTD                     ! Intermediate EQUatorial lat/lon arrays for de-rotation
 !/RTD                     ! of rotated pole coordinates:
 !/RTD                     !!IF(.NOT.ALLOCATED(LON2DEQ)) ALLOCATE(LON2DEQ(NXO,NYO))
@@ -2135,16 +2138,19 @@
 !/RTD                                  ANGLD2D(:,1), POLAT, POLON, RTDNY*RTDNX)
 !/SMC                  ELSE
 !/SMC                    ! CB: Regridded SMC data
-!/SMC                    SXD=DBLE(0.000001d0*DNINT(1d6*(DBLE(DXO)) ))
-!/SMC                    SYD=DBLE(0.000001d0*DNINT(1d6*(DBLE(DYO)) ))
-!/SMC                    X0D=DBLE(0.000001d0*DNINT(1d6*(DBLE(SXO)) ))
-!/SMC                    Y0D=DBLE(0.000001d0*DNINT(1d6*(DBLE(SYO)) ))
+!/SMC                    SXD=DBLE(0.00000001d0*DNINT(1d8*(DBLE(DXO)) ))
+!/SMC                    SYD=DBLE(0.00000001d0*DNINT(1d8*(DBLE(DYO)) ))
+!/SMC                    X0D=DBLE(0.00000001d0*DNINT(1d8*(DBLE(SXO)) ))
+!/SMC                    Y0D=DBLE(0.00000001d0*DNINT(1d8*(DBLE(SYO)) ))
+
 !/SMC                    DO i=1,NXO
 !/SMC                      lon(i)=REAL(X0D+SXD*DBLE(i-1))
+!/SMC                      LONRGRD(i)=X0D+SXD*DBLE(i-1)
 !/RTD                      LON2DEQ(i,:) = lon(i)
 !/SMC                    END DO
 !/SMC                    DO i=1,NYO
 !/SMC                      lat(i)=REAL(Y0D+SYD*DBLE(i-1))
+!/SMC                      LATRGRD(i)=Y0D+SYD*DBLE(i-1)
 !/RTD                      LAT2DEQ(:,i) = lat(i)
 !/SMC                    END DO
 !/SMC                    WRITE(STR2,'(F12.7)') DYO
@@ -2293,15 +2299,20 @@
               ! If regular grid
               IF (GTYPE.EQ.RLGTYPE .OR. GTYPE.EQ.SMCTYPE) THEN
                 IF(SMCGRD) THEN ! CB: shelter original code from SMC grid
-!/SMC                  IRET=NF90_PUT_VAR(NCID,VARID(1),LON(:))
-!/SMC                  CALL CHECK_ERR(IRET)
-!/SMC                  IRET=NF90_PUT_VAR(NCID,VARID(2),LAT(:))
-!/SMC                  CALL CHECK_ERR(IRET)
 !/SMC                  IF(SMCOTYPE .EQ. 1) THEN
-!/SMC                    ! For type 1 SCM file also put lat/lons and cell sizes:
+!/SMC                    IRET=NF90_PUT_VAR(NCID,VARID(1),LON(:))
+!/SMC                    CALL CHECK_ERR(IRET)
+!/SMC                    IRET=NF90_PUT_VAR(NCID,VARID(2),LAT(:))
+!/SMC                    CALL CHECK_ERR(IRET)
+!/SMC                    ! For type 1 SMC file also put lat/lons and cell sizes:
 !/SMC                    IRET=NF90_PUT_VAR(NCID,VARID(5),SMCCX)
 !/SMC                    CALL CHECK_ERR(IRET)
 !/SMC                    IRET=NF90_PUT_VAR(NCID,VARID(6),SMCCY)
+!/SMC                    CALL CHECK_ERR(IRET)
+!/SMC                  ELSE ! KS: write regridded SMC coords with double precision
+!/SMC                    IRET=NF90_PUT_VAR(NCID,VARID(1),LONRGRD(:))
+!/SMC                    CALL CHECK_ERR(IRET)
+!/SMC                    IRET=NF90_PUT_VAR(NCID,VARID(2),LATRGRD(:))
 !/SMC                    CALL CHECK_ERR(IRET)
 !/SMC                  ENDIF
                 ELSE ! SMCGRD
@@ -3213,6 +3224,7 @@
       IF (ALLOCATED(LON)) DEALLOCATE(LON, LAT)
       IF (ALLOCATED(LON2D)) DEALLOCATE(LON2D, LAT2D)
 !/RTD      IF (ALLOCATED(LON2DEQ)) DEALLOCATE(LAT2DEQ, LON2DEQ, ANGLD2D)
+!/SMC      IF (ALLOCATED(LONRGRD)) DEALLOCATE(LONRGRD, LATRGRD)
 !
       RETURN
 !
@@ -3374,10 +3386,11 @@
 !/SMC              IRET = NF90_PUT_ATT(NCID, VARID(6), 'valid_min', 1)
 !/SMC              IRET = NF90_PUT_ATT(NCID, VARID(6), 'valid_max', 256)
 !/SMC            ELSE
-!/SMC              ! Regirdded regular SMC grid - use lon/lat dimensions:
-!/SMC              IRET = NF90_DEF_VAR(NCID, 'longitude', NF90_FLOAT, DIMID(2), VARID(1))
+!/SMC              ! Regridded regular SMC grid - use lon/lat dimensions:
+!/SMC              ! These are now written to netcdf as doubles (K. Stokes)
+!/SMC              IRET = NF90_DEF_VAR(NCID, 'longitude', NF90_DOUBLE, DIMID(2), VARID(1))
 !/SMC              call CHECK_ERR(IRET)
-!/SMC              IRET = NF90_DEF_VAR(NCID, 'latitude', NF90_FLOAT, DIMID(3), VARID(2))
+!/SMC              IRET = NF90_DEF_VAR(NCID, 'latitude', NF90_DOUBLE, DIMID(3), VARID(2))
 !/SMC              call CHECK_ERR(IRET)
 !/SMC            ENDIF
           ELSE

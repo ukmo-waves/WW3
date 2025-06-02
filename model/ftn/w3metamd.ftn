@@ -25,7 +25,7 @@
       TYPE META_PAIR_T
         CHARACTER(LEN=64)  :: ATTNAME = UNSETC
         CHARACTER(LEN=120) :: ATTVAL = UNSETC
-        CHARACTER          :: TYPE = 'c'    ! c,i,f/r
+        CHARACTER          :: TYPE = 'c'    ! c,i,f/r,d
         TYPE(META_PAIR_T), POINTER  :: NEXT
       END TYPE META_PAIR_T
 
@@ -40,6 +40,7 @@
         MODULE PROCEDURE META_LIST_APPEND_R
         MODULE PROCEDURE META_LIST_APPEND_I
         MODULE PROCEDURE META_LIST_APPEND_C
+        MODULE PROCEDURE META_LIST_APPEND_D
       END INTERFACE META_LIST_APPEND
 
 
@@ -232,6 +233,34 @@
       END SUBROUTINE META_LIST_APPEND_C
 
 !     Append pair to list
+
+!/------------------------------------------------------------------ /
+!> @brief Append DOUBLE value attribute to list
+!>
+!> @param[in,out] LIST     The list to append to
+!> @param[in]     ATTNAME  The attribute name
+!> @param[in]     DVAL     The attribute value (DOUBLE)
+!>
+!> @author Kit Stokes
+!/------------------------------------------------------------------- /
+      SUBROUTINE META_LIST_APPEND_D(LIST, ATTNAME, DVAL)
+
+      IMPLICIT NONE
+
+      TYPE(META_LIST_T), INTENT(INOUT) :: LIST
+      CHARACTER(*), INTENT(IN)         :: ATTNAME
+      DOUBLE PRECISION, INTENT(IN)     :: DVAL
+!/------------------------------------------------------------------- /
+!/ Local parameters
+!/
+      TYPE(META_PAIR_T) :: META
+
+      META%ATTNAME = ATTNAME
+      WRITE(META%ATTVAL,*) DVAL
+      META%TYPE = 'd'
+      CALL META_LIST_APPEND(LIST, META)
+ 
+      END SUBROUTINE META_LIST_APPEND_D
 
 
 !/ ------------------------------------------------------------------- /
