@@ -93,7 +93,7 @@ endif()
 
 # Executables to always build
 set(programs ww3_strt ww3_grid ww3_bound ww3_outf ww3_outp ww3_trck ww3_grib
-  ww3_gint gx_outf gx_outp ww3_uprstr ww3_shel ww3_prep ww3_gspl ww3_multi ww3_systrk)
+  ww3_gint gx_outf gx_outp ww3_uprstr ww3_shel ww3_prep ww3_gspl ww3_multi ww3_systrk ww3_mopp ww3_spec2ibm ww3_smcint)
 
 # Executables to build if NetCDF is found
 set(netcdf_programs ww3_ounf ww3_ounp ww3_bounc ww3_trnc ww3_prnc)

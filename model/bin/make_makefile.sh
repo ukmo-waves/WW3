@@ -116,7 +116,7 @@
   progs="ww3_grid ww3_strt ww3_prep ww3_prnc ww3_shel ww3_multi ww3_sbs1
          ww3_outf ww3_outp ww3_trck ww3_trnc ww3_grib gx_outf gx_outp ww3_ounf
          ww3_ounp ww3_gspl ww3_gint ww3_bound ww3_bounc ww3_systrk $tideprog"
-  progs="$progs ww3_multi_esmf  ww3_uprstr"
+  progs="$progs ww3_multi_esmf ww3_uprstr ww3_mopp ww3_spec2ibm ww3_smcint"
   progs="$progs libww3"
   progs="$progs libww3.so"
 
@@ -154,6 +154,12 @@
       libww3) IDstring='Object file archive' ;;
       libww3.so) IDstring='Object file archive' ;;
       ww3_uprstr) IDstring='Update Restart File' ;;
+#
+## --- Met Office specific programs:
+#
+       ww3_mopp) IDstring='Gridded Met Office PP output' ;;
+   ww3_spec2ibm) IDstring='Spectral IBM/GPCS conversion' ;;
+     ww3_smcint) IDstring='SMC gridded interpolation' ;;
     esac
 
 
@@ -436,6 +442,11 @@
          'W3OUNFMETAMD' ) modtest=w3ounfmetamd.o ;;
          'W3METAMD'     ) modtest=w3metamd.o ;;
          'W3GRIDMD'     ) modtest=w3gridmd.o ;;
+#
+## Met Office specific modules
+#
+         'PPLOOKMD'     ) modtest=pplookmd.o ;;
+         'W3NMLMOPPMD'  ) modtest=w3nmlmoppmd.o ;;
          *              ) modfound=no ;;
       esac
 

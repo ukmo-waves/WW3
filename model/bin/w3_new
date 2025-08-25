@@ -221,7 +221,8 @@
                                    touch ww3_ounp.F90
                                    touch ww3_ounf.F90
                                    touch ww3_shel.F90
-                                   touch gx_outp.F90 ;;
+                                   touch gx_outp.F90 
+                                   touch ww3_mopp.F90 ;;
      's_db'   ) cd $main_dir/src ; touch w3gdatmd.F90
                                    touch w3srcemd.F90
                                    touch w3iogrmd.F90

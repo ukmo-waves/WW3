@@ -1,0 +1,334 @@
+!/ ------------------------------------------------------------------- /
+      PROGRAM WW3_SMCINT
+!/
+!/                  +-----------------------------------+
+!/                  | WAVEWATCH III           NOAA/NCEP |
+!/                  |        Chris Bunney, UKMO         |
+!/                  |           H. L. Tolman            |
+!/                  |                        FORTRAN 90 |
+!/                  | Last update :         12-Jan-2016 |
+!/                  +-----------------------------------+
+!/
+!/    14-Oct-2016 : Extend to use further part. params  ( version 4.18 )
+!/
+!/    Copyright 2009-2012 National Weather Service (NWS),
+!/       National Oceanic and Atmospheric Administration.  All rights
+!/       reserved.  WAVEWATCH III is a trademark of the NWS. 
+!/       No unauthorized use without permission.
+!/
+!  1. Purpose :
+!
+!     Post-processing of grid output to Met Office PP format.
+!
+!  2. Method :
+!
+!  3. Parameters :
+!
+!  4. Subroutines used :
+!
+!      Name      Type  Module   Description
+!     ----------------------------------------------------------------
+!      W3NMOD    Subr. W3GDATMD Set number of model.
+!      W3SETG    Subr.   Id.    Point to selected model.
+!      W3NDAT    Subr. W3WDATMD Set number of model for wave data.
+!      W3SETW    Subr.   Id.    Point to selected model for wave data.
+!      W2NAUX    Subr. W3ADATMD Set number of model for aux data.
+!      W3SETA    Subr.   Id.    Point to selected model for aux data.
+!      ITRACE    Subr. W3SERVMD Subroutine tracing initialization.
+!      STRACE    Subr.   Id.    Subroutine tracing.
+!      NEXTLN    Subr.   Id.    Get next line from input file.
+!      EXTCDE    Subr.   Id.    Abort program as graceful as possible.
+!      STME21    Subr. W3TIMEMD Convert time to string.
+!      TICK21    Subr.   Id.    Advance time.
+!      DSEC21    Func.   Id.    Difference between times.
+!      W3IOGR    Subr. W3IOGRMD Reading/writing model definition file.
+!      W3IOGO    Subr. W3IOGOMD Reading/writing raw gridded data file.
+!      W3EXGO    Subr. Internal Execute grid output.
+!      W3TXTS    Subr. Internal Text output at sea points only.
+!     ----------------------------------------------------------------
+!
+!  5. Called by :
+!
+!     None, stand-alone program.
+!
+!  6. Error messages :
+!
+!     Checks on input, checks in W3IOxx.
+!
+!  7. Remarks :
+!
+!  8. Structure :
+!
+!     See source code.
+!
+!  9. Switches :
+!
+!     !/S     Enable subroutine tracing.
+!     !/RTD   Enable variable de-rotation.
+!
+! 10. Source code :
+!
+!/ ------------------------------------------------------------------- /
+      USE CONSTANTS
+!/
+      USE W3WDATMD, ONLY: W3NDAT, W3SETW
+      USE W3ADATMD, ONLY: W3NAUX, W3SETA
+      USE W3ODATMD, ONLY: W3NOUT, W3SETO
+      USE W3SERVMD, ONLY : ITRACE, NEXTLN, EXTCDE
+#ifdef W3_S
+      USE W3SERVMD, ONLY : STRACE
+#endif
+      USE W3IOGRMD, ONLY: W3IOGR
+!/
+      USE W3GDATMD
+      USE W3ODATMD, ONLY: NDSO, NDSE, NDST, NOGRP, NGRPP, IDOUT,      &
+                          UNDEF, FLOGRD, FNMPRE, NOSWLL, NOGE
+
+
+      USE CONSTANTS, ONLY : DERA, RADIUS
+#ifdef W3_RTD
+      USE W3SERVMD, ONLY: W3LLTOEQ
+#endif
+      USE W3SMCOMD ! For SMC regridding
+!
+      USE W3NMLSMCINTMD
+!
+      IMPLICIT NONE
+!/
+!/ ------------------------------------------------------------------- /
+!/ Local parameters
+!/
+      INTEGER                 :: NDSI, NDSM, NDSOG, NDSDAT, NDSDT,    &
+                                 NDSTRC, NTRACE, IERR, I, J, IFI, IFJ,&
+                                 TOUT(2), TDUM(2), IOTEST
+!
+      CHARACTER(LEN=128)      :: ENV
+      CHARACTER               :: COMSTR*1
+
+!
+#ifdef W3_S
+      INTEGER, SAVE           :: IENT = 0
+#endif
+      DOUBLE PRECISION        :: SXOUT, SYOUT, DXOUT, DYOUT
+      INTEGER                 :: NXOUT, NYOUT
+
+      INTEGER                 :: ISEA, N
+      REAL, ALLOCATABLE       :: mlon(:), mlat(:), olon(:,:), olat(:,:)
+#ifdef W3_RTD
+     REAL, ALLOCATABLE        :: tmplon(:,:), tmplat(:,:), ang(:,:)
+#endif                           
+      DOUBLE PRECISION        :: lat,lon
+      REAL                    :: PLONO, PLATO ! Not used yet - output pole
+!
+      LOGICAL                 :: FLGNML
+      TYPE(NML_GRID_T)        :: NML_GRID
+      TYPE(NML_FILE_T)        :: NML_FILE
+
+!
+!/ ------------------------------------------------------------------- /
+!/
+! 1.  IO set-up.
+!
+      CALL W3NMOD ( 1, 6, 6 )
+      CALL W3SETG ( 1, 6, 6 )
+      CALL W3NDAT (    6, 6 )
+      CALL W3SETW ( 1, 6, 6 )
+      CALL W3NAUX (    6, 6 )
+      CALL W3SETA ( 1, 6, 6 )
+      CALL W3NOUT (    6, 6 )
+      CALL W3SETO ( 1, 6, 6 )
+!
+      NDSI   = 10
+      NDSM   = 20
+      NDSOG  = 20
+      NDSDAT = 50
+!
+      NDSTRC =  6
+      NTRACE = 10
+
+      PLONO = 0.0
+      PLATO = 90.0  ! Standard pole assumed for now...
+
+      CALL ITRACE ( NDSTRC, NTRACE )
+!
+#ifdef W3_S
+      CALL STRACE (IENT, 'W3OUTF')
+#endif
+!
+      WRITE (NDSO,900)
+!
+      INQUIRE(FILE=TRIM(FNMPRE)//"ww3_smcint.nml", EXIST=FLGNML) 
+      IF (FLGNML) THEN
+        ! Read .nml file
+        CALL W3NMLSMCINT (NDSI, TRIM(FNMPRE)//'ww3_smcint.nml',        &
+                        NML_GRID, NML_FILE, IERR)
+
+        NXO = NML_GRID%NXO
+        NYO = NML_GRID%NYO
+        SXO = NML_GRID%SXO
+        SYO = NML_GRID%SYO
+        DXO = NML_GRID%DXO
+        DYO = NML_GRID%DYO
+
+      ELSE ! FLGNML
+        J      = LEN_TRIM(FNMPRE)
+        OPEN (NDSI,FILE=FNMPRE(:J)//'ww3_smcint.inp',STATUS='OLD',        &
+              ERR=800,IOSTAT=IERR)
+        READ (NDSI,'(A)',END=801,ERR=802) COMSTR
+        IF (COMSTR.EQ.' ') COMSTR = '$'
+        WRITE (NDSO,901) COMSTR
+!
+        CALL NEXTLN ( COMSTR , NDSI , NDSE )
+        READ (NDSI,*,END=801,ERR=802) NXO, NYO
+        READ (NDSI,*,END=801,ERR=802) SXO, SYO, DXO, DYO
+      ENDIF ! FLGNML
+
+      WRITE(NDSO, 4130) NXO, NYO, SXO, SYO, DXO, DYO
+
+!
+!--- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+! 2.  Read model definition file.
+!
+      CALL W3IOGR ( 'READ', NDSM )
+      WRITE (NDSO,920) GNAME
+!
+! 3. Allocate arrays
+!
+      PRINT*,'NSEA:',NSEA
+      ALLOCATE(NNIDX(NXO,NYO))
+      ALLOCATE(xdist(NXO,NYO), ydist(NXO,NYO))
+      ALLOCATE(mlon(NSEA), mlat(NSEA), olon(NXO,NYO), olat(NXO,NYO))
+#ifdef W3_RTD
+     ALLOCATE(tmplon(NXO,NYO), tmplat(NXO,NYO), ang(NXO,NYO))
+#endif
+
+!
+! 4 Calcualate model and output grid cells
+!
+      ! Determine smallest cell size factor:
+      cfac = 2**(NRLv - 1)
+
+      ! Get smallest SMC grid cells step size:
+      dlat = SY / cfac
+      dlon = SX / cfac
+
+      ! Model lat/lons:
+      print *,'model lat lons'
+      DO ISEA = 1,NSEA
+         mlon(isea) = (X0-0.5*SX) + (IJKCel(1,ISEA) + 0.5 * IJKCel(3,ISEA)) * dlon
+         mlat(isea) = (Y0-0.5*SY) + (IJKCel(2,ISEA) + 0.5 * IJKCel(4,ISEA)) * dlat
+      ENDDO
+
+      print *,'output grid centres'
+      ! Generate output grid cell centres:
+      DO I=1,NXO
+        DO J=1,NYO
+           olon(i,J) = SXO + (I-1) * DXO
+           olat(i,J) = SYO + (J-1) * DYO
+        ENDDO
+      ENDDO
+
+#ifdef W3_RTD
+          tmplat = olat
+          tmplon = olon
+          PRINT*,'Rotating coordinates'
+          CALL W3LLTOEQ ( tmplat, tmplon, olat, olon,     &              
+                            ang, POLAT, POLON, NXO*NYO )             
+          PRINT*,'Rotating coordinates complete'
+#endif
+
+
+!
+! 5a. Use KDTree search to find model cells
+!
+    ! TODO
+
+!
+! 5b. Find cycle over output grid points and find containing SMC cell:
+!
+      ! BRUTE FORCE!
+      NNIDX(:,:) = -1
+!$OMP PARALLEL
+!$OMP DO PRIVATE(I, J, lon, lat)
+      DO I=1,NXO
+        PRINT*,I,' of ',NXO
+        DO J=1,NYO
+           lon = olon(i,j)
+           lat = olat(i,j)
+           IF(lon .LT. X0 - SX / 2) lon = lon + 360.0
+           IF(lon .GT. (X0 + (NX-1) * SX) + 0.5 * SX) lon = lon - 360.0
+           DO ISEA=1,NSEA
+              IF(mlon(ISEA) - 0.5 * IJKCel(3,ISEA) * dlon .LE. lon .AND.    &
+                    mlon(ISEA) + 0.5 * IJKCel(3,ISEA) * dlon .GE. lon .AND.    &
+                    mlat(ISEA) - 0.5 * IJKCel(4,ISEA) * dlat .LE. lat .AND.    &
+                    mlat(ISEA) + 0.5 * IJKCel(4,ISEA) * dlat .GE. lat ) THEN
+                 ! Match!
+                 NNIDX(I,J) = ISEA
+                 xdist(I,J) = (lon - mlon(ISEA)) * DERA * RADIUS * CLats(ISEA)
+                 ydist(I,J) = (lat - mlat(ISEA)) * DERA * RADIUS
+                 EXIT
+              ENDIF
+           ENDDO
+        ENDDO
+      ENDDO
+!$OMP END DO
+!$OMP END PARALLEL
+
+      ! Write interpolation data to file
+      OPEN(unit=NDSDAT,file='smcint.ww3',status='replace',form='unformatted')
+      
+      ! Output grid data:
+      WRITE(NDSDAT) NXO, NYO, SXO, SYO, DXO, DYO, PLONO, PLATO
+
+      ! Nearest neighbour indicies and distances
+      WRITE(NDSDAT) ((NNIDX(I,J), xdist(i,j), ydist(i,j), i=1,NXO), j=1,NYO)
+      close(NDSDAT)
+
+      ! All done 
+      GOTO 888
+
+  800 CONTINUE
+      WRITE (NDSE,1000) IERR
+      CALL EXTCDE ( 10 )
+  801 CONTINUE
+      WRITE (NDSE,1001)
+      CALL EXTCDE ( 11 )
+!
+  802 CONTINUE
+      WRITE (NDSE,1002) IERR
+      CALL EXTCDE ( 12 )
+!
+  888 CONTINUE
+      WRITE (NDSO,999)
+
+
+
+  900 FORMAT (/15X,'     *** WAVEWATCH III SMC Interp ***   '/ &
+               15X,'==============================================='/)
+  901 FORMAT ( '  Comment character is ''',A,''''/)
+!
+  920 FORMAT ( '  Grid name : ',A/)
+!
+  999 FORMAT (/'  End of program '/                                   &
+               ' ========================================='/          &
+               '         WAVEWATCH III SMC Interp '/)
+!
+ 1000 FORMAT (/' *** WAVEWATCH III ERROR IN W3OUNF : '/               &
+               '     ERROR IN OPENING INPUT FILE'/                    &
+               '     IOSTAT =',I5/)
+!
+ 1001 FORMAT (/' *** WAVEWATCH III ERROR IN W3OUNF : '/               &
+               '     PREMATURE END OF INPUT FILE'/)
+!
+ 1002 FORMAT (/' *** WAVEWATCH III ERROR IN W3OUNF : '/               &
+               '     ERROR IN READING FROM INPUT FILE'/               &
+               '     IOSTAT =',I5/)
+
+ 4130 FORMAT ( '   SMC to regular lat/lon grid using nearest' /       &
+               '   neightbour interpolation.' /                       &
+               '   Output grid definition: ' /                        &
+               '      NX, NY           : ', 2I8 /                     &
+               '      X0, Y0           : ', 2F8.3 /                   &
+               '      DX, DY           : ', 2F8.5 )
+
+      END PROGRAM WW3_SMCINT

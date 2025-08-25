@@ -55,6 +55,10 @@ set(ftn_src
   wmupdtmd.F90
   wmwavemd.F90
   w3tidemd.F90
+  w3nmlmoppmd.F90
+  w3nmlspec2ibmmd.F90
+  w3nmlsmcintmd.F90
+  pplookmd.F90
   )
 
 # Built when PDLIB is enabled

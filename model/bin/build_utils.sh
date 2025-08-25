@@ -1016,6 +1016,35 @@ create_file_list()
                 IO='w3iogrmd w3iogomd w3iorsmd'
                aux="constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd"
                aux="$aux w3parall w3nmluprstrmd" ;;
+#
+## --- Met Office specific programs:
+#
+       ww3_mopp) IDstring='Gridded Met Office PP output'
+               core=
+               data="w3parall wmmdatmd $memcode w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd"
+               prop=
+            sourcet="$pdlibcode $pdlibyow $db $bt $setupcode $tr $trx $stx $nlx $btx $is $uostmd"
+                 IO='w3iogrmd w3iogomd'
+                aux="constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd"
+                aux="$aux pplookmd $smco w3nmlmoppmd" ;;
+
+   ww3_spec2ibm) IDstring='Spectral IBM/GPCS conversion'
+               core=
+               data='w3triamd w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
+               prop=
+            sourcet="$stx $nlx $btx"
+                 IO='w3iogrmd w3iopomd'
+                aux='constants w3servmd w3timemd w3arrymd w3dispmd w3cspcmd w3gsrumd'
+                aux="$aux w3parall w3nmlspec2ibmmd" ;;
+
+     ww3_smcint) IDstring='SMC gridded interpolation'
+               core='w3initmd'
+               data='w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd'
+               prop=
+            sourcet="w3triamd $stx $nlx $btx"
+                 IO='w3iogrmd w3iogomd w3iorsmd w3iopomd'
+                aux="constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd $smco"
+                aux="$aux w3parall w3nmlsmcintmd" ;;
     esac
 
     # if esmf is included in program name or if
