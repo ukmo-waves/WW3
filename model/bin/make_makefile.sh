@@ -447,6 +447,7 @@
 #
          'PPLOOKMD'     ) modtest=pplookmd.o ;;
          'W3NMLMOPPMD'  ) modtest=w3nmlmoppmd.o ;;
+         'CMPS_ALL'     ) modtest=cmps_all.o ;;
          *              ) modfound=no ;;
       esac
 

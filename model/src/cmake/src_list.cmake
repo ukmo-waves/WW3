@@ -59,6 +59,7 @@ set(ftn_src
   w3nmlspec2ibmmd.F90
   w3nmlsmcintmd.F90
   pplookmd.F90
+  cmps_all.F90
   )
 
 # Built when PDLIB is enabled

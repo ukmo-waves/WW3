@@ -87,7 +87,7 @@ elseif(CMAKE_Fortran_COMPILER_ID MATCHES "PGI")
 elseif(CMAKE_Fortran_COMPILER_ID MATCHES "Cray")
   # TODO: Where do we set -homp for OpenMP compiles?
   set(compile_flags -g -sdefault32 -eg)
-  set(compile_flags_release -O3)
+  set(compile_flags_release -O2 -hfp0)
   set(compile_flags_debug -O0 -Rbcps -Ktrap=fp)
 endif()
 

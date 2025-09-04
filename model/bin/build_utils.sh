@@ -1026,7 +1026,7 @@ create_file_list()
             sourcet="$pdlibcode $pdlibyow $db $bt $setupcode $tr $trx $stx $nlx $btx $is $uostmd"
                  IO='w3iogrmd w3iogomd'
                 aux="constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd"
-                aux="$aux pplookmd $smco w3nmlmoppmd" ;;
+                aux="$aux pplookmd $smco w3nmlmoppmd cmps_all" ;;
 
    ww3_spec2ibm) IDstring='Spectral IBM/GPCS conversion'
                core=
