@@ -32,6 +32,7 @@ MODULE W3NMLOUNFMD
     CHARACTER(1024)             :: LIST
     CHARACTER(15)               :: PARTITION
     LOGICAL                     :: SAMEFILE
+    LOGICAL                     :: DOUBLE_COORD
     LOGICAL                     :: VECTOR
     INTEGER                     :: TYPE
     CHARACTER(15)               :: TIMEREF
@@ -56,8 +57,8 @@ MODULE W3NMLOUNFMD
   ! smc grid structure
   TYPE NML_SMC_T
     INTEGER                     :: TYPE
-    REAL                        :: SXO
-    REAL                        :: SYO
+    DOUBLE PRECISION            :: SXO
+    DOUBLE PRECISION            :: SYO
     REAL                        :: EXO
     REAL                        :: EYO
     INTEGER                     :: CELFAC
@@ -287,6 +288,7 @@ CONTAINS
     FIELD%LIST       = 'unset'
     FIELD%PARTITION  = '0 1 2 3'
     FIELD%SAMEFILE   = .TRUE.
+    FIELD%DOUBLE_COORD     = .TRUE.
     FIELD%VECTOR     = .TRUE.
     FIELD%TYPE       = 3
     FIELD%TIMEREF    = 'unset'
@@ -618,6 +620,7 @@ CONTAINS
     WRITE (NDSN,10) TRIM(MSG),'LIST       = ', TRIM(NML_FIELD%LIST)
     WRITE (NDSN,10) TRIM(MSG),'PARTITION  = ', TRIM(NML_FIELD%PARTITION)
     WRITE (NDSN,13) TRIM(MSG),'SAMEFILE   = ', NML_FIELD%SAMEFILE
+    WRITE (NDSN,13) TRIM(MSG),'DOUBLE_COORD  = ', NML_FIELD%DOUBLE_COORD
     WRITE (NDSN,11) TRIM(MSG),'TYPE       = ', NML_FIELD%TYPE
     WRITE (NDSN,10) TRIM(MSG),'FCVARS     = ', NML_FIELD%FCVARS
     WRITE (NDSN,10) TRIM(MSG),'TIMEREF    = ', NML_FIELD%TIMEREF
