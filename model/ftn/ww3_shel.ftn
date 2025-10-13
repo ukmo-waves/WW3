@@ -509,6 +509,7 @@
 !/OMPH      IF ( IAPROC .EQ. NAPOUT ) WRITE (NDSO,905) &
 !/OMPH                                        MPI_THREAD_FUNNELED, THRLEV
 !
+!/OMPG      IF ( IAPROC .EQ. NAPOUT ) WRITE (NDSO,906) omp_get_max_threads()
 
 !
 ! 1.b For WAVEWATCH III (See W3INIT)
@@ -2555,6 +2556,9 @@
 !/OMPH  905 FORMAT ( '  Hybrid MPI/OMP thread support level:'/        &
 !/OMPH               '     Requested: ', I2/                          &
 !/OMPH               '      Provided: ', I2/ )
+!
+!/OMPG  906 FORMAT ( '  OMP threading enabled. Number of threads: ', I3 / )
+
   920 FORMAT (/'  Input fields : '/                                   &
                ' --------------------------------------------------')
   921 FORMAT ( '       ',A,2X,A,2X,A)
