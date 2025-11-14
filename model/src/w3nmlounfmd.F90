@@ -32,7 +32,6 @@ MODULE W3NMLOUNFMD
     CHARACTER(1024)             :: LIST
     CHARACTER(15)               :: PARTITION
     LOGICAL                     :: SAMEFILE
-    LOGICAL                     :: DOUBLE_COORD
     LOGICAL                     :: VECTOR
     INTEGER                     :: TYPE
     CHARACTER(15)               :: TIMEREF
@@ -62,6 +61,7 @@ MODULE W3NMLOUNFMD
     REAL                        :: EXO
     REAL                        :: EYO
     INTEGER                     :: CELFAC
+    LOGICAL                     :: DOUBLE_COORD
   END TYPE NML_SMC_T
 
   ! miscellaneous
@@ -288,7 +288,6 @@ CONTAINS
     FIELD%LIST       = 'unset'
     FIELD%PARTITION  = '0 1 2 3'
     FIELD%SAMEFILE   = .TRUE.
-    FIELD%DOUBLE_COORD     = .TRUE.
     FIELD%VECTOR     = .TRUE.
     FIELD%TYPE       = 3
     FIELD%TIMEREF    = 'unset'
@@ -517,6 +516,7 @@ CONTAINS
     SMC%EYO       = -999.9
     SMC%CELFAC    = 1
     SMC%TYPE      = 1
+    SMC%DOUBLE_COORD     = .FALSE.
 
     ! read smc namelist
     REWIND (NDSI)
@@ -620,7 +620,6 @@ CONTAINS
     WRITE (NDSN,10) TRIM(MSG),'LIST       = ', TRIM(NML_FIELD%LIST)
     WRITE (NDSN,10) TRIM(MSG),'PARTITION  = ', TRIM(NML_FIELD%PARTITION)
     WRITE (NDSN,13) TRIM(MSG),'SAMEFILE   = ', NML_FIELD%SAMEFILE
-    WRITE (NDSN,13) TRIM(MSG),'DOUBLE_COORD  = ', NML_FIELD%DOUBLE_COORD
     WRITE (NDSN,11) TRIM(MSG),'TYPE       = ', NML_FIELD%TYPE
     WRITE (NDSN,10) TRIM(MSG),'FCVARS     = ', NML_FIELD%FCVARS
     WRITE (NDSN,10) TRIM(MSG),'TIMEREF    = ', NML_FIELD%TIMEREF
@@ -809,8 +808,10 @@ CONTAINS
     WRITE (NDSN,14) TRIM(MSG),'EXO       = ', NML_SMC%EXO
     WRITE (NDSN,14) TRIM(MSG),'EYO       = ', NML_SMC%EYO
     WRITE (NDSN,11) TRIM(MSG),'CELFAC    = ', NML_SMC%CELFAC
+    WRITE (NDSN,13) TRIM(MSG),'DOUBLE_COORD  = ', NML_SMC%DOUBLE_COORD
 
 11  FORMAT (A,2X,A,I12)
+13  FORMAT (A,2X,A,L1)
 14  FORMAT (A,2X,A,F8.2)
 
   END SUBROUTINE REPORT_SMC_NML

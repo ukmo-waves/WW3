@@ -371,7 +371,6 @@ PROGRAM W3OUNF
     TIMEUNIT = NML_FIELD%TIMEUNIT
     NOVAL = NML_FIELD%NOVAL
     MAPSTAOUT = NML_FIELD%MAPSTA
-    ISDOUBLE = NML_FIELD%DOUBLE_COORD
     IF(SMCGRD) THEN
 #ifdef W3_SMC
       SMCOTYPE = NML_SMC%TYPE
@@ -380,6 +379,7 @@ PROGRAM W3OUNF
       EXO = NML_SMC%EXO
       EYO = NML_SMC%EYO
       CELFAC = NML_SMC%CELFAC
+      ISDOUBLE = NML_SMC%DOUBLE_COORD
       SMCNOVAL = NOVAL
 #endif
     ELSE
@@ -436,9 +436,10 @@ PROGRAM W3OUNF
     CALL NEXTLN ( COMSTR , NDSI , NDSE )
     READ (NDSI,*,IOSTAT=IERR) TOGETHER
     IF (IERR.NE.0) CALL EXTIOF(NDSE,IERR,'W3OUNF','INPUT',11)
-    CALL NEXTLN ( COMSTR , NDSI , NDSE )
-    READ (NDSI,*,IOSTAT=IERR) ISDOUBLE
-    IF (IERR.NE.0) CALL EXTIOF(NDSE,IERR,'W3OUNF','INPUT',11)
+    !CALL NEXTLN ( COMSTR , NDSI , NDSE )
+    !READ (NDSI,*,IOSTAT=IERR) ISDOUBLE
+    !IF (IERR.NE.0) CALL EXTIOF(NDSE,IERR,'W3OUNF','INPUT',11) Not yet supported for .inp
+    ISDOUBLE = .FALSE.
 
     !       The following are only configurable via the namelist input
     !       and are hardcoded for .inp files:
@@ -2554,19 +2555,23 @@ CONTAINS
                   CALL CHECK_ERR(IRET)
                 ENDIF ! SMCGRD
 #ifdef W3_RTD
-                IF ( RTDL ) THEN
-                   IF (ISDOUBLE .AND. (SMCOTYPE .NE. 1)) THEN
-                    IRET=NF90_PUT_VAR(NCID,VARID(7),LON2DRGRD(IX1:IXN,IY1:IYN))
-                    CALL CHECK_ERR(IRET)
-                    IRET=NF90_PUT_VAR(NCID,VARID(8),LAT2DRGRD(IX1:IXN,IY1:IYN))
-                    CALL CHECK_ERR(IRET)
-                  ELSE
-                    IRET=NF90_PUT_VAR(NCID,VARID(7),LON2D(IX1:IXN,IY1:IYN))
-                    CALL CHECK_ERR(IRET)
-                    IRET=NF90_PUT_VAR(NCID,VARID(8),LAT2D(IX1:IXN,IY1:IYN))
-                    CALL CHECK_ERR(IRET)
-                  ENDIF
-                END IF
+              IF ( RTDL ) THEN
+#ifdef W3_SMC
+                IF (ISDOUBLE .AND. (SMCOTYPE .NE. 1)) THEN
+                   IRET=NF90_PUT_VAR(NCID,VARID(7),LON2DRGRD(IX1:IXN,IY1:IYN))
+                   CALL CHECK_ERR(IRET)
+                   IRET=NF90_PUT_VAR(NCID,VARID(8),LAT2DRGRD(IX1:IXN,IY1:IYN))
+                   CALL CHECK_ERR(IRET)
+                ELSE
+#endif
+                   IRET=NF90_PUT_VAR(NCID,VARID(7),LON2D(IX1:IXN,IY1:IYN))
+                   CALL CHECK_ERR(IRET)
+                   IRET=NF90_PUT_VAR(NCID,VARID(8),LAT2D(IX1:IXN,IY1:IYN))
+                   CALL CHECK_ERR(IRET)
+#ifdef W3_SMC
+                ENDIF
+#endif
+              END IF
 #endif
               END IF
 
