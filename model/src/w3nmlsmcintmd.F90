@@ -28,8 +28,8 @@
   ! field structure
   TYPE NML_GRID_T
     INTEGER                     :: NXO, NYO
-    REAL                        :: SXO, SYO
-    REAL                        :: DXO, DYO
+    DOUBLE PRECISION            :: SXO, SYO
+    DOUBLE PRECISION            :: DXO, DYO
   END TYPE NML_GRID_T
 
   ! file structure

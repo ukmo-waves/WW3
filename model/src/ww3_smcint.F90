@@ -18,7 +18,7 @@
 !/
 !  1. Purpose :
 !
-!     Post-processing of grid output to Met Office PP format.
+!     Uses nearest neighbour interpolation to convert an SMC grid to a regular latitude/longitude grid written to smcint.ww3.
 !
 !  2. Method :
 !
