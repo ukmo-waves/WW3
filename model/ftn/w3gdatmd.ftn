@@ -434,6 +434,8 @@
 !                                1 : Deep water         
 !                                2 : Deep water / WAM scaling
 !                                3 : Finite water depth 
+!      GQNF1     Int.  Public   Gaussian quadrature resolution
+!      GQNT1
 !      NDPTHS    Int.  Public   Number of depth for which integration
 !                               space needs to be computed.
 !      NLTAIL    Real  Public   Tail factor for parametric tail.
@@ -802,6 +804,7 @@
 !/ST4        REAL                  :: AALPHA, BBETA, ZZ0MAX, ZZ0RAT, ZZALP,&
 !/ST4                                 SSINTHP, TTAUWSHELTER, SSWELLF(1:7), &
 !/ST4                                 SSDSC(1:21), SSDSBR,                 &
+!/ST4                                 SINTAILPAR(1:10), CAPCHNK(1:10),     &
 !/ST4                                 SSDSP, WWNMEANP, SSTXFTF, SSTXFTWN,  &
 !/ST4                                 FFXPM, FFXFM, FFXFA,   &
 !/ST4                                 SSDSBRF1, SSDSBRF2, SSDSBINT,SSDSBCK,&
@@ -819,8 +822,12 @@
 !/NL0        REAL                  :: DUMMY
 !/NL1        REAL                  :: SNLC1, LAM, KDCON, KDMN,             &
 !/NL1                                 SNLS1, SNLS2, SNLS3
+!/NL1        INTEGER               :: IQTPE, GQNF1, GQNT1, GQNQ_OM2
+!/NL1        REAL                  :: NLTAIL, GQTHRSAT, GQTHRCOU, GQAMP(4)
 !/NL2        INTEGER               :: IQTPE, NDPTHS
 !/NL2        REAL                  :: NLTAIL
+!/NL2        INTEGER               :: IQTPE, NDPTHS, GQNF1, GQNT1, GQNQ_OM2
+!/NL2        REAL                  :: NLTAIL, GQTHRSAT, GQTHRCOU, GQAMP(4)
 !/NL2        REAL, POINTER         :: DPTHNL(:)
 !/NL3        INTEGER               :: NFRMIN, NFRMAX, NFRCUT, NTHMAX,      &
 !/NL3                                 NTHEXP, NSPMIN, NSPMAX, NSPMX2,      &
@@ -1102,6 +1109,7 @@
 !/ST4                                 SSDSBINT, SSDSBCK, SSDSHCK, SSDSABK, &
 !/ST4                                 SSDSPBK, SSINBR,SSINTHP,TTAUWSHELTER,&
 !/ST4                                 SSWELLF(:), SSDSC(:), SSDSBR,        &
+!/ST4                                 SINTAILPAR(:), CAPCHNK(:),           &
 !/ST4                                 SSDSP, WWNMEANP, SSTXFTF, SSTXFTWN,  &
 !/ST4                                 SSDSBT, SSDSCOS, SSDSDTH, SSDSBM(:)
 !/ST6      REAL, POINTER           :: SIN6A0, SDS6A1, SDS6A2, SWL6B1, &
@@ -1112,10 +1120,12 @@
 !/
 !/ Data aliasses for structure SNLP(S)
 !/
+!/NL1      INTEGER, POINTER        :: IQTPE, GQNF1, GQNT1, GQNQ_OM2
+!/NL1      REAL, POINTER           :: NLTAIL, GQTHRSAT, GQTHRCOU, GQAMP(:)
 !/NL1      REAL, POINTER           :: SNLC1, LAM, KDCON, KDMN,             &
 !/NL1                                 SNLS1, SNLS2, SNLS3
-!/NL2      INTEGER, POINTER        :: IQTPE, NDPTHS
-!/NL2      REAL, POINTER           :: NLTAIL
+!/NL2      INTEGER, POINTER        :: IQTPE, NDPTHS, GQNF1, GQNT1, GQNQ_OM2
+!/NL2      REAL, POINTER           :: NLTAIL, GQTHRSAT, GQTHRCOU, GQAMP(:)
 !/NL2      REAL, POINTER           :: DPTHNL(:)
 !/NL3      INTEGER, POINTER        :: NFRMIN, NFRMAX, NFRCUT, NTHMAX,      &
 !/NL3                                 NTHEXP, NSPMIN, NSPMAX, NSPMX2,      &
@@ -1773,8 +1783,11 @@
 !/ST4      SDSNTH  = MTH/2-1 !MIN(NINT(SSDSDTH/(DTH*RADE)),MTH/2-1)
 !/ST4      ALLOCATE( MPARS(IMOD)%SRCPS%SATINDICES(2*SDSNTH+1,MTH), &
 !/ST4                MPARS(IMOD)%SRCPS%SATWEIGHTS(2*SDSNTH+1,MTH), &
-!/ST4                MPARS(IMOD)%SRCPS%CUMULW(MSPEC,MSPEC),        &
-!/ST4                 STAT=ISTAT                                   )
+!/ST4                STAT=ISTAT                                   )
+!/ST4      CHECK_ALLOC_STATUS ( ISTAT )
+!/ST4      !      IF (SSDSC(3).LT.0.)  &
+!/ST4      ALLOCATE (MPARS(IMOD)%SRCPS%CUMULW(MSPEC,MSPEC),       &
+!/ST4                STAT=ISTAT                                   )
 !/ST4      CHECK_ALLOC_STATUS ( ISTAT )
 !
       SGRDS(IMOD)%SINIT  = .TRUE.
@@ -2287,6 +2300,8 @@
 !/ST4      ZZ0RAT   => MPARS(IMOD)%SRCPS%ZZ0RAT
 !/ST4      ZZALP    => MPARS(IMOD)%SRCPS%ZZALP
 !/ST4      TTAUWSHELTER  => MPARS(IMOD)%SRCPS%TTAUWSHELTER
+!/ST4      SINTAILPAR  => MPARS(IMOD)%SRCPS%SINTAILPAR
+!/ST4      CAPCHNK  => MPARS(IMOD)%SRCPS%CAPCHNK
 !/ST4      SSWELLFPAR  => MPARS(IMOD)%SRCPS%SSWELLFPAR
 !/ST4      SSWELLF  => MPARS(IMOD)%SRCPS%SSWELLF
 !/ST4      SSDSC    => MPARS(IMOD)%SRCPS%SSDSC
@@ -2340,9 +2355,23 @@
 !/NL1      SNLS1  => MPARS(IMOD)%SNLPS%SNLS1
 !/NL1      SNLS2  => MPARS(IMOD)%SNLPS%SNLS2
 !/NL1      SNLS3  => MPARS(IMOD)%SNLPS%SNLS3
+!/NL1      IQTPE  => MPARS(IMOD)%SNLPS%IQTPE
+!/NL1      GQNF1  => MPARS(IMOD)%SNLPS%GQNF1
+!/NL1      GQNT1  => MPARS(IMOD)%SNLPS%GQNT1
+!/NL1      GQNQ_OM2  => MPARS(IMOD)%SNLPS%GQNQ_OM2
+!/NL1      NLTAIL => MPARS(IMOD)%SNLPS%NLTAIL
+!/NL1      GQTHRSAT => MPARS(IMOD)%SNLPS%GQTHRSAT
+!/NL1      GQTHRCOU=> MPARS(IMOD)%SNLPS%GQTHRCOU
+!/NL1      GQAMP=> MPARS(IMOD)%SNLPS%GQAMP
 !/NL2      IQTPE  => MPARS(IMOD)%SNLPS%IQTPE
+!/NL2      GQNF1  => MPARS(IMOD)%SNLPS%GQNF1
+!/NL2      GQNT1  => MPARS(IMOD)%SNLPS%GQNT1
+!/NL2      GQNQ_OM2  => MPARS(IMOD)%SNLPS%GQNQ_OM2
 !/NL2      NDPTHS => MPARS(IMOD)%SNLPS%NDPTHS
 !/NL2      NLTAIL => MPARS(IMOD)%SNLPS%NLTAIL
+!/NL2      GQTHRSAT => MPARS(IMOD)%SNLPS%GQTHRSAT
+!/NL2      GQTHRCOU=> MPARS(IMOD)%SNLPS%GQTHRCOU
+!/NL2      GQAMP=> MPARS(IMOD)%SNLPS%GQAMP
 !/NL2      IF ( NDPTHS .NE. 0 ) DPTHNL => MPARS(IMOD)%SNLPS%DPTHNL
 !/NL3      NFRMIN => MPARS(IMOD)%SNLPS%NFRMIN
 !/NL3      NFRMAX => MPARS(IMOD)%SNLPS%NFRMAX

@@ -231,7 +231,7 @@
 !/ST4                          DELU, DELTAUW, DELUST, &
 !/ST4                          DELALP, DELTAIL, &
 !/ST4                          DIKCUMUL 
-!/NL1      USE W3SNL1MD, ONLY: INSNL1
+!/NL1      USE W3SNL1MD, ONLY: INSNL1, INSNLGQM
 !/NL2      USE W3SNL2MD, ONLY: INSNL2
 !/NL3      USE W3SNL3MD, ONLY: INSNL3
 !/NL5      USE W3SNL5MD, ONLY: INSNL5
@@ -1076,9 +1076,11 @@
 !/ST4                SSDSBRF1, SSDSBRF2, SSDSBRFDF,SSDSBCK, SSDSABK,  &
 !/ST4                SSDSPBK, SSDSBINT, FFXPM, FFXFM, FFXFA,   &
 !/ST4                SSDSHCK, DELUST, DELTAIL, DELTAUW,        &
-!/ST4                DELU, DELALP, TAUT, TAUHFT, TAUHFT2,             &
+!/ST4                DELU, DELALP, TAUT, TAUHFT, TAUHFT2, SSDSHCK,    &
 !/ST4                IKTAB, DCKI, QBI, SATINDICES, SATWEIGHTS,        &
-!/ST4                DIKCUMUL, CUMULW
+!/ST4                DIKCUMUL, CUMULW, SINTAILPAR, CAPCHNK
+!/ST4          IF (SINTAILPAR(1).GT.0.5) WRITE (NDSM) DELUST, DELTAIL,&
+!/ST4                DELTAUW, DELU, DELALP, TAUT, TAUHFT, TAUHFT2
 !/ST4        ELSE
 !/ST4          READ (NDSM,END=801,ERR=802,IOSTAT=IERR)                &
 !/ST4                ZZWND, AALPHA, ZZ0MAX, BBETA, SSINTHP, ZZALP,    &
@@ -1090,9 +1092,13 @@
 !/ST4                SSDSBRF1, SSDSBRF2, SSDSBRFDF,SSDSBCK, SSDSABK,  &
 !/ST4                SSDSPBK, SSDSBINT, FFXPM, FFXFM, FFXFA,   &
 !/ST4                 SSDSHCK, DELUST, DELTAIL, DELTAUW,        &
-!/ST4                DELU, DELALP, TAUT, TAUHFT, TAUHFT2,             &
+!/ST4                DELU, DELALP, TAUT, TAUHFT, TAUHFT2, SSDSHCK,    &
 !/ST4                IKTAB, DCKI, QBI, SATINDICES, SATWEIGHTS,        &
-!/ST4                DIKCUMUL, CUMULW
+!/ST4                DIKCUMUL, CUMULW, SINTAILPAR, CAPCHNK
+!/ST4          IF (SINTAILPAR(1).GT.0.5) THEN
+!/ST4            CALL INSIN4(.FALSE.)
+!/ST4            READ (NDSM) DELUST, DELTAIL,                         &
+!/ST4                 DELTAUW, DELU, DELALP, TAUT, TAUHFT, TAUHFT2
 !/ST4        END IF
 !
 !/DEBUGIOGR     WRITE(740+IAPROC,*) 'W3IOGR, step 18'
@@ -1114,21 +1120,29 @@
 !/DEBUGIOGR     FLUSH(740+IAPROC)
 !/NL1      IF ( WRITE ) THEN
 !/NL1          WRITE (NDSM)                                           &
-!/NL1                SNLC1, LAM, KDCON, KDMN, SNLS1, SNLS2, SNLS3
+!/NL1               SNLC1, LAM, KDCON, KDMN, SNLS1, SNLS2, SNLS3,   &
+!/NL1               IQTPE, NLTAIL, GQNF1, GQNT1,                    &
+!/NL1               GQNQ_OM2, GQTHRSAT, GQTHRCOU, GQAMP
 !/NL1        ELSE
 !/NL1          READ (NDSM,END=801,ERR=802,IOSTAT=IERR)                &
-!/NL1                SNLC1, LAM, KDCON, KDMN, SNLS1, SNLS2, SNLS3
+!/NL1               SNLC1, LAM, KDCON, KDMN, SNLS1, SNLS2, SNLS3,   &
+!/NL1               IQTPE, NLTAIL, GQNF1, GQNT1,                    &
+!/NL1               GQNQ_OM2, GQTHRSAT, GQTHRCOU, GQAMP
 !/NL1        END IF
 !
 !/NL1      IF ( FLTEST ) WRITE (NDST,9051) SNLC1, LAM,                &
-!/NL1                           KDCON, KDMN, SNLS1, SNLS2, SNLS3
+!/NL1             KDCON, KDMN, SNLS1, SNLS2, SNLS3,                 &
+!/NL1             IQTPE, NLTAIL, GQNF1, GQNT1, GQNQ_OM2,            &
+!/NL1             GQTHRSAT, GQTHRCOU, GQAMP
 !
 !/NL2      IF ( WRITE ) THEN
-!/NL2          WRITE (NDSM) IQTPE, NLTAIL, NDPTHS
+!/NL2          WRITE (NDSM) IQTPE, NLTAIL, NDPTHS, GQNF1, GQNT1,    &
+!/NL2               GQNQ_OM2, GQTHRSAT, GQTHRCOU, GQAMP
 !/NL2          WRITE (NDSM) DPTHNL
 !/NL2        ELSE
 !/NL2          READ (NDSM,END=801,ERR=802,IOSTAT=IERR)                &
-!/NL2                       IQTPE, NLTAIL, NDPTHS
+!/NL2               IQTPE, NLTAIL, NDPTHS, GQNF1, GQNT1,            &
+!/NL2               GQNQ_OM2, GQTHRSAT, GQTHRCOU, GQAMP
 !/NL2          ALLOCATE ( MPARS(IGRD)%SNLPS%DPTHNL(NDPTHS) )
 !/NL2          DPTHNL => MPARS(IGRD)%SNLPS%DPTHNL
 !/NL2          PINIT  = .TRUE.
@@ -1208,7 +1222,14 @@
 !/NLS      IF ( FLTEST ) WRITE (NDST,9251)                            &
 !/NLS                CNLSA, CNLSC, CNLSFM, CNLSC1, CNLSC2, CNLSC3
 !
-!/NL1      IF ( .NOT. WRITE ) CALL INSNL1 ( IGRD )
+!/NL1      IF ( .NOT. WRITE ) THEN
+!/NL1        IF (IQTPE.GT.0) THEN
+!/NL1          CALL INSNL1 ( IGRD )
+!/NL1        ELSE
+!/NL1          CALL INSNLGQM
+!/NL1        END IF
+!/NL1      END IF
+!/NL2      IF ( .NOT. WRITE .AND. IQTPE.LT.0  ) CALL INSNL2
 !/NL3      IF ( .NOT. WRITE ) CALL INSNL3
 !/NLS      IF ( .NOT. WRITE ) CALL INSNLS
 !
@@ -1221,7 +1242,7 @@
 !/MPI            CALL MPI_BARRIER (  MPI_COMM_WAVE, IERR_MPI )
 !/MPI            END DO
 !/MPI        END IF
-!/NL2      IF ( .NOT. WRITE ) CALL INSNL2
+!/NL2      IF ( .NOT. WRITE.AND.IQTPE.GT.0 ) CALL INSNL2
 !/MPI      IF ( FLSNL2 .AND. .NOT.WRITE ) THEN
 !/MPI          DO IP=IAPROC, NAPROC-1
 !/MPI            CALL MPI_BARRIER (  MPI_COMM_WAVE, IERR_MPI )
@@ -1515,7 +1536,7 @@
 !/NL1              '               ',5E10.3)
 !
 !/NL2 9051 FORMAT (' TEST W3IOGR : MODULE W3GDATMD SNLP'/             &
-!/NL2              '      DATA   : ',I4,F5.1,I4)
+!/NL2              '      DATA   : ',I4,F5.1,4I4,2E10.4,3F6.3)
 !/NL2 9151 FORMAT ('               ',5F7.1)
 !
 !/NL3 9051 FORMAT (' TEST W3IOGR : MODULE W3GDATMD SNLP'/             &

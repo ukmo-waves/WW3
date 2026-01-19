@@ -113,6 +113,7 @@
 !/    27-May-2021 : Moved to a subroutine               ( version 7.13 )
 !/    07-Jun-2021 : S_{nl} GKE NL5 (Q. Liu)             ( version 7.13 )
 !/    19-Jul-2021 : Momentum and air density support    ( version 7.14 )
+!/    28-Feb-2023 : GQM as an alternative for NL1/NL2   ( version 7.15 )
 !/
 !/    Copyright 2009-2013 National Weather Service (NWS),
 !/       National Oceanic and Atmospheric Administration.  All rights
@@ -440,7 +441,7 @@
 !
 !     !/NL0   No nonlinear interactions.
 !     !/NL1   Discrete interaction approximation (DIA).
-!     !/NL2   Exact interactions (WRT).
+!     !/NL2   Exact interactions (WRT or GQM).
 !     !/NL3   Generalized Multiple DIA (GMD).
 !     !/NL4   Two Scale Approximation
 !     !/NL5   Generalized Kinetic Equation (GKE)
@@ -750,7 +751,8 @@
 !/ST3      REAL                    :: STXFTFTAIL, SDSC1,                   &
 !/ST3                                 SDSDELTA1, SDSDELTA2
 !
-!/ST4      INTEGER                 :: SWELLFPAR, SDSISO, SDSBRFDF
+!/ST4      INTEGER                 :: SWELLFPAR, SDSISO, SDSBRFDF, SINTABLE,&
+!/ST4                                 TAUWBUG, VISCSTRESS
 !/ST4      REAL 		   :: SDSBCHOICE
 !/ST4      REAL                    :: ZWND, ALPHA0, Z0MAX, BETAMAX, SINTHP,&
 !/ST4                                 ZALP, Z0RAT, TAUWSHELTER, SWELLF,    &
@@ -766,7 +768,10 @@
 !/ST4                                 SDSBRF1,                             &
 !/ST4                                 SDSBM0, SDSBM1, SDSBM2, SDSBM3,      &
 !/ST4                                 SDSBM4, SDSFACMTF, SDSCUMP,  SDSNUW, &
-!/ST4                                 SDSL, SDSMWD, SDSMWPOW, SPMSS, SDSNMTF
+!/ST4                                 SDSL, SDSMWD, SDSMWPOW, SPMSS,       &
+!/ST4                                 SDSNMTF, SINTAIL1, SINTAIL2,         &
+!/ST4                                 CAPCHA, CHAMIN, CHA0, UCAP,          &
+!/ST4                                 SIGMAUCAP, CUMSIGP
 !
 !/ST6      REAL                    :: SINA0, SINWS, SINFC,                 &
 !/ST6                                 SDSA1, SDSA2, SWLB1
@@ -775,8 +780,15 @@
 !
 !/NL1      REAL                    :: LAMBDA, KDCONV, KDMIN,               &
 !/NL1                                 SNLCS1, SNLCS2, SNLCS3
+!/NL2      INTEGER                 :: IQTYPE, GQMNF1, GQMNT1, GQMNQ_OM2
+!/NL2      REAL                    :: TAILNL, GQMTHRSAT, GQMTHRCOU,        &
+!/NL2                                 GQAMP1, GQAMP2, GQAMP3, GQAMP4
 !/NL2      INTEGER                 :: IQTYPE, NDEPTH
 !/NL2      REAL                    :: TAILNL
+!/NL2      INTEGER                 :: IQTYPE, NDEPTH, GQMNF1, GQMNT1,      &
+!/NL2                                 GQMNQ_OM2
+!/NL2      REAL                    :: TAILNL, GQMTHRSAT, GQMTHRCOU,        &
+!/NL2                                 GQAMP1, GQAMP2, GQAMP3, GQAMP4
 !/NL3      INTEGER                 :: NQDEF
 !/NL3      REAL                    :: MSC, NSC, KDFD, KDFS
 !/NL4      INTEGER                 :: INDTSA, ALTLP
@@ -855,10 +867,17 @@
 !/ST4      NAMELIST /SIN4/ ZWND, ALPHA0, Z0MAX, BETAMAX, SINTHP, ZALP, &
 !/ST4                      TAUWSHELTER, SWELLFPAR, SWELLF,                 &
 !/ST4                      SWELLF2, SWELLF3, SWELLF4, SWELLF5, SWELLF6,    &
-!/ST4                      SWELLF7, Z0RAT, SINBR
+!/ST4                      SWELLF7, Z0RAT, SINBR, SINTABLE, SINTAIL1,      &
+!/ST4                      SINTAIL2, TAUWBUG, VISCSTRESS,                  &
+!/ST4                      CAPCHA, CHAMIN, CHA0, UCAP, SIGMAUCAP
 !/NL1      NAMELIST /SNL1/ LAMBDA, NLPROP, KDCONV, KDMIN,                  &
-!/NL1                      SNLCS1, SNLCS2, SNLCS3
-!/NL2      NAMELIST /SNL2/ IQTYPE, TAILNL, NDEPTH
+!/NL1                      SNLCS1, SNLCS2, SNLCS3,                         &
+!/NL1                      IQTYPE, TAILNL, GQMNF1, GQMNT1,                 &
+!/NL1                      GQMNQ_OM2, GQMTHRSAT, GQMTHRCOU, GQAMP1,        &
+!/NL1                      GQAMP2, GQAMP3, GQAMP4
+!/NL2      NAMELIST /SNL2/ IQTYPE, TAILNL, NDEPTH, GQMNF1, GQMNT1,         &
+!/NL2                      GQMNQ_OM2, GQMTHRSAT, GQMTHRCOU, GQAMP1,        &
+!/NL2                      GQAMP2, GQAMP3, GQAMP4
 !/NL2      NAMELIST /ANL2/ DEPTHS
 !/NL3      NAMELIST /SNL3/ NQDEF, MSC, NSC, KDFD, KDFS
 !/NL3      NAMELIST /ANL3/ QPARMS
@@ -875,7 +894,7 @@
 !/ST4                      SDSC5, SDSC6, SDSBR, SDSBT, SDSP, SDSISO,       &
 !/ST4                      SDSBCK, SDSABK, SDSPBK, SDSBINT, SDSHCK,        &
 !/ST4                      SDSDTH, SDSCOS, SDSBRF1, SDSBRFDF,  SDSNUW,     &
-!/ST4                      SDSBM0, SDSBM1, SDSBM2, SDSBM3, SDSBM4,         &
+!/ST4                      SDSBM0, SDSBM1, SDSBM2, SDSBM3, SDSBM4, CUMSIGP,&
 !/ST4                      WHITECAPWIDTH, WHITECAPDUR, SDSMWD, SDSMWPOW, SDKOF
 
 !/ST6      NAMELIST /SIN6/ SINA0, SINWS, SINFC
@@ -1429,6 +1448,17 @@
 !/ST4      TAUWSHELTER = 0.3
 !/ST4      ZALP   = 0.006
 !/ST4      SINBR   = 0.
+!/ST4      SINTABLE = 1
+!/ST4      SINTAIL1 = 0. !  TAUWSHELTER FOR TAIL (no table)
+!/ST4      SINTAIL2 = 0. !  additional peak in capillary range
+!/ST4      TAUWBUG  = 1  !  TAUWBUG is 1 is the bug is kept:
+!/ST4      !  initializes TAUWX/Y to zero in W3SRCE
+!/ST4      VISCSTRESS =0
+!/ST4      CAPCHA   = 0.     ! =1 indicates capping of drag is active
+!/ST4      CHAMIN   = 0.0001 ! 
+!/ST4      CHA0     = ALPHA0 ! initial value for charnock
+!/ST4      UCAP     = 30.    ! U10 threshold from which drag capping is applied
+!/ST4      SIGMAUCAP = 10.   ! Width for reduction of drag beyond UCAP
 !
 !/ST6      SINA0  = 0.09
 !/ST6      SINWS  = 32.0
@@ -1498,6 +1528,16 @@
 !/ST4      SSWELLF(6) = SWELLF6
 !/ST4      SSWELLF(7) = SWELLF7
 !/ST4      SSWELLFPAR = SWELLFPAR
+!/ST4      SINTAILPAR(1) = FLOAT(SINTABLE)
+!/ST4      SINTAILPAR(2) = SINTAIL1
+!/ST4      SINTAILPAR(3) = SINTAIL2
+!/ST4      SINTAILPAR(4) = FLOAT(TAUWBUG)
+!/ST4      SINTAILPAR(5) = VISCSTRESS
+!/ST4      CAPCHNK(1) = CAPCHA
+!/ST4      CAPCHNK(2) = CHAMIN
+!/ST4      CAPCHNK(3) = CHA0
+!/ST4      CAPCHNK(4) = UCAP
+!/ST4      CAPCHNK(5) = SIGMAUCAP
 !
 !/ST6      CALL READNL ( NDSS, 'SIN6', STATUS )
 !/ST6      WRITE (NDSO,920) STATUS
@@ -1528,6 +1568,18 @@
 !/NL1      SNLCS1 =  5.5
 !/NL1      SNLCS2 =  0.833
 !/NL1      SNLCS3 = -1.25
+!/NL1      ! Additional parameters for GQM
+!/NL1      IQTYPE =  1
+!/NL1      TAILNL = -FACHF
+!/NL1      GQMNF1 = 14
+!/NL1      GQMNT1 = 8
+!/NL1      GQMNQ_OM2=8
+!/NL1      GQMTHRSAT=0.
+!/NL1      GQMTHRCOU=0.015
+!/NL1      GQAMP1=1.
+!/NL1      GQAMP2=0.002
+!/NL1      GQAMP3=1.
+!/NL1      GQAMP4=1.
 !
 !/NL1      CALL READNL ( NDSS, 'SNL1', STATUS )
 !/NL1      WRITE (NDSO,922) STATUS
@@ -1540,6 +1592,18 @@
 !/NL1      SNLS1  = SNLCS1
 !/NL1      SNLS2  = SNLCS2
 !/NL1      SNLS3  = SNLCS3
+!/NL1      ! Additional parameters for GQM
+!/NL1      IQTPE  = IQTYPE
+!/NL1      GQNF1  = GQMNF1
+!/NL1      GQNT1  = GQMNT1
+!/NL1      GQNQ_OM2  = GQMNQ_OM2
+!/NL1      GQTHRSAT  = GQMTHRSAT
+!/NL1      GQTHRCOU  = GQMTHRCOU
+!/NL1      GQAMP(1)  = GQAMP1
+!/NL1      GQAMP(2)  = GQAMP2
+!/NL1      GQAMP(3)  = GQAMP3
+!/NL1      GQAMP(4)  = GQAMP4
+!/NL1      NLTAIL = TAILNL
 !
 !/ST0      FACHF  = 5.
 !/ST1      FACHF  = 4.5
@@ -1550,6 +1614,15 @@
 !/NL2      IQTYPE =  2
 !/NL2      TAILNL = -FACHF
 !/NL2      NDEPTH =  0
+!/NL2      GQMNF1 = 14
+!/NL2      GQMNT1 = 8
+!/NL2      GQMNQ_OM2=8
+!/NL2      GQMTHRSAT=0.
+!/NL2      GQMTHRCOU=0.015
+!/NL2      GQAMP1=1.
+!/NL2      GQAMP2=0.002
+!/NL2      GQAMP3=1.
+!/NL2      GQAMP4=1.
 !/NL3      NQDEF  =  0
 !/NL3      MSC    =  0.
 !/NL3      NSC    = -3.5
@@ -1572,14 +1645,16 @@
 !
 !/NL2      CALL READNL ( NDSS, 'SNL2', STATUS )
 !/NL2      WRITE (NDSO,922) STATUS
-!/NL2      TAILNL = MIN ( MAX ( TAILNL, -5. ) , -4. )
+!/NL2      TAILNL = MIN ( MAX ( TAILNL, -6. ) , -4. )
 !/NL2      IF ( IQTYPE .EQ. 3 ) THEN
-!/NL2          WRITE (NDSO,923) 'Shallow water', TAILNL
+!/NL2          WRITE (NDSO,923) 'Shallow water WRT', TAILNL
 !/NL2        ELSE IF ( IQTYPE .EQ. 2 ) THEN
-!/NL2          WRITE (NDSO,923) 'Deep water with scaling', TAILNL
+!/NL2          WRITE (NDSO,923) 'Deep water WRT with scaling', TAILNL
+!/NL2        ELSE  IF ( IQTYPE .EQ. 1 ) THEN
+!/NL2          WRITE (NDSO,923) 'Deep water WRT', TAILNL
 !/NL2        ELSE
-!/NL2          WRITE (NDSO,923) 'Deep water', TAILNL
-!/NL2          IQTYPE = 1
+!/NL2          WRITE (NDSO,923) 'Deep water GQM with scaling', TAILNL
+!/NL2          IQTYPE = -2
 !/NL2        END IF
 !
 !/NL2      IF ( IQTYPE .NE. 3 ) THEN
@@ -1606,6 +1681,15 @@
 !/NL2        END IF
 !/NL2      WRITE (NDST,*)
 !/NL2      IQTPE  = IQTYPE
+!/NL2      GQNF1  = GQMNF1
+!/NL2      GQNT1  = GQMNT1
+!/NL2      GQNQ_OM2  = GQMNQ_OM2
+!/NL2      GQTHRSAT  = GQMTHRSAT
+!/NL2      GQTHRCOU  = GQMTHRCOU
+!/NL2      GQAMP(1)  = GQAMP1
+!/NL2      GQAMP(2)  = GQAMP2
+!/NL2      GQAMP(3)  = GQAMP3
+!/NL2      GQAMP(4)  = GQAMP4
 !/NL2      NDPTHS = NDEPTH
 !/NL2      NLTAIL = TAILNL
 !
@@ -1734,8 +1818,8 @@
 !/ST4      SDSDTH    = 80.
 !/ST4      SDSCOS    = 2.
 !/ST4      SDSISO    = 2
-!/ST4      SDSBM0    = 1.
-!/ST4      SDSBM1    = 0.
+!/ST4      SDSBM0    = 1.          ! All these parameters are related to finite depth
+!/ST4      SDSBM1    = 0.          ! scaling of breaking
 !/ST4      SDSBM2    = 0.
 !/ST4      SDSBM3    = 0.
 !/ST4      SDSBM4    = 0.
@@ -1745,8 +1829,9 @@
 !/ST4      SDSBINT   = 0.3
 !/ST4      SDSHCK    = 1.5
 !/ST4      WHITECAPWIDTH = 0.3
-!/ST4      SDSSTRAIN = 0.       
 !/ST4      SDSFACMTF =  400    ! MTF factor for Lambda , Romero (2019)
+!/ST4      CUMSIGP   = 0.
+!/ST4      SDSSTRAIN = 0.
 !/ST4      SDSSTRAINA = 15.
 !/ST4      SDSSTRAIN2 = 0.
 !/ST4      WHITECAPDUR   = 0.56 ! breaking duration factor 
@@ -1757,7 +1842,7 @@
 !/ST4! MTF
 !/ST4      SPMSS     = 0.5    ! cmss^SPMSS 
 !/ST4      SDSNMTF   = 1.5    ! MTF power 
-!/ST4      SDSCUMP   = 2.
+!/ST4      SDSCUMP   = 2.     ! 2 for cumulative mss, 1 for cumulative orb. vel.
 !/ST4! MW
 !/ST4      SDSMWD    = .9  ! new AFo
 !/ST4      SDSMWPOW  = 1.  ! (k )^pow
@@ -1829,9 +1914,9 @@
 !/ST4      SSDSC(7)   = WHITECAPWIDTH
 !/ST4      SSDSC(8)   = SDSSTRAIN   ! Straining constant ... 
 !/ST4      SSDSC(9)   = SDSL
-!/ST4      SSDSC(10)  = SDSSTRAINA*NTH/360. ! angle Aor enhanced straining
+!/ST4      SSDSC(10)  = SDSSTRAINA*NTH/360. ! angle for enhanced straining
 !/ST4      SSDSC(11)  = SDSSTRAIN2  ! straining constant for directional part 
-!/ST4      SSDSC(12)  = SDSBT
+!/ST4      SSDSC(12)  = CUMSIGP
 !/ST4      SSDSC(13)  = SDSMWD
 !/ST4      SSDSC(14)  = SPMSS
 !/ST4      SSDSC(15)  = SDSMWPOW 
@@ -2694,11 +2779,19 @@
 !/ST3            SWELLF
 !/ST4          WRITE (NDSO,2920) ZWND, ALPHA0, Z0MAX, BETAMAX, SINTHP, ZALP,   &
 !/ST4            TAUWSHELTER, SWELLFPAR, SWELLF, SWELLF2, SWELLF3, SWELLF4, &
-!/ST4            SWELLF5, SWELLF6, SWELLF7, Z0RAT, SINBR
+!/ST4            SWELLF5, SWELLF6, SWELLF7, Z0RAT, SINBR, SINTABLE, TAUWBUG,   &
+!/ST4            VISCSTRESS, SINTAIL1, SINTAIL2, CAPCHA, CHAMIN, CHA0, UCAP,   &
+!/ST4            SIGMAUCAP
 !/ST6          WRITE (NDSO,2920) SINA0, SINWS, SINFC
 !/NL1          WRITE (NDSO,2922) LAMBDA, NLPROP, KDCONV, KDMIN,       &
-!/NL1                            SNLCS1, SNLCS2, SNLCS3
-!/NL2          WRITE (NDSO,2922) IQTYPE, TAILNL, NDEPTH
+!/NL1                            SNLCS1, SNLCS2, SNLCS3,              &
+!/NL1                            IQTYPE, TAILNL, GQMNF1,              &
+!/NL1                            GQMNT1, GQMNQ_OM2, GQMTHRSAT, GQMTHRCOU,&
+!/NL1                            GQAMP1, GQAMP2, GQAMP3, GQAMP4
+!/NL1          WRITE (NDSO,2922) IQTYPE, TAILNL, NDEPTH, GQMNF1,      &
+!/NL1     !/NL1                            GQMNT1, GQMNQ_OM2, GQMTHRSAT,        &
+!/NL1                            GQMTHRCOU, GQAMP1, GQAMP2, GQAMP3,   &
+!/NL1                            GQAMP4
 !/NL2          IF ( IQTYPE .EQ. 3 ) THEN
 !/NL2              IF ( NDEPTH .EQ. 1 ) THEN
 !/NL2                  WRITE (NDSO,3923) DPTHNL(1)
@@ -2734,7 +2827,7 @@
 !/ST4                    SDSBT, SDSP, SDSISO, SDSCOS, SDSDTH, SDSBRF1,     &
 !/ST4                    SDSBRFDF, SDSBM0, SDSBM1, SDSBM2, SDSBM3, SDSBM4, &
 !/ST4                    SPMSS, SDKOF, SDSMWD, SDSFACMTF, SDSNMTF,SDSMWPOW,&
-!/ST4                    SDSCUMP, SDSNUW, WHITECAPWIDTH, WHITECAPDUR
+!/ST4                    SDSCUMP, CUMSIGP, SDSNUW, WHITECAPWIDTH, WHITECAPDUR
 !/ST6          WRITE (NDSO,2924) SDSET, SDSA1, SDSA2, SDSP1, SDSP2
 !/ST6          WRITE (NDSO,2937) SWLB1, CSTB1
 !/BT1          WRITE (NDSO,2926) GAMMA
@@ -5569,7 +5662,11 @@
 !/ST4              '        SWELLF =',F8.5,', SWELLF2 =',F8.5,             &
 !/ST4              ', SWELLF3 =',F8.5,', SWELLF4 =',F9.1,','/              &
 !/ST4              '        SWELLF5 =',F8.5,', SWELLF6 =',F8.5,            &
-!/ST4              ', SWELLF7 =',F12.2,', Z0RAT =',F8.5,', SINBR =',F8.5,'  /')
+!/ST4              ', SWELLF7 =',F12.2,', Z0RAT =',F8.5,', SINBR =',F8.5,','/              &
+!/ST4              '        SINTABLE =',I2,', TAUWBUG =',I2,               &
+!/ST4              ', VISCSTRESS =',F8.5,', SINTAIL1 =',F8.5,', SINTAIL2 =',F8.5,',' / &
+!/ST4              ', CAPCHA =',F8.5,', CHAMIN =',F8.5,', CHA0 =',F8.5,', UCAP =',F5.1,', SIGMAUCAP =', &
+!/ST4              F5.1,'  /')
 !
 !/ST6  920 FORMAT (/'  Wind input (Donelan et al, 2006) ',A/       &
 !/ST6         ' --------------------------------------------------')
@@ -5591,7 +5688,11 @@
 !/NL1 2922 FORMAT ( '  &SNL1 LAMBDA =',F7.3,', NLPROP =',E10.3,       &
 !/NL1               ', KDCONV =',F7.3,', KDMIN =',F7.3,','/           &
 !/NL1               '        SNLCS1 =',F7.3,', SNLCS2 =',F7.3,        &
-!/NL1               ', SNLCS3 = ',F7.3,' /')
+!/NL1               ', SNLCS3 = ',F7.3','/                            &
+!/NL1               '        IQTYPE =',I2,', TAILNL =',F5.1,','/      &
+!/NL1               '        GQMNF1 =',I2,', GQMNT1 =',I2,',',        &
+!/NL1               ' GQMNQ_OM2 =',I2,', GQMTHRSAT =',E11.4,', GQMTHRCOU =',F4.3,','/ &
+!/NL1               '        GQAMP1 =',F5.3,', GQAMP2 =',F5.3,', GQAMP3 =',F5.3,', GQAMP4 =',F5.3,' /')
 !
 !/NL2  922 FORMAT (/'  Nonlinear interactions (WRT) ',A/              &
 !/NL2               ' --------------------------------------------------')
@@ -5601,7 +5702,10 @@
 !/NL2               '       Depths (m)                  :',5F7.1)
 !/NL2 2923 FORMAT ( '                                    ',5F7.1)
 !/NL2 2922 FORMAT ( '  &SNL2 IQTYPE =',I2,', TAILNL =',F5.1,',',      &
-!/NL2                      ' NDEPTH =',I3,' /')
+!/NL2               ' NDEPTH =',I3,','/                        &
+!/NL2               '        GQMNF1 =',I2,', GQMNT1 =',I2,',',        &
+!/NL2               ' GQMNQ_OM2 =',I2,', GQMTHRSAT =',E11.4,', GQMTHRCOU =',F4.3,','/ &
+!/NL2               '        GQAMP1 =',F5.3,', GQAMP2 =',F5.3,', GQAMP3 =',F5.3,', GQAMP4 =',F5.3,' /')
 !/NL2 3923 FORMAT ( '  &SNL2 DEPTHS =',F9.2,' /')
 !/NL2 4923 FORMAT ( '  &ANL2 DEPTHS =',F9.2,' ,')
 !/NL2 5923 FORMAT ( '                ',F9.2,' ,')
@@ -5710,7 +5814,7 @@
 !/ST4               '        SPMSS = ',F5.2, ', SDKOF =',F5.2,        &
 !/ST4               ', SDSMWD =',F5.2,', SDSFACMTF =',F5.1,', '/      &
 !/ST4               '        SDSMWPOW =',F3.1,', SDSNMTF =', F5.2,    &
-!/ST4               ', SDSCUMP =', F3.1,', SDSNUW =', E8.3,', '/,     &
+!/ST4               ', SDSCUMP =', F3.1,', CUMSIGP =', F3.1,', SDSNUW =', E10.3,', '/,     &
 !/ST4               '        WHITECAPWIDTH =',F5.2, ' WHITECAPDUR =',F5.2,' /')
 !
 !/ST6  924 FORMAT (/'  Dissipation (Rogers et al. 2012) ',A/             &
@@ -5788,12 +5892,12 @@
 !/IS2 947 FORMAT  (/'  Ice scattering ',A,/ &
 !/IS2              ' --------------------------------------------------')
 !/IS2 948 FORMAT  ('  IS2 Scattering ... '/&
-!/IS2              '        scattering coefficient       : ',E9.3/ &
-!/IS2              '        0: no back-scattering        : ',E9.3/ &
+!/IS2              '        scattering coefficient       : ',E10.3/ &
+!/IS2              '        0: no back-scattering        : ',E10.3/ &
 !/IS2              '     TRUE: istropic back-scattering  : ',L3/   &
 !/IS2              '     TRUE: update of ICEDMAX         : ',L3/   &
 !/IS2              '     TRUE: keeps updated ICEDMAX     : ',L3/   &
-!/IS2              '        flexural strength            : ',E9.3/ &
+!/IS2              '        flexural strength            : ',E10.3/ &
 !/IS2              '     TRUE: uses Robinson-Palmer disp.: ',L3/   &
 !/IS2              '        attenuation                  : ',F5.2/ &
 !/IS2              '        fragility                    : ',F5.2/ &
@@ -5801,7 +5905,7 @@
 !/IS2              '        pack scattering coef 1       : ',F5.2/ &
 !/IS2              '        pack scattering coef 2       : ',F5.2/ &
 !/IS2              '        scaling by concentration     : ',F5.2/ &
-!/IS2              '        creep B coefficient          : ',E9.3/ &
+!/IS2              '        creep B coefficient          : ',E10.3/ &
 !/IS2              '        creep C coefficient          : ',F5.2/ &
 !/IS2              '        creep D coefficient          : ',F5.2/ &
 !/IS2              '        creep N power                : ',F5.2/ &
@@ -5812,7 +5916,7 @@
 !/IS2              '        energy of activation         : ',F5.2/ &
 !/IS2              '        anelastic coefficient        : ',E11.3/ &
 !/IS2              '        anelastic exponent           : ',F5.2)
-!/IS2 2948 FORMAT ( '  &SIS2 ISC1 =',E9.3,', IS2BACKSCAT =',E9.3,   &
+!/IS2 2948 FORMAT ( '  &SIS2 ISC1 =',E10.3,', IS2BACKSCAT =',E10.3, &
 !/IS2               ', IS2ISOSCAT =',L3,', IS2BREAK =',L3,          &
 !/IS2               ', IS2DUPDATE =',L3,','/                        &
 !/IS2               '       IS2FLEXSTR =',E11.3,', IS2DISP =',L3,   &
