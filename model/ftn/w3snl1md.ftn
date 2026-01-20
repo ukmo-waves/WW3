@@ -1199,13 +1199,13 @@
       NUME13=2.00D0*Q13*(RK1*RK3+S13)*(RK2*RK4+S24)
       IF (ABS(DENO13).LT.ZERO) THEN
         IF (ABS(NUME13).LT.ZERO) THEN
-          WRITE(*,*) 'W3SNL2 error for coupling coefficient : ' \ &
+          WRITE(*,*) 'W3SNL1 error for coupling coefficient : ' // &
                      '(1-3)  0/0 !'
         ELSE
-          WRITE(*,*) 'W3SNL2 error for coupling coefficient : ' \ &
+          WRITE(*,*) 'W3SNL1 error for coupling coefficient : ' // &
                      '(1-3) inifinte value'
         ENDIF
-        WRITE(*,*) 'W3SNL2 error for coupling coefficient : '   \ &
+        WRITE(*,*) 'W3SNL1 error for coupling coefficient : '   // &
                      '(1-3) term not used'
       ELSE
         DDD=DDD+NUME13/DENO13
@@ -1214,13 +1214,13 @@
       NUME14=2.00D0*Q14*(RK1*RK4+S14)*(RK2*RK3+S23)
       IF (ABS(DENO14).LT.ZERO) THEN
         IF (ABS(NUME14).LT.ZERO) THEN
-          WRITE(*,*) 'W3SNL2 error for coupling coefficient : ' \ &
+          WRITE(*,*) 'W3SNL1 error for coupling coefficient : ' // &
                      '(1-4)  0/0 !'
         ELSE
-          WRITE(*,*) 'W3SNL2 error for coupling coefficient : ' \ &
+          WRITE(*,*) 'W3SNL1 error for coupling coefficient : ' // &
                      '(1-4) inifinte value'
         ENDIF
-        WRITE(*,*) 'W3SNL2 error for coupling coefficient :   ' \ &
+        WRITE(*,*) 'W3SNL1 error for coupling coefficient :   ' // &
                      '(1-4) term not used'
       ELSE
         DDD=DDD+NUME14/DENO14

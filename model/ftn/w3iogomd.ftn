@@ -1405,7 +1405,7 @@
             IF (ITH.LE.NTH/2) THEN
               ABST(JSEA) = ABST(JSEA) +                               &
                               A(ITH,IK,JSEA)*A(ITH+NTH/2,IK,JSEA)
-              K1 (JSEA) = QK1(JSEA) + (A(ITH,IK,JSEA)+A(ITH+NTH/2,IK,JSEA))**2
+              QK1 (JSEA) = QK1(JSEA) + (A(ITH,IK,JSEA)+A(ITH+NTH/2,IK,JSEA))**2
               END IF
             CALL INIT_GET_ISEA(ISEA, JSEA)
             FACTOR     = MAX ( 0.5 , CG(IK,ISEA)/SIG(IK)*WN(IK,ISEA) )

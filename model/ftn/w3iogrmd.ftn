@@ -1099,6 +1099,7 @@
 !/ST4            CALL INSIN4(.FALSE.)
 !/ST4            READ (NDSM) DELUST, DELTAIL,                         &
 !/ST4                 DELTAUW, DELU, DELALP, TAUT, TAUHFT, TAUHFT2
+!/ST4          END IF
 !/ST4        END IF
 !
 !/DEBUGIOGR     WRITE(740+IAPROC,*) 'W3IOGR, step 18'

@@ -780,11 +780,9 @@
 !
 !/NL1      REAL                    :: LAMBDA, KDCONV, KDMIN,               &
 !/NL1                                 SNLCS1, SNLCS2, SNLCS3
-!/NL2      INTEGER                 :: IQTYPE, GQMNF1, GQMNT1, GQMNQ_OM2
-!/NL2      REAL                    :: TAILNL, GQMTHRSAT, GQMTHRCOU,        &
-!/NL2                                 GQAMP1, GQAMP2, GQAMP3, GQAMP4
-!/NL2      INTEGER                 :: IQTYPE, NDEPTH
-!/NL2      REAL                    :: TAILNL
+!/NL1      INTEGER                 :: IQTYPE, GQMNF1, GQMNT1, GQMNQ_OM2
+!/NL1      REAL                    :: TAILNL, GQMTHRSAT, GQMTHRCOU,        &
+!/NL1                                 GQAMP1, GQAMP2, GQAMP3, GQAMP4
 !/NL2      INTEGER                 :: IQTYPE, NDEPTH, GQMNF1, GQMNT1,      &
 !/NL2                                 GQMNQ_OM2
 !/NL2      REAL                    :: TAILNL, GQMTHRSAT, GQMTHRCOU,        &
@@ -2788,10 +2786,10 @@
 !/NL1                            IQTYPE, TAILNL, GQMNF1,              &
 !/NL1                            GQMNT1, GQMNQ_OM2, GQMTHRSAT, GQMTHRCOU,&
 !/NL1                            GQAMP1, GQAMP2, GQAMP3, GQAMP4
-!/NL1          WRITE (NDSO,2922) IQTYPE, TAILNL, NDEPTH, GQMNF1,      &
-!/NL1     !/NL1                            GQMNT1, GQMNQ_OM2, GQMTHRSAT,        &
-!/NL1                            GQMTHRCOU, GQAMP1, GQAMP2, GQAMP3,   &
-!/NL1                            GQAMP4
+!/NL2          WRITE (NDSO,2922) IQTYPE, TAILNL, NDEPTH, GQMNF1,      &
+!/NL2                            GQMNT1, GQMNQ_OM2, GQMTHRSAT,        &
+!/NL2                            GQMTHRCOU, GQAMP1, GQAMP2, GQAMP3,   &
+!/NL2                            GQAMP4
 !/NL2          IF ( IQTYPE .EQ. 3 ) THEN
 !/NL2              IF ( NDEPTH .EQ. 1 ) THEN
 !/NL2                  WRITE (NDSO,3923) DPTHNL(1)
