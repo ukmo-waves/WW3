@@ -1075,8 +1075,7 @@
 !/ST4                SSTXFTFTAIL, SSTXFTWN, SSTXFTF, SSTXFTWN,        &
 !/ST4                SSDSBRF1, SSDSBRF2, SSDSBRFDF,SSDSBCK, SSDSABK,  &
 !/ST4                SSDSPBK, SSDSBINT, FFXPM, FFXFM, FFXFA,   &
-!/ST4                SSDSHCK, DELUST, DELTAIL, DELTAUW,        &
-!/ST4                DELU, DELALP, TAUT, TAUHFT, TAUHFT2, SSDSHCK,    &
+!/ST4                SSDSHCK,                                         &
 !/ST4                IKTAB, DCKI, QBI, SATINDICES, SATWEIGHTS,        &
 !/ST4                DIKCUMUL, CUMULW, SINTAILPAR, CAPCHNK
 !/ST4          IF (SINTAILPAR(1).GT.0.5) WRITE (NDSM) DELUST, DELTAIL,&
@@ -1091,8 +1090,7 @@
 !/ST4                SSTXFTFTAIL, SSTXFTWN, SSTXFTF, SSTXFTWN,        &
 !/ST4                SSDSBRF1, SSDSBRF2, SSDSBRFDF,SSDSBCK, SSDSABK,  &
 !/ST4                SSDSPBK, SSDSBINT, FFXPM, FFXFM, FFXFA,   &
-!/ST4                 SSDSHCK, DELUST, DELTAIL, DELTAUW,        &
-!/ST4                DELU, DELALP, TAUT, TAUHFT, TAUHFT2, SSDSHCK,    &
+!/ST4                SSDSHCK,                                         &
 !/ST4                IKTAB, DCKI, QBI, SATINDICES, SATWEIGHTS,        &
 !/ST4                DIKCUMUL, CUMULW, SINTAILPAR, CAPCHNK
 !/ST4          IF (SINTAILPAR(1).GT.0.5) THEN
@@ -1152,7 +1150,8 @@
 !
 !/DEBUGIOGR     WRITE(740+IAPROC,*) 'W3IOGR, step 20'
 !/DEBUGIOGR     FLUSH(740+IAPROC)
-!/NL2      IF ( FLTEST ) WRITE (NDST,9051) IQTPE, NLTAIL, NDPTHS
+!/NL2      IF ( FLTEST ) WRITE (NDST,9051) IQTPE, NLTAIL, NDPTHS,    &
+!/NL2           GQNF1, GQNT1, GQNQ_OM2, GQTHRSAT, GQTHRCOU, GQAMP
 !/NL2      IF ( FLTEST ) WRITE (NDST,9151) DPTHNL
 !
 !/NL3      IF ( WRITE ) THEN

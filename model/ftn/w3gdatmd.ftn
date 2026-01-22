@@ -824,8 +824,6 @@
 !/NL1                                 SNLS1, SNLS2, SNLS3
 !/NL1        INTEGER               :: IQTPE, GQNF1, GQNT1, GQNQ_OM2
 !/NL1        REAL                  :: NLTAIL, GQTHRSAT, GQTHRCOU, GQAMP(4)
-!/NL2        INTEGER               :: IQTPE, NDPTHS
-!/NL2        REAL                  :: NLTAIL
 !/NL2        INTEGER               :: IQTPE, NDPTHS, GQNF1, GQNT1, GQNQ_OM2
 !/NL2        REAL                  :: NLTAIL, GQTHRSAT, GQTHRCOU, GQAMP(4)
 !/NL2        REAL, POINTER         :: DPTHNL(:)

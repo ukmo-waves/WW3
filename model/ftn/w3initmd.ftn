@@ -2848,12 +2848,12 @@
 !/MPI                END IF
 !
 !/MPI              IF ( FLGRDALL( 8, 6) ) THEN
-!/MPI                IH     = IH + 1
-!/MPI                IT     = IT + 1
-!/MPI                CALL MPI_SEND_INIT (QKK  (1),NSEALM , MPI_REAL, IROOT,   &
-!/MPI                     IT, MPI_COMM_WAVE, IRQGO(IH), IERR)
-!/MPI                WRITE (NDST,9011) IH, ' 8/06', IROOT, IT, IRQGO(IH), IERR
-!/MPI              END IF
+!/MPI                  IH     = IH + 1
+!/MPI                  IT     = IT + 1
+!/MPI      CALL MPI_SEND_INIT (QKK  (1),NSEALM , MPI_REAL, IROOT,   &
+!/MPI                                IT, MPI_COMM_WAVE, IRQGO(IH), IERR)
+!/MPIT      WRITE (NDST,9011) IH, ' 8/06', IROOT, IT, IRQGO(IH), IERR
+!/MPI                END IF
 !
 !/MPI              IF ( FLGRDALL( 9, 1) ) THEN
 !/MPI                  IH     = IH + 1
@@ -3681,12 +3681,12 @@
 !/MPI                  END IF
 !
 !/MPI                IF ( FLGRDALL( 8, 6) ) THEN
-!/MPI                  IH     = IH + 1
-!/MPI                  IT     = IT + 1
-!/MPI                  CALL MPI_RECV_INIT (QKK  (I0),1,WW3_FIELD_VEC, IFROM, IT,  &
-!/MPI                       MPI_COMM_WAVE, IRQGO2(IH), IERR )
-!/MPI                  WRITE (NDST,9011) IH, ' 8/06', IFROM, IT, IRQGO2(IH), IERR
-!/MPI                END IF
+!/MPI                    IH     = IH + 1
+!/MPI                    IT     = IT + 1
+!/MPI      CALL MPI_RECV_INIT (QKK  (I0),1,WW3_FIELD_VEC, IFROM, IT,  &
+!/MPI                               MPI_COMM_WAVE, IRQGO2(IH), IERR )
+!/MPIT      WRITE (NDST,9011) IH, ' 8/06', IFROM, IT, IRQGO2(IH), IERR
+!/MPI                  END IF
 !
 !/MPI                IF ( FLGRDALL( 9, 1) ) THEN
 !/MPI                    IH     = IH + 1
