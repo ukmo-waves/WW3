@@ -200,8 +200,6 @@
           DO ITH=1, NTH
             A2(IK,ITH) = A(ITH,IK) / CG(IK)
           END DO
-
-
         END DO
         !
         ! 2.  Call exact interaction routines -------------------------------- *
