@@ -4501,7 +4501,7 @@
 !/SMC        END IF
 !/SMC
 !/SMC !Li  Minimum DMIN depth is used as well for SMC. 
-!/SMC !!       ZB(ISEA)= - MAX( DMIN, FLOAT( IJKCel(5, ISEA) ) )
+!/SMC        ZB(ISEA)= - MAX( DMIN, FLOAT( IJKCel(5, ISEA) ) )
 !/SMC !Li  Allow land cell to be defined by ZLIM value and only reset
 !/SMC !Li  MAPST* land values for sea points.   JGLi03Nov2023
 !/SMC        ZB(ISEA)= DVSMC*FLOAT( IJKCel(5, ISEA) )
