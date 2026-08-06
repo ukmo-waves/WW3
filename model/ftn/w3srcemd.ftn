@@ -61,7 +61,8 @@
                           TAUWY, TAUOX, TAUOY, TAUWIX, TAUWIY, TAUWNX,&
                           TAUWNY, PHIAW, CHARN, TWS, PHIOC, WHITECAP, &
                           D50, PSIC, BEDFORM , PHIBBL, TAUBBL, TAUICE,&
-                          PHICE, TAUOCX, TAUOCY, WNMEAN, DAIR, COEF) 
+                          PHICE, TAUOCX, TAUOCY, WNMEAN, DAIR, COEF,  &
+                          DRAG ) 
 !/
 !/                  +-----------------------------------+
 !/                  | WAVEWATCH III           NOAA/NCEP |
@@ -446,7 +447,7 @@
                                  CHARN, TWS, BEDFORM(3), PHIBBL,      &
                                  TAUBBL(2), TAUICE(2), WHITECAP(4),   &
                                  TAUWIX, TAUWIY, TAUWNX, TAUWNY,      &
-                                 ICEF, TAUOCX, TAUOCY, WNMEAN
+                                 ICEF, TAUOCX, TAUOCY, WNMEAN, DRAG
       REAL, INTENT(OUT)       :: DTDYN, FCUT
       REAL, INTENT(IN)        :: COEF
 !/
@@ -637,6 +638,7 @@
       TAUOCX = 0.
       TAUOCY = 0.
       WNMEAN = 0.
+      DRAG   = 0.
 
 !
 ! TIME is updated in W3WAVEMD prior to the call of W3SCRE, we should
@@ -673,18 +675,18 @@
 !/ST3          USTDIR=0.
 !/ST3        CALL W3SPR3 (SPEC, CG1, WN1, EMEAN, FMEAN, FMEANS, WNMEAN, &
 !/ST3                   AMAX, U10ABS, U10DIR, USTAR, USTDIR,          &
-!/ST3                   TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS)
+!/ST3                   TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DRAG)
 !/ST3      ELSE
 !/ST3        CALL W3SPR3 (SPEC, CG1, WN1, EMEAN, FMEAN, FMEANS, WNMEAN, &
 !/ST3                   AMAX, U10ABS, U10DIR, USTAR, USTDIR,          &
-!/ST3                   TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS)
+!/ST3                   TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DRAG)
 !/ST3        CALL W3SIN3 ( SPEC, CG1, WN2, U10ABS, USTAR, DRAT, AS,   &
 !/ST3                 U10DIR, Z0, CD, TAUWX, TAUWY, TAUWAX, TAUWAY,   &
 !/ST3                 ICE, VSIN, VDIN, LLWS, IX, IY )
 !/ST3        END IF
 !/ST3      CALL W3SPR3 (SPEC, CG1, WN1, EMEAN, FMEAN, FMEANS, WNMEAN, &
 !/ST3                   AMAX, U10ABS, U10DIR, USTAR, USTDIR,          &
-!/ST3                   TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS)
+!/ST3                   TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DRAG)
 !/ST3      TWS = 1./FMEANWS
 !/ST4      IF (SINTAILPAR(4).GT.0.5) THEN ! this is designed to keep the bug as an option
 !/ST4        TAUWX=0.
@@ -701,7 +703,8 @@
 !/ST4                   AMAX, U10ABS, U10DIR,                           &
 !/ST4!/FLX5                  TAUA, TAUADIR, DAIR,                       &
 !/ST4                   USTAR, USTDIR,                                  &
-!/ST4                   TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DLWMEAN)
+!/ST4                   TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS,     &
+!/ST4                   DLWMEAN, DRAG)
 
 !/DEBUGSRC!/ST4        IF (IX == DEBUG_NODE) THEN
 !/DEBUGSRC!/ST4          WRITE(740+IAPROC,*) '1: out value USTAR=', USTAR, ' USTDIR=', USTDIR
@@ -730,7 +733,8 @@
 !/ST4                   AMAX, U10ABS, U10DIR,                         &
 !/ST4!/FLX5                   TAUA, TAUADIR, DAIR,                    &
 !/ST4                   USTAR, USTDIR,                                &
-!/ST4                   TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DLWMEAN)
+!/ST4                   TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS,   &
+!/ST4                   DLWMEAN, DRAG)
 !/ST4      TWS = 1./FMEANWS
 !/ST6      CALL W3SPR6 (SPEC, CG1, WN1, EMEAN, FMEAN, WNMEAN, AMAX, FP)  
 !
@@ -1164,12 +1168,14 @@
 !/ST2                     EMEAN, FMEAN, WNMEAN, AMAX, ALPHA, FP )
 !/ST3        CALL W3SPR3 (SPEC, CG1, WN1, EMEAN, FMEAN, FMEANS,        &
 !/ST3                     WNMEAN, AMAX, U10ABS, U10DIR, USTAR, USTDIR, &
-!/ST3                     TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS)
+!/ST3                     TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS,  &
+!/ST3                     DRAG)
 !/ST4        CALL W3SPR4 (SPEC, CG1, WN1, EMEAN, FMEAN, FMEAN1, WNMEAN,&
 !/ST4                   AMAX, U10ABS, U10DIR,                          &
 !/ST4!/FLX5                   TAUA, TAUADIR, DAIR,                     &
 !/ST4                   USTAR, USTDIR,                                 &
-!/ST4                   TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DLWMEAN)
+!/ST4                   TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS,    &
+!/ST4                   DLWMEAN, DRAG)
 !/ST6        CALL W3SPR6 (SPEC, CG1, WN1, EMEAN, FMEAN, WNMEAN, AMAX, FP)
 !
 !/FLX2        CALL W3FLX2 ( ZWND, DEPTH, FP, U10ABS, U10DIR,           &
@@ -1272,7 +1278,8 @@
 !/ST4             AMAX, U10ABS, U10DIR,                          &
 !/ST4!/FLX5             TAUA, TAUADIR, DAIR,                     &
 !/ST4             USTAR, USTDIR,                                 &
-!/ST4             TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DLWMEAN)
+!/ST4             TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS,    &
+!/ST4             DLWMEAN, DRAG)
 
 !
 ! 7.  Check if integration complete ---------------------------------- *

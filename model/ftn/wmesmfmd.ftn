@@ -6036,13 +6036,15 @@
 !/SHRD          isea = jsea
           if ( firstCall ) then
             charn(jsea) = zero
+            drag(jsea)  = zero
 !/ST3            llws(:) = .true.
 !/ST3            ustar = zero
 !/ST3            ustdr = zero
 !/ST3            call w3spr3( va(:,jsea), cg(1:nk,isea), wn(1:nk,isea),   &
 !/ST3                         emean, fmean, fmean1, wnmean, amax,         &
 !/ST3                         u10(isea), u10d(isea), ustar, ustdr, tauwx, &
-!/ST3                         tauwy, cd, z0, charn(jsea), llws, fmeanws )
+!/ST3                         tauwy, cd, z0, charn(jsea), llws, fmeanws,  &
+!/ST3                         drag(jsea) )
 !/ST4            llws(:) = .true.
 !/ST4            ustar = zero
 !/ST4            ustdr = zero
@@ -6050,7 +6052,7 @@
 !/ST4                         emean, fmean, fmean1, wnmean, amax,         &
 !/ST4                         u10(isea), u10d(isea), ustar, ustdr, tauwx, &
 !/ST4                         tauwy, cd, z0, charn(jsea), llws, fmeanws,  & 
-!/ST4                         dlwmean )
+!/ST4                         dlwmean, drag(jsea) )
           endif !firstCall
           chkn(jsea) = charn(jsea)
         enddo jsea_loop
@@ -6168,13 +6170,15 @@
           IF ( MAPSTA(IY,IX) .EQ. 1 ) THEN 
             if ( firstCall ) then
               charn(jsea) = zero
+              drag(jsea)  = zero
 !/ST3              llws(:) = .true.
 !/ST3              ustar = zero
 !/ST3              ustdr = zero
 !/ST3              call w3spr3( va(:,jsea), cg(1:nk,isea), wn(1:nk,isea),   &
 !/ST3                           emean, fmean, fmean1, wnmean, amax,         &
 !/ST3                           u10(isea), u10d(isea), ustar, ustdr, tauwx, &
-!/ST3                           tauwy, cd, z0, charn(jsea), llws, fmeanws )
+!/ST3                           tauwy, cd, z0, charn(jsea), llws, fmeanws,  &
+!/ST3                           drag(jsea) )
 !/ST4              llws(:) = .true.
 !/ST4              ustar = zero
 !/ST4              ustdr = zero
@@ -6182,7 +6186,7 @@
 !/ST4                           emean, fmean, fmean1, wnmean, amax,         &
 !/ST4                           u10(isea), u10d(isea), ustar, ustdr, tauwx, &
 !/ST4                           tauwy, cd, z0, charn(jsea), llws, fmeanws,  &
-!/ST4                           dlwmean )
+!/ST4                           dlwmean, drag(jsea) )
             endif !firstCall
             wrln(jsea) = charn(jsea)*ust(isea)**2/grav
           endif 

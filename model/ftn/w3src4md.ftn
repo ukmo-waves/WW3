@@ -85,7 +85,7 @@
                     AMAX, U, UDIR,                                    &
 !/FLX5                    TAUA, TAUADIR, DAIR,                              &
                     USTAR, USDIR, TAUWX, TAUWY, CD, Z0,               &
-                    CHARN, LLWS, FMEANWS, DLWMEAN)
+                    CHARN, LLWS, FMEANWS, DLWMEAN, DRAG)
 !/
 !/                  +-----------------------------------+
 !/                  | WAVEWATCH III                SHOM |
@@ -136,6 +136,7 @@
 !       LLWS    L.A.  I   Wind sea true/false array for each component            
 !       FMEANWS Real  O   Mean frequency of wind sea, used for tail 
 !       DLWMEAN Real  O   Mean Long wave direction  (L. Romero 2019)
+!       DRAG    Real  O   Corresponding drag coefficient
 !     ----------------------------------------------------------------
 !
 !  4. Subroutines used :
@@ -187,7 +188,7 @@
       LOGICAL, INTENT(IN)     :: LLWS(NSPEC)
       REAL, INTENT(INOUT)     :: USTAR ,USDIR
       REAL, INTENT(OUT)       :: EMEAN, FMEAN, FMEAN1, WNMEAN, AMAX,  & 
-                                 CD, Z0, CHARN, FMEANWS, DLWMEAN
+                                 CD, Z0, CHARN, FMEANWS, DLWMEAN, DRAG
 !/
 !/ ------------------------------------------------------------------- /
 !/ Local parameters
@@ -286,7 +287,7 @@
 !/FLX5        CALL W3FLX5 ( ZZWND, U, UDIR, TAUA, TAUADIR, DAIR,  & 
 !/FLX5                                          USTAR, USDIR, Z0, CD, CHARN )
 !/FLX5        ELSE     
-      CALL CALC_USTAR(U,TAUW,USTAR,Z0,CHARN) 
+      CALL CALC_USTAR(U,TAUW,USTAR,Z0,CHARN,DRAG) 
       UNZ    = MAX ( 0.01 , U )
       CD     = (USTAR/UNZ)**2 
       USDIR = UDIR
@@ -1564,7 +1565,7 @@
       END SUBROUTINE TABU_TAUHF2
 
 !/ ------------------------------------------------------------------- /
-      SUBROUTINE CALC_USTAR(WINDSPEED,TAUW,USTAR,Z0,CHARN)
+      SUBROUTINE CALC_USTAR(WINDSPEED,TAUW,USTAR,Z0,CHARN,DRAG)
 !/
 !/                  +-----------------------------------+
 !/                  | WAVEWATCH III           NOAA/NCEP |
@@ -1628,7 +1629,7 @@
 !/T      USE W3ODATMD, ONLY: NDST
       IMPLICIT NONE
       REAL, intent(in) :: WINDSPEED,TAUW
-      REAL, intent(out) :: USTAR, Z0, CHARN
+      REAL, intent(out) :: USTAR, Z0, CHARN, DRAG
       ! local variables
       REAL             :: SQRTCDM1
       REAL             :: XI,DELI1,DELI2,XJ,delj1,delj2  ! used for table version
@@ -1716,6 +1717,8 @@
       ! Problem with large values of CHARN for low winds
       CHARN = MIN( 0.09 , CHARN )
       IF(CHARN.LT.CHATH) CHARN = CHATH
+!
+      DRAG = 1. / (SQRTCDM1 * SQRTCDM1)
 !
       RETURN
       END SUBROUTINE CALC_USTAR

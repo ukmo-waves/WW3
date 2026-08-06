@@ -3129,6 +3129,17 @@
       META(1)%VARND=''
       META(1)%VMIN = 0
       META(1)%VMAX = 64
+! IFI=5, IFJ=12, DRG
+      META => GROUP(5)%FIELD(12)%META
+      META(1)%FSC    = 1.E-7
+      META(1)%UNITS  = '1'
+      META(1)%ENAME  = '.drg'
+      META(1)%VARNM='drag'
+      META(1)%VARNL='drag coefficient for surface roughness length for momentum in air'
+      META(1)%VARNS='drag_coefficient_for_surface_roughness_length_for_momentum_in_air'
+      META(1)%VARNG='drag_coefficient'
+      META(1)%VMIN = 0.0004
+      META(1)%VMAX = 0.0035
 !
 !---------- GROUP 6 ----------------
 !
