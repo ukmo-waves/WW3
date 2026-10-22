@@ -1620,7 +1620,7 @@ CONTAINS
          XYZ, AGE1, AFR, AGE2, FACT, XSTAR,    &
          YSTAR, FHIGH, ZWND, Z0, USTD, EMEAN,  &
          FMEAN, WNMEAN, UDIRCA, CHARN, M2KM,   &
-         ICETHICK, ICECON
+         ICETHICK, ICECON, DRAG
 #ifdef W3_FLX5
     REAL                    :: TAUA, TAUADIR, RHOAIR
 #endif
@@ -2123,7 +2123,7 @@ CONTAINS
 #ifdef W3_ST3
             CALL W3SPR3 (A, CG, WN, EMEAN, FMEAN, FMEANS,       &
                  WNMEAN, AMAX, UABS, UDIRR, USTAR, USTD,&
-                 TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS )
+                 TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DRAG )
 #endif
 #ifdef W3_ST4
             CALL W3SPR4 (A, CG, WN, EMEAN, FMEAN, FMEAN1,       &
@@ -2132,7 +2132,7 @@ CONTAINS
                  TAUA, TAUADIR, RHOAIR,           &
 #endif
                  USTAR, USTD, TAUWX, TAUWY, CD, Z0,     &
-                 CHARN, LLWS, FMEANWS, DLWMEAN )
+                 CHARN, LLWS, FMEANWS, DLWMEAN, DRAG )
 #endif
 #ifdef W3_ST6
             CALL W3SPR6 (A, CG, WN, EMEAN, FMEAN, WNMEAN, AMAX, FP)
@@ -2173,7 +2173,7 @@ CONTAINS
                    TAUWNX, TAUWNY, ICE, XIN, DIA, LLWS, IX, IY )
               CALL W3SPR3 (A, CG, WN, EMEAN, FMEAN, FMEANS,       &
                    WNMEAN, AMAX, UABS, UDIRR, USTAR, USTD,&
-                   TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS )
+                   TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DRAG)
 #endif
 #ifdef W3_ST4
               IX=1
@@ -2186,7 +2186,7 @@ CONTAINS
                    USTAR, USTD, TAUWX, TAUWY, CD, Z0,       &
                    CHARN, LLWS, FMEANWS,DLWMEAN )
               CALL W3SDS4 ( A, WN, CG, USTAR,  USTD, DEPTH, DAIR, XDS, &
-                   DIA, IX, IY, LAMBDA, WHITECAP, DLWMEAN )
+                   DIA, IX, IY, LAMBDA, WHITECAP, DLWMEAN, DRAG )
               CALL W3SIN4 (A, CG, WN2, UABS, USTAR, DAIR/DWAT,     &
                    ASO(J), UDIRR, Z0, CD, TAUWX, TAUWY, TAUWNX, &
                    TAUWNY, XIN, DIA, LLWS, IX, IY, LAMBDA )
@@ -2303,7 +2303,8 @@ CONTAINS
 #ifdef W3_ST3
             CALL W3SPR3 (A, CG, WN, EMEAN, FMEAN, FMEANS,       &
                  WNMEAN, AMAX, UABS, UDIRR, USTAR, USTD,&
-                 TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS )
+                 TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS,&
+                 DRAG)
 #endif
 #ifdef W3_ST4
             CALL W3SPR4 (A, CG, WN, EMEAN, FMEAN,  FMEAN1,        &
@@ -2312,9 +2313,9 @@ CONTAINS
                  TAUA, TAUADIR, RHOAIR,             &
 #endif
                  USTAR, USTD, TAUWX, TAUWY, CD, Z0,       &
-                 CHARN, LLWS, FMEANWS, DLWMEAN )
+                 CHARN, LLWS, FMEANWS, DLWMEAN, DRAG )
             CALL W3SDS4 ( A, WN, CG, USTAR,  USTD, DEPTH, DAIR, XDS, &
-                 DIA, IX, IY, LAMBDA, WHITECAP, DLWMEAN )
+                 DIA, IX, IY, LAMBDA, WHITECAP, DLWMEAN, DRAG )
 #endif
 #ifdef W3_ST6
             CALL W3SPR6 (A, CG, WN, EMEAN, FMEAN, WNMEAN, AMAX, FP)
@@ -2351,7 +2352,8 @@ CONTAINS
 #ifdef W3_ST3
               CALL W3SPR3 (A, CG, WN, EMEAN, FMEAN, FMEANS,       &
                    WNMEAN, AMAX, UABS, UDIRR, USTAR, USTD,&
-                   TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS )
+                   TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS,&
+                   DRAG)
               CALL W3SIN3 ( A, CG, WN2, UABS, USTAR, DAIR/DWAT,&
                    ASO(J), UDIRR, Z0, CD,TAUWX, TAUWY, &
                    TAUWNX, TAUWNY, ICE, XIN, DIA, LLWS, IX, IY )
@@ -2363,7 +2365,7 @@ CONTAINS
                    TAUA, TAUADIR, RHOAIR,              &
 #endif
                    USTAR, USTD,  TAUWX, TAUWY, CD, Z0,      &
-                   CHARN, LLWS, FMEANWS, DLWMEAN )
+                   CHARN, LLWS, FMEANWS, DLWMEAN, DRAG)
               CALL W3SIN4 (A, CG, WN2, UABS, USTAR, DAIR/DWAT,    &
                    ASO(J), UDIRR, Z0, CD, TAUWX, TAUWY,TAUWNX,&
                    TAUWNY, XIN, DIA, LLWS, IX, IY, LAMBDA )
@@ -2408,7 +2410,7 @@ CONTAINS
                    TAUA, TAUADIR, RHOAIR,              &
 #endif
                    USTAR, USTD, TAUWX, TAUWY, CD, Z0,       &
-                   CHARN, LLWS, FMEANWS, DLWMEAN )
+                   CHARN, LLWS, FMEANWS, DLWMEAN, DRAG)
               CALL W3SDS4 ( A, WN, CG, USTAR,  USTD, DEPTH, DAIR, XDS, &
                    DIA, IX, IY, LAMBDA, WHITECAP, DLWMEAN )
               CALL W3SIN4 (A, CG, WN2, UABS, USTAR, DAIR/DWAT,    &

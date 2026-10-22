@@ -156,6 +156,7 @@ MODULE W3ADATMD
   !      PHIAW     R.A.  Public   Wind to wave energy flux.
   !      TAUWIX/Y  R.A.  Public   Wind to wave energy flux.
   !      TAUWNX/Y  R.A.  Public   Wind to wave energy flux.
+  !      DRAG      R.A.  Public   Drag coeffcient
   !      WHITECAP  R.A.  Public    1 : Whitecap coverage
   !                                2 : Whitecap thickness
   !                                3 : Mean breaking height
@@ -445,10 +446,12 @@ MODULE W3ADATMD
     !
     REAL, POINTER         ::  CHARN(:),  CGE(:),  PHIAW(:),       &
          TAUWIX(:),  TAUWIY(:),  TAUWNX(:),  &
-         TAUWNY(:),  WHITECAP(:,:), TWS(:)
+         TAUWNY(:),  WHITECAP(:,:), TWS(:),                       &
+         DRAG(:)
     REAL, POINTER         :: XCHARN(:), XCGE(:), XPHIAW(:),       &
          XTAUWIX(:), XTAUWIY(:), XTAUWNX(:),  &
-         XTAUWNY(:), XWHITECAP(:,:), XTWS(:)
+         XTAUWNY(:), XWHITECAP(:,:), XTWS(:),                     &
+         XDRAG(:)
     !
     ! Output fields group 6)
     !
@@ -605,7 +608,8 @@ MODULE W3ADATMD
   !
   REAL, POINTER           :: CHARN(:), CGE(:), PHIAW(:),          &
        TAUWIX(:), TAUWIY(:), TAUWNX(:),     &
-       TAUWNY(:), WHITECAP(:,:), TWS(:)
+       TAUWNY(:), WHITECAP(:,:), TWS(:),                          &
+       DRAG(:)
   !
   REAL, POINTER           :: SXX(:), SYY(:), SXY(:), TAUOX(:),    &
        TAUOY(:), BHD(:), PHIOC(:),          &
@@ -1169,6 +1173,7 @@ CONTAINS
          WADATS(IMOD)%TAUWIY  (NSEALM),                       &
          WADATS(IMOD)%TAUWNX  (NSEALM),                       &
          WADATS(IMOD)%TAUWNY  (NSEALM),                       &
+         WADATS(IMOD)%DRAG    (NSEALM),                       &
          WADATS(IMOD)%WHITECAP(NSEALM,4),                     &
          STAT=ISTAT )
     CHECK_ALLOC_STATUS ( ISTAT )
@@ -1181,6 +1186,7 @@ CONTAINS
     WADATS(IMOD)%TAUWIY   = UNDEF
     WADATS(IMOD)%TAUWNX   = UNDEF
     WADATS(IMOD)%TAUWNY   = UNDEF
+    WADATS(IMOD)%DRAG     = UNDEF
     WADATS(IMOD)%WHITECAP = UNDEF
 
     call print_memcheck(memunit, 'memcheck_____:'//' W3DIMA 5')
@@ -2018,6 +2024,14 @@ CONTAINS
     ELSE
       ALLOCATE ( WADATS(IMOD)%XTWS(1), STAT=ISTAT )
       CHECK_ALLOC_STATUS ( ISTAT )
+    !
+    IF ( OUTFLAGS( 5, 12) ) THEN
+      ALLOCATE ( WADATS(IMOD)%XDRAG(NXXX), STAT=ISTAT )
+      CHECK_ALLOC_STATUS ( ISTAT )
+    ELSE
+      ALLOCATE ( WADATS(IMOD)%XDRAG(1), STAT=ISTAT )
+      CHECK_ALLOC_STATUS ( ISTAT )
+
     END IF
     !
     WADATS(IMOD)%XCHARN    = UNDEF
@@ -2028,6 +2042,7 @@ CONTAINS
     WADATS(IMOD)%XTAUWIY   = UNDEF
     WADATS(IMOD)%XTAUWNX   = UNDEF
     WADATS(IMOD)%XTAUWNY   = UNDEF
+    WADATS(IMOD)%XDRAG     = UNDEF
     WADATS(IMOD)%XWHITECAP = UNDEF
     !
     IF ( OUTFLAGS( 6, 1) ) THEN
@@ -2897,6 +2912,7 @@ CONTAINS
       TAUWIY   => WADATS(IMOD)%TAUWIY
       TAUWNX   => WADATS(IMOD)%TAUWNX
       TAUWNY   => WADATS(IMOD)%TAUWNY
+      DRAG     => WADATS(IMOD)%DRAG
       WHITECAP => WADATS(IMOD)%WHITECAP
       !
       SXX    => WADATS(IMOD)%SXX
@@ -3240,6 +3256,7 @@ CONTAINS
       TAUWIY   => WADATS(IMOD)%XTAUWIY
       TAUWNX   => WADATS(IMOD)%XTAUWNX
       TAUWNY   => WADATS(IMOD)%XTAUWNY
+      DRAG     => WADATS(IMOD)%XDRAG
       WHITECAP => WADATS(IMOD)%XWHITECAP
       !
       SXX    => WADATS(IMOD)%XSXX

@@ -748,7 +748,7 @@ CONTAINS
          EMAX, EL, EH, DENOM, FP, THP, SPP,   &
          FACTOR, CD, USTAR, FHIGH, ZWND, ICE, &
          USTD, Z0, CHARN, EMEAN, FMEAN, WNMEAN,&
-         ICETHICK, ICECON, ICEF
+         ICETHICK, ICECON, ICEF, DRAG
 #ifdef W3_FLX5
     REAL                     ::TAUA, TAUADIR, RHOAIR
 #endif
@@ -1071,7 +1071,7 @@ CONTAINS
 #ifdef W3_ST3
         CALL W3SPR3 (A, CG, WN, EMEAN, FMEAN, FMEANS,        &
              WNMEAN, AMAX, UABS, UDIRR, USTAR, USTD, &
-             TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS)
+             TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DRAG)
 #endif
 #ifdef W3_ST4
         CALL W3SPR4 (A, CG, WN, EMEAN, FMEAN,  FMEAN1,      &
@@ -1080,7 +1080,7 @@ CONTAINS
              TAUA, TAUADIR, RHOAIR,           &
 #endif
              USTAR, USTD, TAUWX, TAUWY, CD, Z0,     &
-             CHARN, LLWS, FMEANWS, DLWMEAN )
+             CHARN, LLWS, FMEANWS, DLWMEAN, DRAG)
 #endif
 #ifdef W3_ST6
         CALL W3SPR6 (A, CG, WN, EMEAN, FMEAN, WNMEAN, AMAX, FP)
@@ -1120,7 +1120,7 @@ CONTAINS
                ICE, XWI, DIA, LLWS, IX, IY )
           CALL W3SPR3 (A, CG, WN, EMEAN, FMEAN, FMEANS,        &
                WNMEAN, AMAX, UABS, UDIRR, USTAR, USTD, &
-               TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS)
+               TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DRAG)
 #endif
 #ifdef W3_ST4
           CALL W3SIN4 (A, CG, WN2, UABS, USTAR, DAIR/DWAT,   &
@@ -1132,7 +1132,7 @@ CONTAINS
                TAUA, TAUADIR, RHOAIR,             &
 #endif
                USTAR, USTD, TAUWX, TAUWY, CD, Z0,       &
-               CHARN, LLWS, FMEANWS, DLWMEAN )
+               CHARN, LLWS, FMEANWS, DLWMEAN, DRAG)
 #endif
 #ifdef W3_FLX2
           CALL W3FLX2 ( ZWND, DEPTH, FP, UABS, UDIRR,        &

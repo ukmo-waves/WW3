@@ -2133,7 +2133,7 @@ CONTAINS
          TUSX, TUSY, TAUWIX, TAUWIY, TAUOX,        &
          TAUOY, USSX, USSY, MSSX, MSSY, MSSD,      &
          MSCX, MSCY, MSCD, PRMS, TPMS, CHARN,      &
-         TWS, TAUWNX, TAUWNY, BHD, CGE,            &
+         TWS, TAUWNX, TAUWNY, BHD, CGE, DRAG,      &
          CFLXYMAX, CFLTHMAX, CFLKMAX, WHITECAP,    &
          BEDFORMS, PHIBBL, TAUBBL, T01,            &
          P2SMS, US3D, EF,  TH1M, STH1M, TH2M,      &
@@ -2854,6 +2854,16 @@ CONTAINS
                IT, MPI_COMM_WAVE, IRQGO(IH), IERR)
 #ifdef W3_MPIT
           WRITE (NDST,9011) IH, ' 5/11', IROOT, IT, IRQGO(IH), IERR
+#endif
+        END IF
+        !
+        IF ( FLGRDALL( 5, 12) ) THEN
+          IH     = IH + 1
+          IT     = IT + 1
+          CALL MPI_SEND_INIT (DRAG(1),NSEALM , MPI_REAL, IROOT,    &
+               IT, MPI_COMM_WAVE, IRQGO(IH), IERR)
+#ifdef W3_MPIT
+          WRITE (NDST,9011) IH, ' 5/12', IROOT, IT, IRQGO(IH), IERR
 #endif
         END IF
         !
@@ -3923,6 +3933,16 @@ CONTAINS
                  MPI_COMM_WAVE, IRQGO2(IH), IERR )
 #ifdef W3_MPIT
             WRITE (NDST,9011) IH, ' 5/11', IFROM, IT, IRQGO2(IH), IERR
+#endif
+          END IF
+          !
+          IF ( FLGRDALL( 5,12) ) THEN
+            IH     = IH + 1
+            IT     = IT + 1
+            CALL MPI_RECV_INIT (DRAG(I0),1,WW3_FIELD_VEC, IFROM, IT,  &
+                 MPI_COMM_WAVE, IRQGO2(IH), IERR )
+#ifdef W3_MPIT
+            WRITE (NDST,9011) IH, ' 5/12', IFROM, IT, IRQGO2(IH), IERR
 #endif
           END IF
           !

@@ -207,7 +207,8 @@ PROGRAM W3OUNF
        CFLTHMAX, CFLXYMAX, CFLKMAX, TAUICE, PHICE,  &
        STMAXE, STMAXD, HMAXE, HCMAXE, HMAXD, HCMAXD,&
        P2SMS, EF, US3D, TH1M, STH1M, TH2M, STH2M,   &
-       WN, USSP, WBT, WNMEAN, QKK, SKEW, EMBIA1, EMBIA2
+       WN, USSP, WBT, WNMEAN, QKK, SKEW, EMBIA1, EMBIA2,&
+       DRAG
   USE W3ODATMD, ONLY: NDSO, NDSE, SCREEN, NOGRP, NGRPP, IDOUT,     &
        UNDEF, FLOGRD, FNMPRE, NOSWLL, NOGE
   !
@@ -1680,6 +1681,10 @@ CONTAINS
               ! Wind sea mean period T0M1
             ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 11 ) THEN
               CALL S2GRID(TWS(1:NSEA), X1)
+              !
+              ! Drag coefficient
+            ELSE IF (IFI .EQ. 5 .AND. IFJ .EQ. 12) THEN
+              CALL S2GRID(DRAG(1:NSEA), X1)  
               !
               ! Radiation stress
             ELSE IF ( IFI .EQ. 6 .AND. IFJ .EQ. 1 ) THEN

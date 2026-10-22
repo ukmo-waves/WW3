@@ -1044,6 +1044,9 @@ CONTAINS
     CASE('FWS')
       I = 5
       J = 11
+    CASE('DRAG')
+      I = 5
+      J = 12
       !
       ! Group 6
       !
@@ -1313,7 +1316,7 @@ CONTAINS
          TH2M, STH2M, HSIG, STMAXE, STMAXD,          &
          HCMAXE, HMAXE, HCMAXD, HMAXD, USSP, QP, PQP,&
          PTHP0, PPE, PGW, PSW, PTM1, PT1, PT2, PEP,  &
-         WBT, QKK
+         WBT, QKK, DRAG
     USE W3ODATMD, ONLY: NDST, UNDEF, IAPROC, NAPROC, NAPFLD,        &
          ICPRT, DTPRT, WSCUT, NOSWLL, FLOGRD, FLOGR2,&
          NOGRP, NGRPP
@@ -2916,6 +2919,7 @@ CONTAINS
           IF ( FLOGRD( 5, 8) ) WHITECAP(ISEA,2) = UNDEF
           IF ( FLOGRD( 5, 9) ) WHITECAP(ISEA,3) = UNDEF
           IF ( FLOGRD( 5,10) ) WHITECAP(ISEA,4) = UNDEF
+          IF ( FLOGRD( 5,12) ) WHITECAP(ISEA)   = UNDEF
           !
           IF ( FLOGRD( 6, 1) ) THEN
             SXX   (ISEA) = UNDEF
@@ -3447,6 +3451,9 @@ CONTAINS
 #endif
             ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 11 ) THEN
               WRITE ( NDSOG ) TWS(1:NSEA)
+#endif
+            ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 12 ) THEN
+              WRITE ( NDSOG ) DRAG(1:NSEA) 
 #ifdef W3_ASCII
               WRITE ( NDSOA,* ) 'TWS:', TWS(1:NSEA)
 #endif
@@ -3891,6 +3898,8 @@ CONTAINS
               READ (NDSOG,IOSTAT=IERR) WHITECAP(1:NSEA,4)
             ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 11 ) THEN
               READ (NDSOG,IOSTAT=IERR) TWS(1:NSEA)
+            ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 12 ) THEN
+              READ (NDSOG,IOSTAT=IERR) DRAG(1:NSEA)
               !
               !     Section 6)
               !

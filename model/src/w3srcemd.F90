@@ -201,7 +201,8 @@ CONTAINS
        TAUWY, TAUOX, TAUOY, TAUWIX, TAUWIY, TAUWNX,&
        TAUWNY, PHIAW, CHARN, TWS, PHIOC, WHITECAP, &
        D50, PSIC, BEDFORM , PHIBBL, TAUBBL, TAUICE,&
-       PHICE, TAUOCX, TAUOCY, WNMEAN, DAIR, COEF)
+       PHICE, TAUOCX, TAUOCY, WNMEAN, DAIR, COEF,  &
+       DRAG)
     !/
     !/                  +-----------------------------------+
     !/                  | WAVEWATCH III           NOAA/NCEP |
@@ -676,7 +677,7 @@ CONTAINS
          CHARN, TWS, BEDFORM(3), PHIBBL,      &
          TAUBBL(2), TAUICE(2), WHITECAP(4),   &
          TAUWIX, TAUWIY, TAUWNX, TAUWNY,      &
-         ICEF, TAUOCX, TAUOCY, WNMEAN
+         ICEF, TAUOCX, TAUOCY, WNMEAN, DRAG
     REAL, INTENT(OUT)       :: DTDYN, FCUT
     REAL, INTENT(IN)        :: COEF
     !/
@@ -972,6 +973,7 @@ CONTAINS
     TAUOCX = 0.
     TAUOCY = 0.
     WNMEAN = 0.
+    DRAG   = 0.
 
     !
     ! TIME is updated in W3WAVEMD prior to the call of W3SCRE, we should
@@ -1021,18 +1023,18 @@ CONTAINS
       USTDIR=0.
       CALL W3SPR3 (SPEC, CG1, WN1, EMEAN, FMEAN, FMEANS, WNMEAN, &
            AMAX, U10ABS, U10DIR, USTAR, USTDIR,          &
-           TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS)
+           TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DRAG)
     ELSE
       CALL W3SPR3 (SPEC, CG1, WN1, EMEAN, FMEAN, FMEANS, WNMEAN, &
            AMAX, U10ABS, U10DIR, USTAR, USTDIR,          &
-           TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS)
+           TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DRAG)
       CALL W3SIN3 ( SPEC, CG1, WN2, U10ABS, USTAR, DRAT, AS,   &
            U10DIR, Z0, CD, TAUWX, TAUWY, TAUWAX, TAUWAY,   &
            ICE, VSIN, VDIN, LLWS, IX, IY )
     END IF
     CALL W3SPR3 (SPEC, CG1, WN1, EMEAN, FMEAN, FMEANS, WNMEAN, &
          AMAX, U10ABS, U10DIR, USTAR, USTDIR,          &
-         TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS)
+         TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DRAG)
     TWS = 1./FMEANWS
 #endif
 #ifdef W3_ST4
@@ -1053,7 +1055,8 @@ CONTAINS
            TAUA, TAUADIR, DAIR,                             &
 #endif
            USTAR, USTDIR,                                  &
-           TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DLWMEAN)
+           TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DLWMEAN, &
+           DRAG)
 #endif
 
 #if defined(W3_DEBUGSRC) && defined(W3_ST4)
@@ -1092,7 +1095,8 @@ CONTAINS
          TAUA, TAUADIR, DAIR,                    &
 #endif
          USTAR, USTDIR,                                &
-         TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DLWMEAN)
+         TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DLWMEAN, &
+         DRAG)
     TWS = 1./FMEANWS
 #endif
 #ifdef W3_ST6
@@ -1842,7 +1846,8 @@ CONTAINS
 #ifdef W3_ST3
       CALL W3SPR3 (SPEC, CG1, WN1, EMEAN, FMEAN, FMEANS,        &
            WNMEAN, AMAX, U10ABS, U10DIR, USTAR, USTDIR, &
-           TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS)
+           TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS,  &
+           DRAG)
 #endif
 #ifdef W3_ST4
       CALL W3SPR4 (SPEC, CG1, WN1, EMEAN, FMEAN, FMEAN1, WNMEAN,&
@@ -1851,7 +1856,8 @@ CONTAINS
            TAUA, TAUADIR, DAIR,                     &
 #endif
            USTAR, USTDIR,                                 &
-           TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DLWMEAN)
+           TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DLWMEAN, &
+           DRAG)
 #endif
 #ifdef W3_ST6
       CALL W3SPR6 (SPEC, CG1, WN1, EMEAN, FMEAN, WNMEAN, AMAX, FP)
@@ -1983,7 +1989,8 @@ CONTAINS
            TAUA, TAUADIR, DAIR,                     &
 #endif
            USTAR, USTDIR,                                 &
-           TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DLWMEAN)
+           TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DLWMEAN, &
+           DRAG)
 #endif
 
       !

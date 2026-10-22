@@ -6498,6 +6498,7 @@ contains
 #endif
         if ( firstCall ) then
           charn(jsea) = zero
+          drag(jsea) = zero
 #ifdef W3_ST3
           llws(:) = .true.
           ustar = zero
@@ -6507,7 +6508,8 @@ contains
           call w3spr3( va(:,jsea), cg(1:nk,isea), wn(1:nk,isea),   &
                emean, fmean, fmean1, wnmean, amax,         &
                u10(isea), u10d(isea), ustar, ustdr, tauwx, &
-               tauwy, cd, z0, charn(jsea), llws, fmeanws )
+               tauwy, cd, z0, charn(jsea), llws, fmeanws,  &
+               drag(jsea))
 #endif
 #ifdef W3_ST4
           llws(:) = .true.
@@ -6519,7 +6521,7 @@ contains
                emean, fmean, fmean1, wnmean, amax,         &
                u10(isea), u10d(isea), ustar, ustdr, tauwx, &
                tauwy, cd, z0, charn(jsea), llws, fmeanws,  &
-               dlwmean )
+               dlwmean, drag(jsea) )
 #endif
         endif !firstCall
         chkn(jsea) = charn(jsea)
@@ -6651,6 +6653,7 @@ contains
         IF ( MAPSTA(IY,IX) .EQ. 1 ) THEN
           if ( firstCall ) then
             charn(jsea) = zero
+            drag(jsea)  = zero
 #ifdef W3_ST3
             llws(:) = .true.
             ustar = zero
@@ -6660,7 +6663,8 @@ contains
             call w3spr3( va(:,jsea), cg(1:nk,isea), wn(1:nk,isea),   &
                  emean, fmean, fmean1, wnmean, amax,         &
                  u10(isea), u10d(isea), ustar, ustdr, tauwx, &
-                 tauwy, cd, z0, charn(jsea), llws, fmeanws )
+                 tauwy, cd, z0, charn(jsea), llws, fmeanws,  &
+                 drag(jsea))
 #endif
 #ifdef W3_ST4
             llws(:) = .true.
@@ -6672,7 +6676,7 @@ contains
                  emean, fmean, fmean1, wnmean, amax,         &
                  u10(isea), u10d(isea), ustar, ustdr, tauwx, &
                  tauwy, cd, z0, charn(jsea), llws, fmeanws,  &
-                 dlwmean )
+                 dlwmean, drag(jsea))
 #endif
           endif !firstCall
           wrln(jsea) = charn(jsea)*ust(isea)**2/grav

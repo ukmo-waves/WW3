@@ -133,7 +133,7 @@ CONTAINS
   !>
   SUBROUTINE W3SPR3 (A, CG, WN, EMEAN, FMEAN, FMEANS, WNMEAN,     &
        AMAX, U, UDIR, USTAR, USDIR, TAUWX, TAUWY, CD, Z0,&
-       CHARN, LLWS, FMEANWS)
+       CHARN, LLWS, FMEANWS, DRAG)
     !/
     !/                  +-----------------------------------+
     !/                  | WAVEWATCH III                SHOM |
@@ -224,7 +224,7 @@ CONTAINS
     LOGICAL, INTENT(IN)     :: LLWS(NSPEC)
     REAL, INTENT(INOUT)     :: USTAR ,USDIR
     REAL, INTENT(OUT)       :: EMEAN, FMEAN, FMEANS, WNMEAN, AMAX,  &
-         CD, Z0, CHARN, FMEANWS
+         CD, Z0, CHARN, FMEANWS, DRAG
     !/
     !/ ------------------------------------------------------------------- /
     !/ Local parameters
@@ -322,7 +322,7 @@ CONTAINS
     TAUW = SQRT(TAUWX**2+TAUWY**2)
 
     Z0=0.
-    CALL CALC_USTAR(U,TAUW,USTAR,Z0,CHARN)
+    CALL CALC_USTAR(U,TAUW,USTAR,Z0,CHARN,DRAG)
     UNZ    = MAX ( 0.01 , U )
     CD     = (USTAR/UNZ)**2
     USDIR = UDIR
@@ -1132,7 +1132,7 @@ CONTAINS
   !> @author F. Ardhuin
   !> @date   14-Aug-2006
   !>
-  SUBROUTINE CALC_USTAR(WINDSPEED,TAUW,USTAR,Z0,CHARN)
+  SUBROUTINE CALC_USTAR(WINDSPEED,TAUW,USTAR,Z0,CHARN,DRAG)
     !/
     !/                  +-----------------------------------+
     !/                  | WAVEWATCH III           NOAA/NCEP |
@@ -1194,7 +1194,7 @@ CONTAINS
     USE W3GDATMD,  ONLY: ZZWND, AALPHA
     IMPLICIT NONE
     REAL, intent(in) :: WINDSPEED,TAUW
-    REAL, intent(out) :: USTAR, Z0, CHARN
+    REAL, intent(out) :: USTAR, Z0, CHARN, DRAG
     ! local variables
     REAL SQRTCDM1
     REAL X,XI,DELI1,DELI2,XJ,delj1,delj2
@@ -1222,6 +1222,8 @@ CONTAINS
     ELSE
       CHARN = AALPHA
     END IF
+    !
+    DRAG = 1. / (SQRTCDM1 * SQRTCDM1)
     !
     RETURN
   END SUBROUTINE CALC_USTAR

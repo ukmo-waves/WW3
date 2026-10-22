@@ -1621,7 +1621,7 @@ CONTAINS
                    TWS(JSEA), PHIOC(JSEA), TMP1, D50, PSIC, TMP2,     &
                    PHIBBL(JSEA), TMP3, TMP4, PHICE(JSEA),             &
                    TAUOCX(JSEA), TAUOCY(JSEA), WNMEAN(JSEA),          &
-                   RHOAIR(ISEA), ASF(ISEA))
+                   RHOAIR(ISEA), ASF(ISEA),DRAG(JSEA))
               IF (.not. LSLOC) THEN
                 VSTOT(:,JSEA) = VSioDummy
                 VDTOT(:,JSEA) = VDioDummy
@@ -2288,7 +2288,7 @@ CONTAINS
                          TWS(JSEA),PHIOC(JSEA), TMP1, D50, PSIC, TMP2,     &
                          PHIBBL(JSEA), TMP3, TMP4, PHICE(JSEA),            &
                          TAUOCX(JSEA), TAUOCY(JSEA), WNMEAN(JSEA),         &
-                         RHOAIR(ISEA), ASF(ISEA))
+                         RHOAIR(ISEA), ASF(ISEA),DRAG(JSEA))
                   ELSE
 #endif
                     CALL W3SRCE(srce_direct, IT, ISEA, JSEA, IX, IY, IMOD, &
@@ -2314,7 +2314,7 @@ CONTAINS
                          TWS(JSEA), PHIOC(JSEA), TMP1, D50, PSIC,TMP2,     &
                          PHIBBL(JSEA), TMP3, TMP4 , PHICE(JSEA),           &
                          TAUOCX(JSEA), TAUOCY(JSEA), WNMEAN(JSEA),         &
-                         RHOAIR(ISEA), ASF(ISEA))
+                         RHOAIR(ISEA), ASF(ISEA),DRAG(JSEA))
 #ifdef W3_PDLIB
                   END IF
 #endif

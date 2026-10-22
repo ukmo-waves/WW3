@@ -145,7 +145,7 @@ CONTAINS
        TAUA, TAUADIR, DAIR,                              &
 #endif
        USTAR, USDIR,                                     &
-       TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DLWMEAN)
+       TAUWX, TAUWY, CD, Z0, CHARN, LLWS, FMEANWS, DLWMEAN, DRAG)
     !/
     !/                  +-----------------------------------+
     !/                  | WAVEWATCH III                SHOM |
@@ -196,6 +196,7 @@ CONTAINS
     !       LLWS    L.A.  I   Wind sea true/false array for each component
     !       FMEANWS Real  O   Mean frequency of wind sea, used for tail
     !       DLWMEAN Real  O   Mean Long wave direction  (L. Romero 2019)
+    !       DRAG    Real  O   Corresponding drag coefficient
     !     ----------------------------------------------------------------
     !
     !  4. Subroutines used :
@@ -254,7 +255,7 @@ CONTAINS
     LOGICAL, INTENT(IN)     :: LLWS(NSPEC)
     REAL, INTENT(INOUT)     :: USTAR ,USDIR
     REAL, INTENT(OUT)       :: EMEAN, FMEAN, FMEAN1, WNMEAN, AMAX,  &
-         CD, Z0, CHARN, FMEANWS, DLWMEAN
+         CD, Z0, CHARN, FMEANWS, DLWMEAN, DRAG
     !/
     !/ ------------------------------------------------------------------- /
     !/ Local parameters
@@ -357,7 +358,7 @@ CONTAINS
     CALL W3FLX5 ( ZZWND, U, UDIR, TAUA, TAUADIR, DAIR,  &
          USTAR, USDIR, Z0, CD, CHARN )
 #else
-    CALL CALC_USTAR(U,TAUW,USTAR,Z0,CHARN)
+    CALL CALC_USTAR(U,TAUW,USTAR,Z0,CHARN,DRAG)
     UNZ    = MAX ( 0.01 , U )
     CD     = (USTAR/UNZ)**2
     USDIR = UDIR
@@ -1843,7 +1844,7 @@ CONTAINS
   !> @author F. Ardhuin
   !> @date   14-Aug-2006
   !>
-  SUBROUTINE CALC_USTAR(WINDSPEED,TAUW,USTAR,Z0,CHARN)
+  SUBROUTINE CALC_USTAR(WINDSPEED,TAUW,USTAR,Z0,CHARN,DRAG)
     !/
     !/                  +-----------------------------------+
     !/                  | WAVEWATCH III           NOAA/NCEP |
@@ -1911,7 +1912,7 @@ CONTAINS
 #endif
     IMPLICIT NONE
     REAL, intent(in) :: WINDSPEED,TAUW
-    REAL, intent(out) :: USTAR, Z0, CHARN
+    REAL, intent(out) :: USTAR, Z0, CHARN, DRAG
     ! local variables
     REAL             :: SQRTCDM1
     REAL             :: XI,DELI1,DELI2,XJ,delj1,delj2  ! used for table version
@@ -2003,6 +2004,8 @@ CONTAINS
     ENDIF
 
     !  WRITE(6,*) 'CALC_USTAR:',WINDSPEED,TAUW,AALPHA,CHARN,Z0,USTAR
+    !
+    DRAG = 1. / (SQRTCDM1 * SQRTCDM1)
     !
     RETURN
   END SUBROUTINE CALC_USTAR

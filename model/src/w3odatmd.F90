@@ -852,7 +852,7 @@ CONTAINS
     !
     ! 5) Atmosphere-waves layer
     !
-    NOGE(5) = 11
+    NOGE(5) = 12
     !
     IDOUT( 5, 1)  = 'Friction velocity   '
     IDOUT( 5, 2)  = 'Charnock parameter  '
@@ -865,6 +865,7 @@ CONTAINS
     IDOUT( 5, 9)  = 'Mean breaking height'
     IDOUT( 5,10)  = 'Dominant break prob '
     IDOUT( 5,11)  = 'Wind sea period' ! C.Bunney - reinstated this as is used in ww3_ounf
+    IDOUT( 5,12)  = 'Drag Coefficient'
     ! Is it suposed to be defunct? It is not in ww3_outf...
     !
     ! 6) Wave-ocean layer
