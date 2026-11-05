@@ -428,7 +428,7 @@ CONTAINS
                           TAUWNY, DDDX, DDDY, ALPHA, WN, U10, U10D, TAUA,  &
                           TAUADIR, FCUT, WHITECAP, BEDFORMS, TAUBBL,       &
                           TAUICE, PHIBBL, TAUOCX, TAUOCY, WNMEAN, PHIAW,   &
-                          PHIOC, TWS, PHICE, CHARN, W3SETA, ITSTEP
+                          PHIOC, TWS, PHICE, CHARN, W3SETA, ITSTEP, DRAG
     !/
     USE W3IDATMD,  ONLY : IIDATA, INFLAGS1, FLLEV, FLCUR, FLWIND, FLICE,   &
                           FLTAUA, FLRHOA, FLIC1, FLIC2, FLIC3, FLIC4,      &
