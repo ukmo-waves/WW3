@@ -1316,7 +1316,7 @@ CONTAINS
          TH2M, STH2M, HSIG, STMAXE, STMAXD,          &
          HCMAXE, HMAXE, HCMAXD, HMAXD, USSP, QP, PQP,&
          PTHP0, PPE, PGW, PSW, PTM1, PT1, PT2, PEP,  &
-         WBT, QKK, DRAG
+         WBT, QKK 
     USE W3ODATMD, ONLY: NDST, UNDEF, IAPROC, NAPROC, NAPFLD,        &
          ICPRT, DTPRT, WSCUT, NOSWLL, FLOGRD, FLOGR2,&
          NOGRP, NGRPP
@@ -2538,7 +2538,7 @@ CONTAINS
          CFLXYMAX, CFLTHMAX, CFLKMAX, P2SMS, US3D,    &
          TH1M, STH1M, TH2M, STH2M, HSIG, PHICE, TAUICE,&
          STMAXE, STMAXD, HMAXE, HCMAXE, HMAXD, HCMAXD,&
-         USSP, TAUOCX, TAUOCY, QKK, SKEW, EMBIA1, EMBIA2
+         USSP, TAUOCX, TAUOCY, QKK, SKEW, EMBIA1, EMBIA2,DRAG
     !/
     USE W3ODATMD, ONLY: NOGRP, NGRPP, IDOUT, UNDEF, NDST, NDSE,     &
          FLOGRD, IPASS => IPASS1, WRITE => WRITE1,   &
@@ -3451,11 +3451,13 @@ CONTAINS
 #endif
             ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 11 ) THEN
               WRITE ( NDSOG ) TWS(1:NSEA)
-#endif
-            ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 12 ) THEN
-              WRITE ( NDSOG ) DRAG(1:NSEA) 
 #ifdef W3_ASCII
               WRITE ( NDSOA,* ) 'TWS:', TWS(1:NSEA)
+#endif
+            ELSE IF ( IFI .EQ. 5 .AND. IFJ .EQ. 12 ) THEN
+              WRITE ( NDSOG ) DRAG(1:NSEA)
+#ifdef W3_ASCII
+              WRITE ( NDSOA,* ) 'DRAG:', DRAG(1:NSEA)
 #endif
               !
               !     Section 6)
