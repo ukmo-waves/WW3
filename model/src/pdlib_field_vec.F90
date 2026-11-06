@@ -444,16 +444,15 @@ CONTAINS
 
     use yowDatapool, only: istatus
     USE W3GDATMD, only : NSEA, NSPEC
-    USE W3ODATMD, only : NAPROC, NTPROC, IAPROC
+    USE W3ODATMD, only : NAPROC, IAPROC
     USE W3ADATMD, only : MPI_COMM_WAVE
     USE W3PARALL, only : GET_JSEA_IBELONG
     USE W3WDATMD, ONLY : VA
-    USE W3GDATMD, ONLY: NSEAL
     USE W3ADATMD, ONLY: NSEALM
 #ifdef W3_TIMINGS
     USE W3PARALL, ONLY: PRINT_MY_TIME
 #endif
-    use yowNodepool, only: ListNP, ListNPA, ListIPLG
+    use yowNodepool, only: ListNPA, ListIPLG
     use mpi_f08
     IMPLICIT NONE
     !/
@@ -472,8 +471,8 @@ CONTAINS
     !
     INTEGER, intent(in) :: NDREAD
     INTEGER iBlock, iFirst, iEnd, len, i, IB, iProc
-    INTEGER NREC, ISEA, JSEA, ierr
-    INTEGER nbBlock, IBELONG
+    INTEGER NREC, ISEA, ierr
+    INTEGER nbBlock
     INTEGER :: BlockSize
     REAL, allocatable :: ArrSend(:,:)
     REAL, allocatable :: DataRead(:,:)
@@ -481,8 +480,7 @@ CONTAINS
     integer LRECL
     INTEGER, PARAMETER      :: LRB = 4
     INTEGER NBLKRSloc, RSBLKSloc
-    integer eArr(1)
-    integer IERR_MPI, istat
+    integer istat
     integer IPloc, IPglob, pos
     integer NbMatch, idx
     integer ListFirst(NAPROC)
@@ -491,7 +489,8 @@ CONTAINS
 #endif
     !
     LRECL  = MAX ( LRB*NSPEC ,                                      &
-         LRB*(6+(25/LRB)+(9/LRB)+(29/LRB)+(3/LRB)) )
+         LRB*(6 + INT(25.0/LRB) + INT(9.0/LRB) + INT(29.0/LRB) +    &
+         INT(3.0/LRB)) )
     IF (IAPROC .gt. NAPROC) THEN
       RETURN
     END IF
@@ -654,14 +653,13 @@ CONTAINS
 #endif
     !
     use yowDatapool, only: istatus
-    USE yowNodepool, only: ListNP, ListNPA, ListIPLG
+    USE yowNodepool, only: np, ListNP, ListNPA, ListIPLG
     USE W3PARALL, ONLY: INIT_GET_ISEA
     USE W3GDATMD, only : NSEA, NSPEC
-    USE W3ODATMD, only : NAPROC, NTPROC, NAPRST, IAPROC
+    USE W3ODATMD, only : NAPROC, NAPRST, IAPROC
     USE W3ADATMD, only : MPI_COMM_WAVE
     USE W3PARALL, only : GET_JSEA_IBELONG
     USE W3WDATMD, ONLY : VA
-    USE W3GDATMD, ONLY: NSEAL, NX, NY
     use mpi_f08
     IMPLICIT NONE
     !/
@@ -683,8 +681,8 @@ CONTAINS
     REAL :: DATAwrite(NSPEC,BlockSize)
     REAL, allocatable :: DATArecv(:,:)
     integer ListFirst(NAPROC)
-    integer idx, idxB
-    integer len, i, IS
+    integer idx
+    integer len
     integer iBlock, iFirst, iEnd
     integer IPglob, IPloc, pos, ISEA, nbBlock, NPAloc
     integer ierr, istat, JSEA, NREC, iProc
@@ -692,7 +690,6 @@ CONTAINS
     INTEGER, PARAMETER      :: LRB = 4
     INTEGER(KIND=8) RPOS
     INTEGER LRECL
-    INTEGER IERR_MPI
     REAL(KIND=LRB) WRITEBUFF(NSPEC)
     REAL, allocatable :: DATAsend(:,:)
 #ifdef W3_S
@@ -704,15 +701,18 @@ CONTAINS
     END DO
     !
     LRECL  = MAX ( LRB*NSPEC ,                                      &
-         LRB*(6+(25/LRB)+(9/LRB)+(29/LRB)+(3/LRB)) )
+         LRB*(6 + INT(25.0/LRB) + INT(9.0/LRB) + INT(29.0/LRB) +    &
+         INT(3.0/LRB)) )
     nbBlock=NSEA / BlockSize + 1
     DO iBlock=1,nbBlock
       iFirst= 1 + (iBlock - 1)*BlockSize
       iEnd= MIN(iBlock * BlockSize, NSEA)
       len=iEnd + 1 - iFirst
+      ! Owned points only (local 1:np): each sea point is written once, by its owner.
+      ! Ghost copies (np+1:npa) may be out of date and would overwrite the owner's value.
       IF (IAPROC .eq. NAPRST) THEN
         IF (IAPROC .le. NAPROC) THEN
-          DO JSEA=1,NSEAL
+          DO JSEA=1,np
             CALL INIT_GET_ISEA(ISEA, JSEA)
             IF ((iFirst .le. ISEA).and.(ISEA .le. iEnd)) THEN
               idx = ISEA - iFirst + 1
@@ -722,7 +722,7 @@ CONTAINS
         END IF
         DO iProc=1,NAPROC
           IF (iProc .ne. IAPROC) THEN
-            NPAloc=ListNPA(iProc)
+            NPAloc=ListNP(iProc)
             NbMatch=0
             DO IPloc=1,NPAloc
               IPglob = ListIPLG(ListFirst(iProc) + IPloc)
@@ -758,7 +758,7 @@ CONTAINS
       ELSE
         IF (IAPROC .le. NAPROC) THEN
           NbMatch=0
-          DO IPloc=1,ListNPA(IAPROC)
+          DO IPloc=1,np
             IPglob = ListIPLG(ListFirst(IAPROC) + IPloc)
             IF ((iFirst .le. IPglob).and.(IPglob .le. iEnd)) THEN
               NbMatch=NbMatch+1
@@ -767,7 +767,7 @@ CONTAINS
           IF (NbMatch .gt. 0) THEN
             allocate(DATAsend(NSPEC,NbMatch), stat=istat)
             idx=0
-            DO IPloc=1,ListNPA(IAPROC)
+            DO IPloc=1,np
               IPglob = ListIPLG(ListFirst(IAPROC) + IPloc)
               IF ((iFirst .le. IPglob).and.(IPglob .le. iEnd)) THEN
                 idx=idx + 1
@@ -781,6 +781,104 @@ CONTAINS
       END IF
     END DO
   END SUBROUTINE UNST_PDLIB_WRITE_TO_FILE
+  !/ ------------------------------------------------------------------- /
+  SUBROUTINE UNST_PDLIB_GATHER_RESTART_FIELDS
+    !/
+    !/                  +-----------------------------------+
+    !/                  | WAVEWATCH III           NOAA/NCEP |
+    !/                  |                        FORTRAN 90 |
+    !/                  | Last update :         22-Oct-2026 |
+    !/                  +-----------------------------------+
+    !/
+    !/    22-Oct-2026 : Origination.
+    !/
+    !  1. Purpose : Gather the sea-point fields written to a binary restart
+    !               after the spectra (UST, USTDIR, ASF, FPIS) on the restart
+    !               task NAPRST, under PDLIB.
+    !
+    !  2. Method :
+    !     Each task sends the values at its owned points (local 1:np) to
+    !     NAPRST, which stores them by global index. Without this, NAPRST
+    !     wrote its own copies of these global-size arrays, which hold
+    !     computed values only at the points NAPRST itself holds, so the
+    !     restart file depended on the decomposition. This is the PDLIB
+    !     counterpart of the IRQRS gather set up in W3MPIO (W3INITMD) for
+    !     the other grids.
+    !
+    !  5. Called by :
+    !
+    !      Name      Type  Module   Description
+    !     ----------------------------------------------------------------
+    !      W3IORS    Subr. W3IORSMD Restart file I/O, before the fields
+    !                               are written.
+    !     ----------------------------------------------------------------
+    !
+    !  7. Remarks :
+    !     All mesh nodes are sea points (ISEA = global node index), as in
+    !     UNST_PDLIB_WRITE_TO_FILE.
+    !
+    !  9. Switches :
+    !
+    !     !/S  Enable subroutine tracing.
+    !
+    ! 10. Source code :
+    !
+    !/ ------------------------------------------------------------------- /
+#ifdef W3_S
+    USE W3SERVMD, ONLY: STRACE
+#endif
+    !
+    use yowDatapool, only: istatus
+    USE yowNodepool, only: np, ListNP, ListNPA, ListIPLG
+    USE W3ODATMD, only : NAPROC, NAPRST, IAPROC
+    USE W3ADATMD, only : MPI_COMM_WAVE
+    USE W3WDATMD, ONLY : UST, USTDIR, ASF, FPIS
+    use mpi_f08
+    IMPLICIT NONE
+    !/
+#ifdef W3_S
+    INTEGER, SAVE           :: IENT = 0
+#endif
+    !/
+    INTEGER, PARAMETER :: NFIELD = 4
+    REAL, allocatable :: FieldBuf(:,:)
+    integer ListFirst(NAPROC)
+    integer iProc, IPloc, ISEA, ierr, istat
+#ifdef W3_S
+    CALL STRACE (IENT, 'UNST_PDLIB_GATHER_RESTART_FIELDS')
+#endif
+    ListFirst(1) = 0
+    DO IPROC=2,NAPROC
+      ListFirst(iProc)=ListFirst(iProc-1) + ListNPA(iProc-1)
+    END DO
+    IF (IAPROC .eq. NAPRST) THEN
+      DO iProc=1,NAPROC
+        IF (iProc .ne. IAPROC) THEN
+          allocate(FieldBuf(NFIELD, ListNP(iProc)), stat=istat)
+          CALL MPI_RECV(FieldBuf,NFIELD*ListNP(iProc),MPI_REAL, iProc-1, 103, MPI_COMM_WAVE, istatus, ierr)
+          DO IPloc=1,ListNP(iProc)
+            ISEA = ListIPLG(ListFirst(iProc) + IPloc)
+            UST(ISEA)    = FieldBuf(1,IPloc)
+            USTDIR(ISEA) = FieldBuf(2,IPloc)
+            ASF(ISEA)    = FieldBuf(3,IPloc)
+            FPIS(ISEA)   = FieldBuf(4,IPloc)
+          END DO
+          deallocate(FieldBuf, stat=istat)
+        END IF
+      END DO
+    ELSE IF (IAPROC .le. NAPROC) THEN
+      allocate(FieldBuf(NFIELD, np), stat=istat)
+      DO IPloc=1,np
+        ISEA = ListIPLG(ListFirst(IAPROC) + IPloc)
+        FieldBuf(1,IPloc) = UST(ISEA)
+        FieldBuf(2,IPloc) = USTDIR(ISEA)
+        FieldBuf(3,IPloc) = ASF(ISEA)
+        FieldBuf(4,IPloc) = FPIS(ISEA)
+      END DO
+      CALL MPI_SEND(FieldBuf,NFIELD*np,MPI_REAL, NAPRST-1, 103, MPI_COMM_WAVE, ierr)
+      deallocate(FieldBuf, stat=istat)
+    END IF
+  END SUBROUTINE UNST_PDLIB_GATHER_RESTART_FIELDS
   !/ ------------------------------------------------------------------- /
   SUBROUTINE DO_OUTPUT_EXCHANGES(IMOD)
     !/
@@ -809,12 +907,12 @@ CONTAINS
     !
     USE W3ADATMD, ONLY: W3XDMA, W3SETA, W3XETA, WADATS
     USE W3GDATMD, ONLY: NSEA
-    USE W3GDATMD, ONLY: NX, NSPEC, MAPFS, E3DF, P2MSF, US3DF
-    USE W3WDATMD, ONLY: VA, UST, USTDIR, ASF, FPIS
-    USE W3ADATMD, ONLY: MPI_COMM_WAVE, WW3_FIELD_VEC
+    USE W3GDATMD, ONLY: NSPEC, E3DF, P2MSF
+    USE W3WDATMD, ONLY: UST, USTDIR, ASF
+    USE W3ADATMD, ONLY: MPI_COMM_WAVE
     USE W3ADATMD, ONLY: HS, WLM, T02
     USE W3ADATMD, ONLY: T0M1, THM, THS, FP0, THP0,             &
-         DTDYN, FCUT, SPPNT, ABA, ABD, UBA, UBD,&
+         DTDYN, FCUT, ABA, ABD, UBA, UBD,       &
          SXX, SYY, SXY, USERO, PHS, PTP, PLP,   &
          PDIR, PSI, PWS, PWST, PNR, PHIAW,      &
          PHIOC, TAUOCX, TAUOCY, WNMEAN,         &
@@ -826,22 +924,14 @@ CONTAINS
          BEDFORMS, PHIBBL, TAUBBL, T01,         &
          P2SMS, US3D, EF,  TH1M, STH1M, TH2M,   &
          STH2M, HSIG, TAUICE, PHICE, PTHP0, PQP,&
-         PPE, PGW, PSW, PTM1, PT1, PT2, PEP,   &
+         PPE, PGW, PSW, PTM1, PT1, PT2, PEP,    &
          QP, MSSD, MSCD, STMAXE, STMAXD, HMAXE, &
          HCMAXE, HMAXD, HCMAXD, WBT, USSP
     USE W3GDATMD, ONLY: NK, NSEAL
-    USE W3ODATMD, ONLY: NDST, IAPROC, NAPROC, NTPROC, FLOUT,   &
-         NAPFLD, NAPPNT, NAPRST, NAPBPT, NAPTRK,&
-         NOGRP, NGRPP
-    USE W3ODATMD, ONLY: OUTPTS, NRQGO, NRQGO2, IRQGO, IRQGO2,  &
-         FLOGRD, NRQPO, NRQPO2, IRQPO1, IRQPO2, &
-         NOPTS, IPTINT, NRQRS, IRQRS, NBLKRS,   &
-         RSBLKS, IRQRSS, VAAUX, NRQBP, NRQBP2,  &
-         IRQBP1, IRQBP2, NFBPO, NBO2, ISBPO,    &
-         ABPOS, NRQTR, IRQTR, IT0PNT, IT0TRK,   &
-         IT0PRT, NOSWLL, NOEXTR, NDSE, IOSTYP,  &
-         FLOGR2
-    USE W3ADATMD, ONLY: MPI_COMM_WCMP
+    USE W3ODATMD, ONLY: NDST, IAPROC, NAPROC, FLOUT,   &
+         NAPFLD, NOGRP, NGRPP
+    USE W3ODATMD, ONLY: NRQGO, NRQGO2, FLOGRD,  &
+         NOSWLL, NOEXTR, NDSE, FLOGR2
     USE W3PARALL, ONLY: INIT_GET_JSEA_ISPROC
     USE W3PARALL, ONLY: INIT_GET_ISEA
     use yowDatapool, only: istatus
@@ -858,12 +948,8 @@ CONTAINS
     !/ ------------------------------------------------------------------- /
     !/ Local parameters
     !/
-    INTEGER                 :: IK, IFJ
-    INTEGER                 :: IH, IT0, IROOT, IT, IERR, I0,   &
-         IFROM, IX(4), IY(4), IS(4),     &
-         IP(4), I, J, JSEA, ITARG, IB,   &
-         JSEA0, JSEAN, NSEAB, IBOFF,     &
-         ISEA, ISPROC, K, NRQMAX
+    INTEGER                 :: IK
+    INTEGER                 :: IH, IT0, IROOT, IERR, I, J, JSEA, ISEA, K
 #ifdef W3_S
     INTEGER, SAVE           :: IENT
 #endif

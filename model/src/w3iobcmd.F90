@@ -216,8 +216,8 @@ CONTAINS
     USE W3CSPCMD, ONLY: W3CSPC
     USE W3TRIAMD, ONLY: W3NESTUG
     !
-    USE W3GDATMD, ONLY: NK, NTH, NSPEC, NSEA, NSEAL, NX, NY,        &
-         X0, Y0, SX, SY, GSU, MAPSTA, MAPFS, MAPSF,  &
+    USE W3GDATMD, ONLY: NK, NTH, NSPEC, NSEA,        &
+         GSU, MAPSTA, MAPFS, MAPSF,                  &
          XFR, FR1, SIG2, TH, DTH, FILEXT, FACHFE,    &
          GTYPE, UNGTYPE, SMCTYPE
     USE W3GDATMD, ONLY: DXYMAX
@@ -226,12 +226,14 @@ CONTAINS
 #endif
 #ifdef W3_RTD
     !!   Use rotated N-Pole lat/lon and conversion sub.  JGLi12Jun2012
-    USE W3GDATMD, ONLY: PoLat, PoLon, AnglD
+    USE W3GDATMD, ONLY: PoLat, PoLon, AnglD, NX, NY, X0, Y0, SX, SY
     USE W3SERVMD, ONLY: W3LLTOEQ, W3EQTOLL, W3ACTURN
 #endif
+#ifdef W3_SHRD
     USE W3WDATMD, ONLY: VA
+#endif
     USE W3ADATMD, ONLY: CG
-    USE W3ODATMD, ONLY: NDSE, NDST, IAPROC, NAPROC, NAPERR, NAPBPT, &
+    USE W3ODATMD, ONLY: NDSE, NDST, IAPROC, NAPERR, NAPBPT, &
          NBI, NBI2, NFBPO, NBO, NBO2, NDSL,          &
          NKI, NTHI, XFRI, FR1I, TH1I,                &
          IPBPI, ISBPI, XBPI, YBPI, RDBPI,            &
@@ -795,10 +797,12 @@ CONTAINS
          '     POINT',I4,2E14.6,' NOT LOCATED IN GRID')
 911 FORMAT ( ' *** WAVEWATCH III WARNING : POINT',2I7,              &
          ' WILL NOT BE UPDATED')
+#ifdef W3_SMC
 920 FORMAT (/' *** SMCTYPE mapped boundary cells:'/ ((I8,2F9.3)) )
     !
     ! Note: This 1001 error can occur when multi-grid time steps are not
     !       compatible.
+#endif
 1001 FORMAT (/' *** WAVEWATCH III WARNING IN W3IOBC : '/             &
          '     INPUT FILE WITH BOUNDARY CONDITIONS NOT FOUND'/  &
          '     BOUNDARY CONDITIONS WILL NOT BE UPDATED ',I5/)

@@ -302,7 +302,7 @@ CONTAINS
          UBA, UBD, PHIBBL, TAUBBL, TAUOCX, TAUOCY,   &
          WNMEAN
     !/
-    USE W3GDATMD, ONLY: NX, NY, NSEA, NSEAL, NSPEC, MAPSTA, MAPST2, &
+    USE W3GDATMD, ONLY: NX, NY, NSEA, NSPEC, MAPSTA, MAPST2, &
          GNAME, FILEXT, GTYPE, UNGTYPE
     USE W3TRIAMD, ONLY: SET_UG_IOBP
     USE W3WDATMD, only : DINIT, VA, TIME, TLEV, TICE, TRHO, ICE, UST
@@ -312,19 +312,26 @@ CONTAINS
     USE W3IDATMD, ONLY: WXNwrst, WYNwrst
 #endif
     USE W3ODATMD, ONLY: NDSE, NDST, IAPROC, NAPROC, NAPERR, NAPRST, &
-         IFILE => IFILE4, FNMPRE, FNMRST, NTPROC, IOSTYP,    &
+         IFILE => IFILE4, FNMPRE, FNMRST, IOSTYP,    &
          FLOGRR, NOGRP, NGRPP, SCREEN
+#ifdef W3_T
+    USE W3ODATMD, ONLY: NTPROC
+#endif
+    !/
 #ifdef W3_MPI
     USE W3ODATMD, ONLY: NRQRS, NBLKRS, RSBLKS, IRQRS, IRQRSS,  &
          VAAUX
     USE W3ADATMD, ONLY: MPI_COMM_WCMP
-    USE mpi_f08 
+    USE mpi_f08
+#endif
+    !/
+#if defined(W3_T) || defined(W3_MPI)
+    USE W3GDATMD, ONLY: NSEAL
 #endif
     !/
     USE W3SERVMD, ONLY: EXTCDE, EXTIOF
     USE CONSTANTS, only: LPDLIB, file_endian
     USE W3PARALL, ONLY: INIT_GET_ISEA, INIT_GET_JSEA_ISPROC
-    USE W3GDATMD, ONLY: NK, NTH
 #ifdef W3_TIMINGS
     USE W3PARALL, ONLY: PRINT_MY_TIME
 #endif
@@ -355,15 +362,17 @@ CONTAINS
     !
     INTEGER                 :: IGRD, I, J, LRECL, NSIZE, IERR,      &
          NSEAT, MSPEC, TTIME(2), ISEA, JSEA,  &
-         NREC, NPART, IPART, IX, IY, IXL, IP, &
-         NPRTX2, NPRTY2, IYL, ITMP
+         NREC, NPART, IPART, IY, IXL, NPRTX2, NPRTY2, ITMP
     INTEGER, ALLOCATABLE    :: MAPTMP(:,:)
+#ifdef W3_WRST
+    INTEGER                 :: IX, IYL
+#endif
 #ifdef W3_S
     INTEGER, SAVE           :: IENT = 0
 #endif
 #ifdef W3_MPI
     INTEGER                 :: IERR_MPI, IH, IB, ISEA0, ISEAN, &
-         NRQ, NSEAL_MIN
+         NRQ, NSEAL_MIN, IP
 #endif
     INTEGER(KIND=8)         :: RPOS
 #ifdef W3_MPI
@@ -448,7 +457,8 @@ CONTAINS
     IF ( IAPROC .LE. NAPROC ) VA(:,0) = 0.
     !
     LRECL  = MAX ( LRB*NSPEC ,                                      &
-         LRB*(6+(25/LRB)+(9/LRB)+(29/LRB)+(3/LRB)) )
+         LRB*(6+ INT(25.0/LRB) + INT(9.0/LRB) + INT(29.0/LRB) +     &
+         INT(3.0/LRB)) )
     NSIZE  = LRECL / LRB
     !     --- Allocate buffer array with zeros (used to
     !         fill bytes up to size LRECL). ---
@@ -882,6 +892,12 @@ CONTAINS
     IF ( WRITE ) THEN
       !
       IF (TYPE.EQ.'FULL') THEN
+        !
+#ifdef W3_PDLIB
+        ! UST, USTDIR, ASF and FPIS from the owner of each point
+        ! (the IRQRS gather is skipped under PDLIB)
+        IF (LPDLIB) CALL UNST_PDLIB_GATHER_RESTART_FIELDS
+#endif
         !
         IF ( IAPROC .EQ. NAPRST ) THEN
           !

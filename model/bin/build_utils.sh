@@ -530,14 +530,6 @@ check_switches()
       echo ' ' ; exit 14
   fi
 
-  if [ "$oasis" = 'OASIS' ] && [ "$str_st3" = 'no' ]
-  then
-      echo ' '
-      echo "   *** !/OASIS cannot be used in combination with !/$stress"
-      echo "       Stresses embedded in source terms, use FLX0."
-      echo ' ' ; exit 15
-  fi
-
   if [ -n "$thread1" ] && [ "$s_nl" = 'NL2' ]
   then
       echo ' '
@@ -933,7 +925,7 @@ create_file_list()
                prop=
             sourcet="$pdlibcode $pdlibyow $setupcode $flx $ln $st $nl $bt $ic $is $db $tr $bs $igcode $uostmd"
                  IO='w3bullmd w3iogrmd w3iopomd w3partmd'
-                aux="constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd" ;;
+                aux="constants w3servmd w3timemd w3arrymd w3dispmd w3gsrumd w3nmloutpmd" ;;
       ww3_ounp)
                core=
                data="wmmdatmd w3parall w3triamd $memcode w3gdatmd w3wdatmd w3adatmd w3idatmd w3odatmd"

@@ -2335,13 +2335,10 @@ CONTAINS
                       X0D = DBLE(SXO)
                       Y0D = DBLE(SYO)
                     ELSE
-                      PREC=6
-                      PRECT=10**PREC
-                      PRECD=10**(-PREC)
-                      SXD=DBLE(PRECD*DNINT(PRECT*(DBLE(DXO)) ))
-                      SYD=DBLE(PRECD*DNINT(PRECT*(DBLE(DYO)) ))
-                      X0D=DBLE(PRECD*DNINT(PRECT*(DBLE(SXO)) ))
-                      Y0D=DBLE(PRECD*DNINT(PRECT*(DBLE(SYO)) ))
+                      SXD=DBLE(0.000001d0*DNINT(1d6*(DBLE(DXO)) ))
+                      SYD=DBLE(0.000001d0*DNINT(1d6*(DBLE(DYO)) ))
+                      X0D=DBLE(0.000001d0*DNINT(1d6*(DBLE(SXO)) ))
+                      Y0D=DBLE(0.000001d0*DNINT(1d6*(DBLE(SYO)) ))
                     ENDIF
                     DO i=1,NXO
                       lon(i)=REAL(X0D+SXD*DBLE(i-1))
