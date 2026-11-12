@@ -855,7 +855,7 @@ MODULE W3GRIDMD
                              TAUWBUG
   REAL                    :: SDSBCHOICE                     
   REAL                    :: ZWND, ALPHA0, Z0MAX, BETAMAX, SINTHP,&
-       ZALP, Z0RAT, TAUWSHELTER, SWELLF,    &
+       ZALP, Z0RAT, TAUWSHELTER, SINTABLE, SWELLF,    &
        SWELLF2,SWELLF3,SWELLF4, SWELLF5,    &
        SWELLF6, SWELLF7, FXPM3, FXFM3,      &
        WNMEANPTAIL, WNMEANP, STXFTF, STXFTFTAIL,       &
@@ -1822,7 +1822,7 @@ CONTAINS
     WRITE (NDSO,920) STATUS
     WRITE (NDSO,921) ALPHA0, BETAMAX, SINTHP, Z0MAX, ZALP, ZWND, TAUWSHELTER, &
          SWELLFPAR, SWELLF, SWELLF2, SWELLF3, SWELLF4, SWELLF5, &
-         SWELLF6, SWELLF7, Z0RAT
+         SWELLF6, SWELLF7, Z0RAT, SINTABLE
     ZZWND  = ZWND
     AALPHA = ALPHA0
     BBETA  = BETAMAX
@@ -3278,7 +3278,7 @@ CONTAINS
 #endif
 #ifdef W3_ST4
       WRITE (NDSO,2920) ZWND, ALPHA0, Z0MAX, BETAMAX, SINTHP, ZALP,   &
-           TAUWSHELTER, SWELLFPAR, SWELLF, SWELLF2, SWELLF3, SWELLF4, &
+           TAUWSHELTER, SINTABLE, SWELLFPAR, SWELLF, SWELLF2, SWELLF3, SWELLF4, &
            SWELLF5, SWELLF6, SWELLF7, Z0RAT, SINBR, SINTABLE, TAUWBUG, VISCSTRESS, SINTAIL1, SINTAIL2, &
            CAPCHA, CHAMIN, CHA0, UCAP, SIGMAUCAP
 #endif
@@ -6341,7 +6341,8 @@ CONTAINS
          '       swell attenuation factor5   :',F9.3/           &
          '       swell attenuation factor6   :',F9.3/           &
          '       swell attenuation factor7   :',F14.3/          &
-         '       ratio of z0 for orb. & mean :',F9.3/)
+         '       ratio of z0 for orb. & mean :',F9.3/           &
+         '       stress table                :',F8.5/)
 2920 FORMAT ( '  &SIN4 ZWND =',F5.1,', ALPHA0 =',F8.5,', Z0MAX =',F8.5,', BETAMAX =', &
          F8.5,','/                                           &
          '        SINTHP =',F8.5,', ZALP =',F8.5,', TAUWSHELTER =',F8.5,           &
