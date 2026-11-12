@@ -6342,7 +6342,7 @@ CONTAINS
          '       swell attenuation factor6   :',F9.3/           &
          '       swell attenuation factor7   :',F14.3/          &
          '       ratio of z0 for orb. & mean :',F9.3/           &
-         '       stress table                :',F8.5/)
+         '       stress table                :',I5/)
 2920 FORMAT ( '  &SIN4 ZWND =',F5.1,', ALPHA0 =',F8.5,', Z0MAX =',F8.5,', BETAMAX =', &
          F8.5,','/                                           &
          '        SINTHP =',F8.5,', ZALP =',F8.5,', TAUWSHELTER =',F8.5,           &
